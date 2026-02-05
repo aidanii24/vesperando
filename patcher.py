@@ -5,11 +5,11 @@ import os
 
 import utils
 import vesperia_types as vtypes
-from config.settings import paths
+from config.settings import Paths
 
 class VesperiaPatcher:
     build_dir: str = os.path.join(os.getcwd(), "builds")
-    data_dir: str = paths.STATIC_DIR
+    data_dir: str = Paths.STATIC_DIR
 
     def __init__(self, patcher_id: str):
         self.build_dir = os.path.join(self.build_dir, patcher_id)

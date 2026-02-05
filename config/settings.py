@@ -1,10 +1,11 @@
 import os
 
 
-class paths:
+class Paths:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     STATIC_DIR = os.path.join(BASE_DIR, 'static')
     RES_DIR = os.path.join(BASE_DIR, 'res')
+    LIB_DIR = os.path.join(BASE_DIR, 'lib')
 
     CONFIG = os.path.join(os.getcwd(), "config.json")
     PATCHES = os.path.join(os.getcwd(), "patches")
@@ -22,13 +23,13 @@ class paths:
 
     HYOUTA = "HyoutaToolsCLI"
 
-class keys:
+class Keys:
     DEP_VESPERIA = "vesperia"
     DEP_DOTNET = "dotnet"
     DEP_HYOUTA = "hyouta"
     DEP_COMPTOE = "comptoe"
 
-class checksums:
+class Checksums:
     VESPERIA = "ee3212432d063c3551f8d5eb9c8dde6d55a22240912ae9ea3411b3808bfb3827"
     BTL = "bab8c0497665bd5a46f2ffabba5f4d2acc9fcdf0e4e0dd50c1b8199d3f6d7111"
     ITEM = "d86e4e3d7df4d60c9c752f999e916d495c77b2ae321c18fe281a51464a5d4d25"

@@ -1,4 +1,3 @@
-import subprocess
 import platform
 import hashlib
 import shutil
@@ -6,7 +5,9 @@ import json
 import sys
 import os
 
-from config.settings import paths, keys
+from libvespy import fps4, scenario, tlzc
+from lib import complib
+from config.settings import Paths, Keys
 
 
 # Checksums
@@ -18,190 +19,31 @@ checksums: dict[str, str] = {
     "scenario_ENG.dat": "90a1e41ae829ba7f05e289aaba87cb4699e3ed27acc9448985f6f91261da8e2d"
 }
 
-
-class Hyouta:
-    """Wrapper instance for HyoutaToolsCLI Commands"""
-    dotnet: str = keys.DEP_DOTNET
-    path: str = paths.HYOUTA
-
-    def __init__(self, path: str, dotnet = "dotnet"):
-        self.path: str = path
-        self.dotnet: str = dotnet
-
-        self.use_dotnet: bool = bool(dotnet)
-
-    def check_dependencies(self) -> bool:
-        error_occurred: bool = False
-
-        if platform.system() == "Windows" or self.path.endswith(".dll"):
-            try:
-                output = subprocess.run([self.dotnet, "--version"],
-                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-                if not output.stdout or output.stderr:
-                    error_occurred = True
-                    print("Runtime Error: There was an error running dotnet. "
-                          "Please try re-installing the SDK then try again.")
-
-                assert output.stdout.decode('utf-8')[0] == "6"
-            except AssertionError:
-                error_occurred = True
-                print(
-                    "Wrong Dependency: The installed .NET is incompatible with HyoutaToolsCLI. Please install .NET 6.0.")
-            except FileNotFoundError:
-                error_occurred = True
-                print("Missing Dependency: .NET 6.0 is not installed, or is not present in the provided path.")
-        else:
-            self.use_dotnet: bool = False
-
-        try:
-            if self.use_dotnet:
-                if not self.path.endswith(".dll"):
-                    error_occurred = error_occurred & True
-                    print("Missing Dependency: The specified HyoutaToolsCLI file must be a DLL file.")
-                command = [self.dotnet, self.path]
-            else:
-                if not os.path.isfile(self.path): raise FileNotFoundError
-
-                executable: bool = os.access(self.path, os.X_OK)
-                if not executable:
-                    error_occurred = True
-                    print("Access Error: HyoutaToolsCLI is not permitted to or cannot be run. "
-                          "Are you sure you are pointing to the HyoutaToolsCLI executable?"
-                          f"\nSpecified Location: {self.path}")
-
-                command: list = [self.path]
-
-            output = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if not output.stdout or output.stderr:
-                error_occurred = True
-                print("Runtime Error: There was an error running HyoutaToolsCLI. "
-                      "Please try re-downloading the application then try again.")
-
-        except FileNotFoundError:
-            error_occurred = True
-            print("Missing Dependency: HyoutaToolsCLI was not found.")
-
-        return error_occurred
-
-    def build_base_command(self, *args) -> list[str]:
-        if self.use_dotnet:
-            command = [self.dotnet, self.path]
-        else:
-            command = [self.path]
-
-        command.extend(args)
-
-        return command
-
-    def extract_svo(self, file: str, out: str="", manifest:str = ""):
-        command: list[str] = self.build_base_command("ToVfps4e", file)
-
-        if out:
-            command.append(out)
-
-        if manifest:
-            command.extend(["-j", manifest + ".json"])
-
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.stderr:
-            print(result.stderr)
-            print("> Aborting Patch...")
-            sys.exit(1)
-
-    def decompress_tlzc(self, file: str, out: str=""):
-        command: list[str] = self.build_base_command("tlzc", "-d", file, out)
-
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.stderr:
-            print(result.stderr)
-            print("> Aborting Patch...")
-            sys.exit(1)
-
-    def extract_scenario(self, file: str, dir_out: str=""):
-        command: list[str] = self.build_base_command("Tales.Vesperia.Scenario.Extract", file, dir_out)
-
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.stderr:
-            print(result.stderr)
-            print("> Aborting Patch...")
-            sys.exit(1)
-
-    def pack_svo(self, manifest_file: str, out: str=""):
-        command: list[str] = self.build_base_command("ToVfps4p", manifest_file)
-
-        if out:
-            command.append(out)
-
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.stderr:
-            print(result.stderr)
-            print("> Aborting Patch...")
-            sys.exit(1)
-
-    def compress_tlzc(self, file: str, out: str=""):
-        command: list[str] = self.build_base_command("tlzc", "-c", file, out)
-
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.stderr:
-            print(result.stderr)
-            print("> Aborting Patch...")
-            sys.exit(1)
-
-    def pack_scenario(self, file: str, dir_out: str=""):
-        command: list[str] = self.build_base_command("Tales.Vesperia.Scenario.Pack", file, dir_out)
-
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.stderr:
-            print(result.stderr)
-            print("> Aborting Patch...")
-            sys.exit(1)
-
 class VesperiaPacker:
     """Handler Instance for Extraction, Packing, Compressing and Decompressing files from the game."""
-    vesperia_dir: str = paths.VESPERIA
-    backup_dir: str = paths.BACKUP
-    comptoe: str = keys.DEP_COMPTOE
-    hyouta: Hyouta
+    vesperia_dir: str = Paths.VESPERIA
+    backup_dir: str = Paths.BACKUP
 
-    build_dir: str = paths.BUILDS
-    manifest_dir: str = paths.MANIFESTS
-    output_dir: str = paths.OUTPUT
+    build_dir: str = Paths.BUILDS
+    manifest_dir: str = Paths.MANIFESTS
+    output_dir: str = Paths.OUTPUT
 
     apply_immediately: bool = False
 
     def __init__(self, patch_id: str = "singleton", apply_immediately: bool = False):
-        config_present: bool = os.path.isfile(paths.CONFIG)
+        config_present: bool = os.path.isfile(Paths.CONFIG)
 
         if not config_present:
             VesperiaPacker.generate_config()
 
-        with open(paths.CONFIG, 'r+') as file:
+        with open(Paths.CONFIG, 'r+') as file:
             data = json.load(file)
 
-            if keys.DEP_VESPERIA in data and data[keys.DEP_VESPERIA]:
-                self.vesperia_dir = data[keys.DEP_VESPERIA]
+            if Keys.DEP_VESPERIA in data and data[Keys.DEP_VESPERIA]:
+                self.vesperia_dir = data[Keys.DEP_VESPERIA]
                 self.backup_dir = os.path.join(self.vesperia_dir, "Data64", ".backup")
 
-            if keys.DEP_DOTNET in data and data[keys.DEP_DOTNET]:
-                dotnet_dir = data[keys.DEP_DOTNET]
-            else:
-                dotnet_dir = ""
-
-            if keys.DEP_HYOUTA in data and data[keys.DEP_HYOUTA]:
-                hyouta_dir = data[keys.DEP_HYOUTA]
-
-            if keys.DEP_COMPTOE in data and data[keys.DEP_COMPTOE]:
-                self.comptoe = data[keys.DEP_COMPTOE]
-
-            if hyouta_dir:
-                self.hyouta = Hyouta(hyouta_dir, dotnet_dir)
-
             file.close()
-
-        # Enforce use of dotnet6.x with a global.json
-        if self.hyouta.use_dotnet and not os.path.isfile(os.path.join(os.getcwd(), "global.json")):
-            self.generate_global()
 
         dependencies_error: bool = self.check_dependencies()
         if dependencies_error:
@@ -245,44 +87,16 @@ class VesperiaPacker:
     def generate_config(cls):
         system: str = platform.system()
 
-        vesperia: str = paths.VESPERIA
+        vesperia: str = Paths.VESPERIA
         if system == "Linux":
-            vesperia = os.path.join(os.path.expanduser("~"), ".steam", paths.VESPERIA)
+            vesperia = os.path.join(os.path.expanduser("~"), ".steam", Paths.VESPERIA)
         elif system == "Windows":
-            vesperia = os.path.join("C:\\Program Files (x86)", paths.VESPERIA)
+            vesperia = os.path.join("C:\\Program Files (x86)", Paths.VESPERIA)
 
-        dotnet_required: bool = system == "Windows"
-
-        dotnet: str = keys.DEP_DOTNET if dotnet_required  else ""
-        hyouta: str = os.path.join(paths.HYOUTA, paths.HYOUTA) if dotnet_required else f"{paths.HYOUTA}.dll"
-
-        config = {
-            keys.DEP_VESPERIA : vesperia,
-            keys.DEP_COMPTOE: keys.DEP_COMPTOE + (".exe" if platform == "Windows" else "")
-        }
-
-        if dotnet_required:
-            config[keys.DEP_DOTNET] = dotnet
-
-        config[keys.DEP_HYOUTA] = hyouta
-
-        with open(paths.CONFIG, "x+") as file:
-            json.dump(config, file, indent=4)
+        with open(Paths.CONFIG, "x+") as file:
+            json.dump({Keys.DEP_VESPERIA : vesperia}, file, indent=4)
 
             file.close()
-
-    @classmethod
-    def generate_global(cls):
-        dotnet_global: dict = {
-            'sdk': {
-                'rollForward': "latestMinor",
-                "version": "6.0.0"
-            }
-        }
-
-        global_file: str = "global.json"
-        with open(global_file, "w") as file:
-            json.dump(dotnet_global, file, indent=4)
 
     def check_dependencies(self):
         error_occurred: bool = False
@@ -301,29 +115,6 @@ class VesperiaPacker:
         except FileNotFoundError:
             error_occurred = True
             print("Missing Dependency: The game was not found in the provided path.")
-
-        error_occurred = self.hyouta.check_dependencies() or error_occurred
-
-        try:
-            if not os.path.isfile(self.comptoe): raise FileNotFoundError
-
-            assert os.access(self.comptoe, os.X_OK)
-
-            output = subprocess.run([self.comptoe], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            if not output.stdout or output.stderr:
-                error_occurred = True
-                print("Runtime Error: There was an error running comptoe. "
-                      "Please try re-downloading the application then try again.")
-
-        except FileNotFoundError:
-            error_occurred = True
-            print("Missing Dependency: comptoe was not found."
-                  f"\nExpected at: {self.comptoe}")
-        except AssertionError:
-            print("Access Error: comptoe is not permitted to or cannot be run. "
-                  "Are you sure you are pointing to the comptoe executable?"
-                  f"\nSpecified Location: {self.comptoe}")
-            error_occurred = True
 
         return error_occurred
 
@@ -378,74 +169,50 @@ class VesperiaPacker:
         if not os.path.isdir(self.output_dir):
             os.makedirs(self.output_dir)
 
-    def comptoe_decompress(self, file: str, out: str = ""):
-        command: list[str] = [self.comptoe, "-d", file]
-
-        if out:
-            command.append(out)
-
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.stderr:
-            print(result.stderr)
-            print("> Aborting Patch...")
-            sys.exit(1)
-
-    def comptoe_compress(self, file: str, out: str = ""):
-        command: list[str] = [self.comptoe, "-c", file]
-
-        if out:
-            command.append(out)
-
-        result = subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        if result.stderr:
-            print(result.stderr)
-            print("> Aborting Patch...")
-            sys.exit(1)
-
     def set_build_dir(self, build_dir: str):
         self.build_dir = build_dir
 
     def unpack_btl(self):
-        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, paths.BTL))
+        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, Paths.BTL))
 
         base_build: str = os.path.join(self.build_dir, "btl")
         if not os.path.isfile(path):
             os.mkdir(base_build)
 
-        self.hyouta.extract_svo(path, base_build)
+        fps4.extract(path, base_build)
 
         pack_build: str = os.path.join(self.build_dir, "BTL_PACK")
-        self.hyouta.extract_svo(os.path.join(base_build, "BTL_PACK.DAT"), pack_build,
-                                os.path.join(self.manifest_dir, "BTL_PACK.DAT"))
+        fps4.extract(os.path.join(base_build, "BTL_PACK.DAT"), pack_build,
+                                os.path.join(self.manifest_dir, "BTL_PACK.DAT.json"))
 
     def extract_artes(self):
         path: str = os.path.join(self.build_dir, "BTL_PACK", "0004")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
-        self.hyouta.extract_svo(path, manifest=os.path.join(self.manifest_dir, "0004"))
+        fps4.extract(path, manifest_dir=os.path.join(self.manifest_dir, "0004.json"))
 
     def extract_skills(self):
         path: str = os.path.join(self.build_dir, "BTL_PACK", "0010")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
-        self.hyouta.extract_svo(path, manifest=os.path.join(self.manifest_dir, "0010"))
+        fps4.extract(path, manifest_dir=os.path.join(self.manifest_dir, "0010.json"))
 
     def unpack_item(self):
-        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, paths.ITEM))
+        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, Paths.ITEM))
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
         base_build: str = os.path.join(self.build_dir, "item")
         if not os.path.isdir(base_build):
             os.makedirs(base_build)
 
-        self.hyouta.extract_svo(path, base_build)
+        fps4.extract(path, base_build)
 
     def unpack_npc(self):
-        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, paths.NPC))
+        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, Paths.NPC))
         base_build: str = os.path.join(self.build_dir, "npc")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
-        self.hyouta.extract_svo(path, base_build)
+        fps4.extract(path, base_build)
 
     def extract_map(self, map_data: str):
         data_name: str = map_data if not map_data.endswith(".DAT") else map_data.replace(".DAT", "")
@@ -459,27 +226,28 @@ class VesperiaPacker:
 
         decompress_name: str = f"{data_name}.tlzc"
         field_decompress: str = os.path.join(work_dir, decompress_name)
-        self.hyouta.decompress_tlzc(path, field_decompress)
-        self.hyouta.extract_svo(field_decompress, "", os.path.join(self.manifest_dir, decompress_name))
+        tlzc.decompress(path, field_decompress)
+        fps4.extract(field_decompress, "", os.path.join(self.manifest_dir, decompress_name + ".json"))
 
-    def decompress_data(self, file: str, out: str = ""):
+    @staticmethod
+    def decompress_data(file: str, out: str = ""):
         assert os.path.isfile(file), f"Expected file {file}, but it does not exist."
 
         output: str = file if not out else out + ".tlzc"
-        self.hyouta.decompress_tlzc(file, output)
+        tlzc.decompress(file, output)
 
     def unpack_ui(self):
-        path: str = os.path.join(self.vesperia_dir, paths.UI)
+        path: str = os.path.join(self.vesperia_dir, Paths.UI)
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
         work_dir: str = os.path.join(self.build_dir, "ui")
         if not os.path.isdir(work_dir): os.mkdir(work_dir)
 
-        self.hyouta.extract_svo(path, work_dir)
+        fps4.extract(path, work_dir)
 
     def extract_scenario(self, lang = "ENG"):
         # target: str = f"scenario_{lang}.dat"
-        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, paths.SCENARIO))
+        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, Paths.SCENARIO))
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
         work_dir: str = os.path.join(self.build_dir, "language")
@@ -488,7 +256,7 @@ class VesperiaPacker:
         extract_dir: str = os.path.join(work_dir, "." + lang)
         if not os.path.isdir(extract_dir): os.mkdir(extract_dir)
 
-        self.hyouta.extract_scenario(path, extract_dir)
+        scenario.extract(path, extract_dir)
 
     def decompress_scenario(self, file: str, lang: str = "ENG"):
         assert file, f"Unexpected empty file entry."
@@ -505,7 +273,7 @@ class VesperiaPacker:
         decompress_dir: str = os.path.join(work_dir, f".{lang}.dec")
         if not os.path.isdir(decompress_dir): os.mkdir(decompress_dir)
 
-        self.comptoe_decompress(target, os.path.join(decompress_dir, file + ".dec"))
+        complib.decode(target, os.path.join(decompress_dir, file + ".dec"))
 
     def pack_btl(self):
         path: str = os.path.join(self.manifest_dir, "BTL_PACK.DAT.json")
@@ -515,19 +283,19 @@ class VesperiaPacker:
         output_dir: str = os.path.join(self.output_dir, "Data64", "btl")
 
         shutil.copytree(os.path.join(self.build_dir, "btl"), output_dir, dirs_exist_ok=True)
-        self.hyouta.pack_svo(path, os.path.join(output_dir, "BTL_PACK.DAT"))
+        fps4.pack_from_manifest(os.path.join(output_dir, "BTL_PACK.DAT"), path)
 
     def pack_artes(self):
         path: str = os.path.join(self.manifest_dir, "0004.json")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
-        self.hyouta.pack_svo(path, os.path.join(self.build_dir, "BTL_PACK", "0004"))
+        fps4.pack_from_manifest(os.path.join(self.build_dir, "BTL_PACK", "0004"), path)
 
     def pack_skills(self):
         path: str = os.path.join(self.manifest_dir, "0010.json")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
-        self.hyouta.pack_svo(path, os.path.join(self.build_dir, "BTL_PACK", "0010"))
+        fps4.pack_from_manifest(os.path.join(self.build_dir, "BTL_PACK", "0010"), path)
 
     def pack_map(self, map_data: str):
         base_dir: str = os.path.join(self.build_dir, "maps")
@@ -542,12 +310,13 @@ class VesperiaPacker:
         assert os.path.isfile(manifest), f"Expected manifest {manifest}, but it does not exist."
 
         map_decompressed: str = os.path.join(work_dir, data_name + ".tlzc")
-        self.hyouta.pack_svo(manifest, os.path.join(work_dir, data_name + ".tlzc"))
+        fps4.pack_from_manifest(map_decompressed, manifest)
 
         data_file: str = os.path.join(self.build_dir, "npc", data_name + ".DAT")
-        self.hyouta.compress_tlzc(map_decompressed, data_file)
+        tlzc.compress(map_decompressed, data_file)
 
-    def compress_data(self, file: str, out: str = ""):
+    @staticmethod
+    def compress_data(file: str, out: str = ""):
         assert os.path.isfile(file), f"Expected file {file}, but it does not exist."
         if not out:
             if file.endswith(".tlzc"):
@@ -558,7 +327,7 @@ class VesperiaPacker:
         else:
             output: str = out
 
-        self.hyouta.compress_tlzc(file, output)
+        tlzc.compress(file, output)
 
     def pack_scenario(self, lang = "ENG"):
         path: str = os.path.join(self.build_dir, "language")
@@ -574,7 +343,7 @@ class VesperiaPacker:
 
             if not os.path.isfile(file): continue
 
-            self.comptoe_compress(file, out)
+            complib.encode(file, out)
 
         self.ensure_output_directory()
         output_dir: str = os.path.join(self.output_dir, "Data64", "language")
@@ -584,7 +353,7 @@ class VesperiaPacker:
         shutil.copytree(path, output_dir, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".*"))
 
         output: str = os.path.join(output_dir, "scenario_ENG.dat")
-        self.hyouta.pack_scenario(main, output)
+        scenario.pack(main, output)
 
     def copy_to_output(self, dir_name: str, ):
         target: str = os.path.join(self.build_dir, dir_name)
@@ -611,13 +380,13 @@ class VesperiaPacker:
         contents: list[str] = os.listdir(data_dir)
 
         if "btl" in contents:
-            os.remove(os.path.join(self.vesperia_dir, paths.BTL))
+            os.remove(os.path.join(self.vesperia_dir, Paths.BTL))
 
         if "item" in contents:
-            os.remove(os.path.join(self.vesperia_dir, paths.ITEM))
+            os.remove(os.path.join(self.vesperia_dir, Paths.ITEM))
 
         if "npc" in contents:
-            os.remove(os.path.join(self.vesperia_dir, paths.NPC))
+            os.remove(os.path.join(self.vesperia_dir, Paths.NPC))
 
     def clean_game(self, quiet: bool = True):
         detected_patches: list[str] = []
