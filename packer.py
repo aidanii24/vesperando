@@ -7,17 +7,8 @@ import os
 
 from libvespy import fps4, scenario, tlzc
 from lib import complib
-from config.settings import Paths, Keys
+from conf.settings import Paths, Keys
 
-
-# Checksums
-checksums: dict[str, str] = {
-    "TOV_DE.exe": "ee3212432d063c3551f8d5eb9c8dde6d55a22240912ae9ea3411b3808bfb3827",
-    "btl.svo": "bab8c0497665bd5a46f2ffabba5f4d2acc9fcdf0e4e0dd50c1b8199d3f6d7111",
-    "item.svo": "d86e4e3d7df4d60c9c752f999e916d495c77b2ae321c18fe281a51464a5d4d25",
-    "npc.svo": "71a7d13dc3254b6981cf88b0f6142ea3a0603e21784bfce956982a37afba1333",
-    "scenario_ENG.dat": "90a1e41ae829ba7f05e289aaba87cb4699e3ed27acc9448985f6f91261da8e2d"
-}
 
 class VesperiaPacker:
     """Handler Instance for Extraction, Packing, Compressing and Decompressing files from the game."""
@@ -28,10 +19,14 @@ class VesperiaPacker:
     manifest_dir: str = Paths.MANIFESTS
     output_dir: str = Paths.OUTPUT
 
+    checksums: dict[str, str] = {}
+
     apply_immediately: bool = False
 
     def __init__(self, patch_id: str = "singleton", apply_immediately: bool = False):
         config_present: bool = os.path.isfile(Paths.CONFIG)
+
+        self.checksums: dict[str, str] = json.load(open(os.path.join(Paths.STATIC_DIR, "checksums.json")))
 
         if not config_present:
             VesperiaPacker.generate_config()
@@ -106,7 +101,7 @@ class VesperiaPacker:
                 as_bytes = file.read()
                 exec_hash = hashlib.sha256(as_bytes).hexdigest()
 
-                assert exec_hash == checksums["TOV_DE.exe"]
+                assert exec_hash == self.checksums["TOV_DE.exe"]
                 file.close()
         except AssertionError:
             error_occurred = True
@@ -118,8 +113,7 @@ class VesperiaPacker:
 
         return error_occurred
 
-    @staticmethod
-    def verify_vesperia_file(filepath: str) -> bool:
+    def verify_vesperia_file(self, filepath: str) -> bool:
         basename = os.path.basename(filepath)
 
         try:
@@ -127,7 +121,7 @@ class VesperiaPacker:
                 as_bytes = file.read()
                 file_hash = hashlib.sha256(as_bytes).hexdigest()
 
-                assert file_hash == checksums[basename]
+                assert file_hash == self.checksums[basename]
 
                 file.close()
         except AssertionError:

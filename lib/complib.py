@@ -5,7 +5,7 @@ import ctypes
 import sys
 import os
 
-from config.settings import Paths
+from conf.settings import Paths
 
 
 # Build Command: gcc -fPIC -shared -o complib.so complib.c

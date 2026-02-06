@@ -11,7 +11,7 @@ from odfdo import Document, Table, Row
 
 from utils import keys_to_int
 from res.enums import Characters, Symbol, FatalStrikeType, SearchPointType
-from config.settings import Paths
+from conf.settings import Paths
 
 
 VALID_TARGETS: list[str] = [
