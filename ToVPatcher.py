@@ -1,5 +1,5 @@
+import platform
 import shutil
-
 import utils
 import time
 import json
@@ -8,30 +8,35 @@ import os
 
 from concurrent.futures import ThreadPoolExecutor
 
-from packer import VesperiaPacker
+from conf.settings import Paths
 from patcher import VesperiaPatcher
+import packer
+
 
 class VesperiaPatcherApp:
-    packer: VesperiaPacker
+    packer: packer.VesperiaPacker
     patcher: VesperiaPatcher
 
+    identifier: str = ""
     patch_data: dict
     targets: list = []
 
+    apply_immediately = False
     clean: bool = False
     threads: int
 
+    config: dict = {}
+
     def __init__(self, patch_data: str, max_threads: int = 4, apply_immediately: bool = False,
                  clean_build: bool = False):
+        self.config = json.load(open(Paths.CONFIG))
         self.patch_data = json.load(open(patch_data), object_hook=utils.keys_to_int)
-        identifier = f"{self.patch_data['player']}-{self.patch_data['created']}"
 
-        self.packer = VesperiaPacker(identifier, apply_immediately)
-
-        self.patcher = VesperiaPatcher(identifier)
-
+        self.identifier = f"{self.patch_data['player']}-{self.patch_data['created']}"
+        self.packer = packer.VesperiaPacker(self.config, self.identifier, apply_immediately)
+        self.patcher = VesperiaPatcher(self.identifier)
         self.threads = max_threads
-
+        self.apply_immediately = apply_immediately
         self.clean = clean_build
 
     def begin(self):
@@ -55,7 +60,9 @@ class VesperiaPatcherApp:
         if 'chests' in self.patch_data or 'search' in self.patch_data:
             self.patch_npc()
 
-        self.packer.apply_patch()
+        if self.apply_immediately:
+            packer.apply_patch(self.packer.output_dir, self.packer.game_dir)
+
         end: float = time.time()
 
         if self.clean and os.path.isdir(self.packer.build_dir):
@@ -152,6 +159,41 @@ class VesperiaPatcherApp:
 
         self.packer.copy_to_output('npc')
 
+def generate_config():
+    system: str = platform.system()
+
+    vesperia: str = Paths.GAME
+    if system == "Linux":
+        vesperia = os.path.join(os.path.expanduser("~"), ".steam", Paths.GAME)
+    elif system == "Windows":
+        vesperia = os.path.join("C:\\Program Files (x86)", Paths.GAME)
+
+    with open(Paths.CONFIG, "x+") as file:
+        json.dump({"vesperia" : vesperia}, file, indent=4)
+
+        file.close()
+
+def get_config():
+    if not os.path.isfile(Paths.CONFIG):
+        generate_config()
+        return {"vesperia": Paths.GAME}
+
+    return json.load(open(Paths.CONFIG))
+
+def get_game_directory():
+    config_data: dict = get_config()
+
+    if not config_data.get("vesperia", ""):
+        print("Path to game directory is not provided. Please specify the path in the config.json")
+        sys.exit(1)
+
+    game_dir: str = config_data["vesperia"]
+    if not os.path.isdir(game_dir):
+        print(f"{game_dir} does not exist. Please check the specified path in the config.json")
+        sys.exit(1)
+
+    return game_dir
+
 if __name__ == '__main__':
     patch_file: str = ""
     threads: int = 4
@@ -191,17 +233,16 @@ if __name__ == '__main__':
             path: str = sys.argv[i + 2]
             check: str = os.path.join(path, "Data64")
             if len(sys.argv) - 1 - i > 1 and os.path.isdir(path) and os.path.isdir(check):
-                packer = VesperiaPacker()
-                packer.restore_backup(True)
-                packer.apply_patch(path)
-
+                game: str = get_game_directory()
+                packer.restore_backup(game, True)
+                packer.apply_patch(path, game)
                 print(f"> Patch \"{path}\" has been applied to the game directory.")
             else:
                 print(f"> The patch output \"{path}\" either does not exist or is not a valid patch directory.")
             sys.exit(0)
         elif arg in ("-r", "--restore-backup"):
-            packer = VesperiaPacker()
-            packer.restore_backup()
+            game: str = get_game_directory()
+            packer.restore_backup(game)
             sys.exit(0)
         elif os.path.isfile(arg) and arg.endswith(".tovdepatch"):
             patch_file = arg

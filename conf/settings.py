@@ -13,13 +13,10 @@ class Paths:
     MANIFESTS = os.path.join(BUILDS, "manifests")
     OUTPUT = os.path.join(os.getcwd(), "output")
 
-    VESPERIA = os.path.join("steam", "steamapps", "common", "Tales of Vesperia Definitive Edition")
-    BACKUP = os.path.join(VESPERIA, "Data64", ".backup")
-    BTL =os.path.join(VESPERIA, "Data64", "btl.svo")
-    ITEM = os.path.join(VESPERIA, "Data64", "item.svo")
-    NPC = os.path.join(VESPERIA, "Data64", "npc.svo")
-    UI = os.path.join(VESPERIA, "Data64", "UI.svo")
-    SCENARIO = os.path.join(VESPERIA, "Data64", "language", "scenario_ENG.dat")
-
-class Keys:
-    DEP_VESPERIA = "vesperia"
+    GAME = os.path.join("steam", "steamapps", "common", "Tales of Vesperia Definitive Edition")
+    BACKUP = os.path.join("Data64", ".backup")
+    BTL =os.path.join("Data64", "btl.svo")
+    ITEM = os.path.join("Data64", "item.svo")
+    NPC = os.path.join("Data64", "npc.svo")
+    UI = os.path.join("Data64", "UI.svo")
+    SCENARIO = os.path.join("Data64", "language", "scenario_ENG.dat")

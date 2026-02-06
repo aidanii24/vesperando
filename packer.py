@@ -1,4 +1,3 @@
-import platform
 import hashlib
 import shutil
 import json
@@ -7,12 +6,12 @@ import os
 
 from libvespy import fps4, scenario, tlzc
 from lib import complib
-from conf.settings import Paths, Keys
+from conf.settings import Paths
 
 
 class VesperiaPacker:
     """Handler Instance for Extraction, Packing, Compressing and Decompressing files from the game."""
-    vesperia_dir: str = Paths.VESPERIA
+    game_dir: str = Paths.GAME
     backup_dir: str = Paths.BACKUP
 
     build_dir: str = Paths.BUILDS
@@ -23,26 +22,16 @@ class VesperiaPacker:
 
     apply_immediately: bool = False
 
-    def __init__(self, patch_id: str = "singleton", apply_immediately: bool = False):
-        config_present: bool = os.path.isfile(Paths.CONFIG)
-
+    def __init__(self, config: dict, patch_id: str, apply_immediately: bool = False):
         self.checksums: dict[str, str] = json.load(open(os.path.join(Paths.STATIC_DIR, "checksums.json")))
 
-        if not config_present:
-            VesperiaPacker.generate_config()
-
-        with open(Paths.CONFIG, 'r+') as file:
-            data = json.load(file)
-
-            if Keys.DEP_VESPERIA in data and data[Keys.DEP_VESPERIA]:
-                self.vesperia_dir = data[Keys.DEP_VESPERIA]
-                self.backup_dir = os.path.join(self.vesperia_dir, "Data64", ".backup")
-
-            file.close()
+        if "vesperia" in config and config["vesperia"]:
+            self.game_dir = config["vesperia"]
+            self.backup_dir = os.path.join(self.game_dir, "Data64", ".backup")
 
         dependencies_error: bool = self.check_dependencies()
         if dependencies_error:
-            if not config_present:
+            if not config:
                 print("\n> Some dependencies could not be automatically detected.\n"
                       "Please provide the correct paths to the dependencies in the config.json, then try again.")
                 sys.exit(0)
@@ -74,30 +63,15 @@ class VesperiaPacker:
 
         if os.path.isdir(self.output_dir) and apply_immediately:
             print("> The patched game files for this patch file has already been generated.")
-            self.apply_patch()
+            apply_patch(self.output_dir, self.game_dir)
             print("> Applied patch to game directory.")
             sys.exit(0)
-
-    @classmethod
-    def generate_config(cls):
-        system: str = platform.system()
-
-        vesperia: str = Paths.VESPERIA
-        if system == "Linux":
-            vesperia = os.path.join(os.path.expanduser("~"), ".steam", Paths.VESPERIA)
-        elif system == "Windows":
-            vesperia = os.path.join("C:\\Program Files (x86)", Paths.VESPERIA)
-
-        with open(Paths.CONFIG, "x+") as file:
-            json.dump({Keys.DEP_VESPERIA : vesperia}, file, indent=4)
-
-            file.close()
 
     def check_dependencies(self):
         error_occurred: bool = False
 
         try:
-            with open(os.path.join(self.vesperia_dir, "TOV_DE.exe"), "rb") as file:
+            with open(os.path.join(self.game_dir, "TOV_DE.exe"), "rb") as file:
                 as_bytes = file.read()
                 exec_hash = hashlib.sha256(as_bytes).hexdigest()
 
@@ -167,7 +141,7 @@ class VesperiaPacker:
         self.build_dir = build_dir
 
     def unpack_btl(self):
-        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, Paths.BTL))
+        path: str = self.check_vesperia_file(os.path.join(self.game_dir, Paths.BTL))
 
         base_build: str = os.path.join(self.build_dir, "btl")
         if not os.path.isfile(path):
@@ -192,7 +166,7 @@ class VesperiaPacker:
         fps4.extract(path, manifest_dir=os.path.join(self.manifest_dir, "0010.json"))
 
     def unpack_item(self):
-        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, Paths.ITEM))
+        path: str = self.check_vesperia_file(os.path.join(self.game_dir, Paths.ITEM))
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
         base_build: str = os.path.join(self.build_dir, "item")
@@ -202,7 +176,7 @@ class VesperiaPacker:
         fps4.extract(path, base_build)
 
     def unpack_npc(self):
-        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, Paths.NPC))
+        path: str = self.check_vesperia_file(os.path.join(self.game_dir, Paths.NPC))
         base_build: str = os.path.join(self.build_dir, "npc")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
@@ -231,7 +205,7 @@ class VesperiaPacker:
         tlzc.decompress(file, output)
 
     def unpack_ui(self):
-        path: str = os.path.join(self.vesperia_dir, Paths.UI)
+        path: str = os.path.join(self.game_dir, Paths.UI)
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
         work_dir: str = os.path.join(self.build_dir, "ui")
@@ -241,7 +215,7 @@ class VesperiaPacker:
 
     def extract_scenario(self, lang = "ENG"):
         # target: str = f"scenario_{lang}.dat"
-        path: str = self.check_vesperia_file(os.path.join(self.vesperia_dir, Paths.SCENARIO))
+        path: str = self.check_vesperia_file(os.path.join(self.game_dir, Paths.SCENARIO))
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
         work_dir: str = os.path.join(self.build_dir, "language")
@@ -357,56 +331,58 @@ class VesperiaPacker:
 
         shutil.copytree(target, os.path.join(self.output_dir, "Data64", dir_name), dirs_exist_ok=True)
 
-    def apply_patch(self, custom_output: str = ""):
-        if not custom_output and not self.apply_immediately:
-            return
+def apply_patch(patched_path, game_path):
+    print("> Applying Patch...")
 
-        print("> Applying Patch...")
+    prepare_game(game_path)
+    shutil.copytree(patched_path, game_path, dirs_exist_ok=True)
 
-        if custom_output:
-            self.prepare_game(custom_output)
-            shutil.copytree(custom_output, self.vesperia_dir, dirs_exist_ok=True)
-        else:
-            shutil.copytree(self.output_dir, self.vesperia_dir, dirs_exist_ok=True)
+def prepare_game(game_path: str):
+    data_dir: str = os.path.join(game_path, "Data64")
+    contents: list[str] = os.listdir(data_dir)
 
-    def prepare_game(self, patched_path: str):
-        data_dir: str = os.path.join(patched_path, "Data64")
-        contents: list[str] = os.listdir(data_dir)
+    btl: str = os.path.join(game_path, Paths.BTL)
+    if "btl" in contents and os.path.isfile(btl):
+        os.remove(btl)
 
-        if "btl" in contents:
-            os.remove(os.path.join(self.vesperia_dir, Paths.BTL))
+    item: str = os.path.join(game_path, Paths.ITEM)
+    if "item" in contents and os.path.isfile(item):
+        os.remove(item)
 
-        if "item" in contents:
-            os.remove(os.path.join(self.vesperia_dir, Paths.ITEM))
+    npc: str = os.path.join(game_path, Paths.NPC)
+    if "npc" in contents and os.path.isfile(npc):
+        os.remove(npc)
 
-        if "npc" in contents:
-            os.remove(os.path.join(self.vesperia_dir, Paths.NPC))
+def clean_game(game_path: str, quiet: bool = True):
+    detected_patches: list[str] = []
 
-    def clean_game(self, quiet: bool = True):
-        detected_patches: list[str] = []
+    btl: str = os.path.join(game_path, "Data64", "btl")
+    if os.path.isdir(btl):
+        detected_patches.append(btl)
 
-        if os.path.isdir(os.path.join(self.vesperia_dir, "Data64", "btl")):
-            detected_patches.append(os.path.join(self.vesperia_dir, "Data64", "btl"))
+    item: str = os.path.join(game_path, "Data64", "item")
+    if os.path.isdir(item):
+        detected_patches.append(item)
 
-        if os.path.isdir(os.path.join(self.vesperia_dir, "Data64", "item")):
-            detected_patches.append(os.path.join(self.vesperia_dir, "Data64", "item"))
+    npc: str = os.path.join(game_path, "Data64", "npc")
+    if os.path.isdir(npc):
+        detected_patches.append(npc)
 
-        if os.path.isdir(os.path.join(self.vesperia_dir, "Data64", "npc")):
-            detected_patches.append(os.path.join(self.vesperia_dir, "Data64", "npc"))
+    if detected_patches:
+        if not quiet: print("> Removing active patches...")
+        for patches in detected_patches:
+            shutil.rmtree(patches)
 
-        if detected_patches:
-            if not quiet: print("> Removing active patches...")
-            for patches in detected_patches:
-                shutil.rmtree(patches)
+def restore_backup(game_path: str, quiet: bool = False):
+    backup_dir: str = os.path.join(game_path, Paths.BACKUP)
+    print(backup_dir)
+    if not os.path.isdir(backup_dir):
+        if not quiet: print("> There is no backup to restore.")
+        return
 
-    def restore_backup(self, quiet: bool = False):
-        if not os.path.isdir(self.backup_dir):
-            if not quiet: print("> There is no backup to restore.")
-            return
+    clean_game(game_path)
 
-        self.clean_game()
+    if not quiet: print("> Restoring Backup...")
+    shutil.copytree(backup_dir, os.path.join(game_path, "Data64"), dirs_exist_ok=True)
 
-        if not quiet: print("> Restoring Backup...")
-        shutil.copytree(self.backup_dir, os.path.join(self.vesperia_dir, "Data64"), dirs_exist_ok=True)
-
-        if not quiet: print("[-/-] Backup Restored")
+    if not quiet: print("[-/-] Backup Restored")
