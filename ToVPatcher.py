@@ -1,21 +1,19 @@
+from concurrent.futures import ThreadPoolExecutor
 import platform
-import shutil
 import utils
 import time
 import json
 import sys
 import os
 
-from concurrent.futures import ThreadPoolExecutor
-
 from conf.settings import Paths
-from patcher import VesperiaPatcher
+from patcher import GamePatcher
 import packer
 
 
-class VesperiaPatcherApp:
-    packer: packer.VesperiaPacker
-    patcher: VesperiaPatcher
+class GamePatchProcedure:
+    packer: packer.GamePatchPacker
+    patcher: GamePatcher
 
     identifier: str = ""
     patch_data: dict
@@ -29,12 +27,12 @@ class VesperiaPatcherApp:
 
     def __init__(self, patch_data: str, max_threads: int = 4, apply_immediately: bool = False,
                  clean_build: bool = False):
-        self.config = json.load(open(Paths.CONFIG))
+        self.config = get_config()
         self.patch_data = json.load(open(patch_data), object_hook=utils.keys_to_int)
 
         self.identifier = f"{self.patch_data['player']}-{self.patch_data['created']}"
-        self.packer = packer.VesperiaPacker(self.config, self.identifier, apply_immediately)
-        self.patcher = VesperiaPatcher(self.identifier)
+        self.packer = packer.GamePatchPacker(self.config, self.identifier, apply_immediately)
+        self.patcher = GamePatcher(self.identifier)
         self.threads = max_threads
         self.apply_immediately = apply_immediately
         self.clean = clean_build
@@ -61,15 +59,15 @@ class VesperiaPatcherApp:
             self.patch_npc()
 
         if self.apply_immediately:
-            packer.apply_patch(self.packer.output_dir, self.packer.game_dir)
+            self.packer.apply()
 
         end: float = time.time()
 
-        if self.clean and os.path.isdir(self.packer.build_dir):
-            shutil.rmtree(self.packer.build_dir, ignore_errors=True)
+        if self.clean:
+            self.packer.clean()
 
         print(f"\n[-/-] Patch Finished\tTime: {end - start:.2f} seconds")
-        if self.packer.apply_immediately:
+        if self.apply_immediately:
             print("Automatically applied patch to the game directory.")
         else:
             print(f"Patch Output: {self.packer.output_dir}")
@@ -253,5 +251,5 @@ if __name__ == '__main__':
         print("<!> No Valid Patch File was provided!")
         sys.exit(1)
 
-    app = VesperiaPatcherApp(patch_file, threads, apply, clean)
+    app = GamePatchProcedure(patch_file, threads, apply, clean)
     app.begin()

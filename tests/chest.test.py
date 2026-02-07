@@ -7,8 +7,8 @@ import os
 from GameMeta import IDTables
 from debug import test_structure
 
-from packer import VesperiaPacker
-from vesperia_types import ChestHeader, ChestEntry, ChestItemEntry
+from packer import GamePatchPacker
+from game_types import ChestHeader, ChestEntry, ChestItemEntry
 
 chest_files_data: str = "../artifacts/chest_files.txt"
 
@@ -55,7 +55,7 @@ def get_chest_maps() -> list[str]:
 
         return table
 
-    packer: VesperiaPacker = VesperiaPacker()
+    packer: GamePatchPacker = GamePatchPacker()
     packer.check_dependencies()
 
     work_dir: str = os.path.join("../builds/npc")

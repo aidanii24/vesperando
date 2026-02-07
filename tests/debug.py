@@ -3,7 +3,7 @@ import struct
 import json
 import math
 
-from vesperia_types import VesperiaStructureEncoder
+from game_types import VesperiaStructureEncoder
 
 
 def test_structure(sample_struct):

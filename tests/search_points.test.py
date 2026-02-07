@@ -3,7 +3,7 @@ import json
 import mmap
 import time
 
-from vesperia_types import VesperiaStructureEncoder, SearchPointHeader, SearchPointDefinitionEntry, \
+from game_types import VesperiaStructureEncoder, SearchPointHeader, SearchPointDefinitionEntry, \
     SearchPointContentEntry, SearchPointItemEntry
 
 

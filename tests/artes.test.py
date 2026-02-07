@@ -3,7 +3,7 @@ import json
 import mmap
 import time
 
-from vesperia_types import VesperiaStructureEncoder, ArtesHeader, ArtesEntry
+from game_types import VesperiaStructureEncoder, ArtesHeader, ArtesEntry
 
 def arte_to_json():
     test_file: str = "../builds/BTL_PACK/0004.ext/ALL.0000"

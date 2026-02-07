@@ -3,7 +3,7 @@ import json
 import mmap
 import time
 
-from vesperia_types import VesperiaStructureEncoder, SkillsHeader, SkillsEntry
+from game_types import VesperiaStructureEncoder, SkillsHeader, SkillsEntry
 
 def skills_to_json():
     test_file: str = "../builds/BTL_PACK/0010.ext/ALL.0000"

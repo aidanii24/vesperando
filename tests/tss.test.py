@@ -5,7 +5,7 @@ import json
 import pdb
 import os
 
-from vesperia_types import TSSHeader, TSSStringEntry, VesperiaStructureEncoder
+from game_types import TSSHeader, TSSStringEntry, VesperiaStructureEncoder
 
 from debug import test_structure, format_bytes
 

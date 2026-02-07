@@ -9,7 +9,7 @@ from lib import complib
 from conf.settings import Paths
 
 
-class VesperiaPacker:
+class GamePatchPacker:
     """Handler Instance for Extraction, Packing, Compressing and Decompressing files from the game."""
     game_dir: str = Paths.GAME
     backup_dir: str = Paths.BACKUP
@@ -28,18 +28,6 @@ class VesperiaPacker:
         if "vesperia" in config and config["vesperia"]:
             self.game_dir = config["vesperia"]
             self.backup_dir = os.path.join(self.game_dir, "Data64", ".backup")
-
-        dependencies_error: bool = self.check_dependencies()
-        if dependencies_error:
-            if not config:
-                print("\n> Some dependencies could not be automatically detected.\n"
-                      "Please provide the correct paths to the dependencies in the config.json, then try again.")
-                sys.exit(0)
-            else:
-                sys.exit(1)
-
-        if patch_id == "singleton":
-            return
 
         if not os.path.isdir(self.build_dir):
             os.makedirs(self.build_dir)
@@ -331,40 +319,47 @@ class VesperiaPacker:
 
         shutil.copytree(target, os.path.join(self.output_dir, "Data64", dir_name), dirs_exist_ok=True)
 
-def apply_patch(patched_path, game_path):
+    def clean(self):
+        if not os.path.isdir(self.build_dir): return
+        shutil.rmtree(self.build_dir, ignore_errors=True)
+
+    def apply(self):
+        apply_patch(self.output_dir, self.game_dir)
+
+def apply_patch(patched_path, game_dir):
     print("> Applying Patch...")
 
-    prepare_game(game_path)
-    shutil.copytree(patched_path, game_path, dirs_exist_ok=True)
+    prepare_game(game_dir)
+    shutil.copytree(patched_path, game_dir, dirs_exist_ok=True)
 
-def prepare_game(game_path: str):
-    data_dir: str = os.path.join(game_path, "Data64")
+def prepare_game(game_dir: str):
+    data_dir: str = os.path.join(game_dir, "Data64")
     contents: list[str] = os.listdir(data_dir)
 
-    btl: str = os.path.join(game_path, Paths.BTL)
+    btl: str = os.path.join(game_dir, Paths.BTL)
     if "btl" in contents and os.path.isfile(btl):
         os.remove(btl)
 
-    item: str = os.path.join(game_path, Paths.ITEM)
+    item: str = os.path.join(game_dir, Paths.ITEM)
     if "item" in contents and os.path.isfile(item):
         os.remove(item)
 
-    npc: str = os.path.join(game_path, Paths.NPC)
+    npc: str = os.path.join(game_dir, Paths.NPC)
     if "npc" in contents and os.path.isfile(npc):
         os.remove(npc)
 
-def clean_game(game_path: str, quiet: bool = True):
+def clean_game(game_dir: str, quiet: bool = True):
     detected_patches: list[str] = []
 
-    btl: str = os.path.join(game_path, "Data64", "btl")
+    btl: str = os.path.join(game_dir, "Data64", "btl")
     if os.path.isdir(btl):
         detected_patches.append(btl)
 
-    item: str = os.path.join(game_path, "Data64", "item")
+    item: str = os.path.join(game_dir, "Data64", "item")
     if os.path.isdir(item):
         detected_patches.append(item)
 
-    npc: str = os.path.join(game_path, "Data64", "npc")
+    npc: str = os.path.join(game_dir, "Data64", "npc")
     if os.path.isdir(npc):
         detected_patches.append(npc)
 
@@ -373,16 +368,16 @@ def clean_game(game_path: str, quiet: bool = True):
         for patches in detected_patches:
             shutil.rmtree(patches)
 
-def restore_backup(game_path: str, quiet: bool = False):
-    backup_dir: str = os.path.join(game_path, Paths.BACKUP)
+def restore_backup(game_dir: str, quiet: bool = False):
+    backup_dir: str = os.path.join(game_dir, Paths.BACKUP)
     print(backup_dir)
     if not os.path.isdir(backup_dir):
         if not quiet: print("> There is no backup to restore.")
         return
 
-    clean_game(game_path)
+    clean_game(game_dir)
 
     if not quiet: print("> Restoring Backup...")
-    shutil.copytree(backup_dir, os.path.join(game_path, "Data64"), dirs_exist_ok=True)
+    shutil.copytree(backup_dir, os.path.join(game_dir, "Data64"), dirs_exist_ok=True)
 
     if not quiet: print("[-/-] Backup Restored")

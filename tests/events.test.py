@@ -6,8 +6,8 @@ import json
 import csv
 import os
 
-from packer import VesperiaPacker
-from vesperia_types import TSSHeader
+from packer import GamePatchPacker
+from game_types import TSSHeader
 
 
 arte_table: dict = {}
@@ -191,7 +191,7 @@ def get_meta_data():
                             if str(item['name_string_key']) in strings}
 
 def get_events() -> list[str]:
-    packer: VesperiaPacker = VesperiaPacker()
+    packer: GamePatchPacker = GamePatchPacker()
     packer.check_dependencies()
 
     work_dir: str = os.path.join("../builds/scenario")

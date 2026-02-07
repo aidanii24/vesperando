@@ -4,7 +4,7 @@ import mmap
 import time
 import os
 
-from vesperia_types import VesperiaStructureEncoder, ShopItemEntry
+from game_types import VesperiaStructureEncoder, ShopItemEntry
 import debug
 
 

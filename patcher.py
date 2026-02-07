@@ -4,10 +4,11 @@ import json
 import os
 
 import utils
-import vesperia_types as vtypes
+import game_types as gtypes
 from conf.settings import Paths
 
-class VesperiaPatcher:
+
+class GamePatcher:
     build_dir: str = os.path.join(os.getcwd(), "builds")
     data_dir: str = Paths.STATIC_DIR
 
@@ -41,14 +42,14 @@ class VesperiaPatcher:
             if total_patched >= len(patches):
                 break
 
-        header_size: int = ctypes.sizeof(vtypes.ArtesHeader)
+        header_size: int = ctypes.sizeof(gtypes.ArtesHeader)
 
         with open(target, 'r+b') as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
 
             mm.seek(0)
 
-            header: vtypes.ArtesHeader = vtypes.ArtesHeader.from_buffer_copy(mm.read(header_size))
+            header: gtypes.ArtesHeader = gtypes.ArtesHeader.from_buffer_copy(mm.read(header_size))
 
             mm.seek(header_size)
             count: int = 0
@@ -59,7 +60,7 @@ class VesperiaPatcher:
                 if arte_entry in patched_data:
                     mm.seek(-8, 1)
 
-                    arte_data: vtypes.ArtesEntry = vtypes.ArtesEntry(*patched_data[arte_entry].values())
+                    arte_data: gtypes.ArtesEntry = gtypes.ArtesEntry(*patched_data[arte_entry].values())
                     if patched_data[arte_entry]['evolve_condition1']:
                         arte_data.can_evolve = 1
 
@@ -94,8 +95,8 @@ class VesperiaPatcher:
 
             patched_data[entry] = {**original_data[entry], **patch}
 
-        header_size: int = ctypes.sizeof(vtypes.SkillsHeader)
-        entry_size: int = ctypes.sizeof(vtypes.SkillsEntry)
+        header_size: int = ctypes.sizeof(gtypes.SkillsHeader)
+        entry_size: int = ctypes.sizeof(gtypes.SkillsEntry)
 
         with open(target, 'r+b') as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
@@ -104,7 +105,7 @@ class VesperiaPatcher:
             for entry, patch in patched_data.items():
                 mm.seek(header_size + (entry * entry_size))
 
-                skills_data: vtypes.SkillsEntry = vtypes.SkillsEntry(*patch.values())
+                skills_data: gtypes.SkillsEntry = gtypes.SkillsEntry(*patch.values())
                 mm.write(bytearray(skills_data))
 
             mm.flush()
@@ -136,7 +137,7 @@ class VesperiaPatcher:
 
             patched_data[entry] = {**original_data[entry], **patch}
 
-        entry_size: int = ctypes.sizeof(vtypes.ItemEntry)
+        entry_size: int = ctypes.sizeof(gtypes.ItemEntry)
 
         with open(target_file, 'r+b') as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
@@ -145,7 +146,7 @@ class VesperiaPatcher:
             for entry, patch in patched_data.items():
                 mm.seek(entry * entry_size)
 
-                items_data = vtypes.ItemEntry(**patch)
+                items_data = gtypes.ItemEntry(**patch)
                 mm.write(bytearray(items_data))
 
             mm.flush()
@@ -209,7 +210,7 @@ class VesperiaPatcher:
             for shop, items in shop_items.items():
                 if count >= item_count: break
                 for item in items:
-                    shop_entry_data = vtypes.ShopItemEntry(shop, item)
+                    shop_entry_data = gtypes.ShopItemEntry(shop, item)
                     mm.write(bytearray(shop_entry_data))
 
                 count += 1
@@ -221,13 +222,13 @@ class VesperiaPatcher:
         path: str = os.path.join(self.build_dir, "maps", target_file, "0004.tlzc")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
-        header_size: int = ctypes.sizeof(vtypes.ChestHeader)
-        item_size: int = ctypes.sizeof(vtypes.ChestItemEntry)
+        header_size: int = ctypes.sizeof(gtypes.ChestHeader)
+        item_size: int = ctypes.sizeof(gtypes.ChestItemEntry)
 
         with open(path, 'r+b') as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
 
-            header = vtypes.ChestHeader.from_buffer_copy(mm.read(header_size))
+            header = gtypes.ChestHeader.from_buffer_copy(mm.read(header_size))
 
             chest_entries: list[dict] = []
 
@@ -248,7 +249,7 @@ class VesperiaPatcher:
                 if chest['chest_id'] in patches:
                     mm.seek(position)
                     for i, item in enumerate(patches[chest['chest_id']]):
-                        item = vtypes.ChestItemEntry(*item.values())
+                        item = gtypes.ChestItemEntry(*item.values())
                         mm.write(bytearray(item))
 
                         # Break in case of mismatched item count and prevent writing to other chest's item data
@@ -265,9 +266,9 @@ class VesperiaPatcher:
     def patch_search_points(target: str, patches: dict):
         assert os.path.isfile(target), f"Expected file {target}, but it does not exist."
 
-        header_size: int = ctypes.sizeof(vtypes.SearchPointHeader)
-        content_size: int = ctypes.sizeof(vtypes.SearchPointContentEntry)
-        item_size: int = ctypes.sizeof(vtypes.SearchPointItemEntry)
+        header_size: int = ctypes.sizeof(gtypes.SearchPointHeader)
+        content_size: int = ctypes.sizeof(gtypes.SearchPointContentEntry)
+        item_size: int = ctypes.sizeof(gtypes.SearchPointItemEntry)
 
         definitions: list[dict] = patches['definitions']
         contents: list[dict] = patches['contents']
@@ -303,7 +304,7 @@ class VesperiaPatcher:
         with open(target, 'r+b') as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
 
-            header = vtypes.SearchPointHeader.from_buffer_copy(mm.read(header_size))
+            header = gtypes.SearchPointHeader.from_buffer_copy(mm.read(header_size))
 
             # Resize File
             # Add 7 bytes is for the "dummy\x00" string at the end
@@ -341,7 +342,7 @@ class VesperiaPatcher:
             mm.seek(header.content_start)
             last_item_index: int = 0
             for content in contents:
-                content_data = vtypes.SearchPointContentEntry(content['chance'], last_item_index, content['item_range'])
+                content_data = gtypes.SearchPointContentEntry(content['chance'], last_item_index, content['item_range'])
                 mm.write(bytearray(content_data))
 
                 last_item_index += content['item_range']
@@ -350,7 +351,7 @@ class VesperiaPatcher:
             header.item_entries = len(items)
             header.item_start = mm.tell()
             for item in items:
-                item_data = vtypes.SearchPointItemEntry(*item.values())
+                item_data = gtypes.SearchPointItemEntry(*item.values())
                 mm.write(bytearray(item_data))
 
             header.entry_end = mm.tell()

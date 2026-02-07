@@ -7,3 +7,4 @@ psutil==7.1.3
 pyinstaller==6.17.0
 pyinstaller-hooks-contrib==2025.10
 setuptools==80.9.0
+libvespy~=0.1.0
