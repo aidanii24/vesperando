@@ -3,13 +3,12 @@ import mmap
 import json
 import os
 
-import utils
-import game_types as gtypes
-from conf.settings import Paths
+from vesperando_core import utils, game_types as gtypes
+from vesperando_core.conf.settings import Paths
 
 
 class GamePatcher:
-    build_dir: str = os.path.join(os.getcwd(), "builds")
+    build_dir: str = Paths.BUILD
     data_dir: str = Paths.STATIC_DIR
 
     def __init__(self, patcher_id: str):

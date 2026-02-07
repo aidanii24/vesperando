@@ -4,9 +4,9 @@ import json
 import sys
 import os
 
+from vesperando_core.conf.settings import Paths
+from vesperando_core.lib import complib
 from libvespy import fps4, scenario, tlzc
-from lib import complib
-from conf.settings import Paths
 
 
 class GamePatchPacker:
@@ -14,7 +14,7 @@ class GamePatchPacker:
     game_dir: str = Paths.GAME
     backup_dir: str = Paths.BACKUP
 
-    build_dir: str = Paths.BUILDS
+    build_dir: str = Paths.BUILD
     manifest_dir: str = Paths.MANIFESTS
     output_dir: str = Paths.OUTPUT
 

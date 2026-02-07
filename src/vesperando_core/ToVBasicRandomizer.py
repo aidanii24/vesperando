@@ -9,9 +9,9 @@ import os
 
 from odfdo import Document, Table, Row
 
-from utils import keys_to_int
-from res.enums import Characters, Symbol, FatalStrikeType, SearchPointType
-from conf.settings import Paths
+from vesperando_core.res import enums
+from vesperando_core.utils import keys_to_int
+from vesperando_core.conf.settings import Paths
 
 
 VALID_TARGETS: list[str] = [
@@ -44,16 +44,16 @@ class InputTemplate:
     random: random.Random
 
     identifier: str = "randomizer"
-    patch_output: str = os.path.join(".", "patches", "randomizer.tovdepatch")
-    report_output: str = os.path.join(".", "patches", "tovde-spoiler.ods")
+    patch_output: str = os.path.join(Paths.PATCHES, "randomizer.tovdepatch")
+    report_output: str = os.path.join(Paths.PATCHES, "tovde-spoiler.ods")
 
     def __init__(self, targets: list[str], seed = random.randint(1, 0xFFFFFFFF)):
         self.seed = uuid.uuid1().int
         self.random = random.Random(seed)
 
         self.identifier = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
-        self.patch_output = os.path.join(".", "patches", f"{self.identifier}.tovdepatch")
-        self.report_output = os.path.join(".", "patches", f"tovde-spoiler-{self.identifier}.ods")
+        self.patch_output = os.path.join(Paths.PATCHES, f"{self.identifier}.tovdepatch")
+        self.report_output = os.path.join(Paths.PATCHES, f"tovde-spoiler-{self.identifier}.ods")
 
         if not targets or 'artes' in targets:
             artes_ids_file: str = os.path.join(Paths.STATIC_DIR, 'artes_id_table.json')
@@ -124,8 +124,8 @@ class InputTemplate:
                 if search_only: continue
                 self.item_to_category[item['id']] = item['category']
 
-        if not os.path.isdir("patches"):
-            os.makedirs("patches")
+        if not os.path.isdir(Paths.PATCHES):
+            os.makedirs(Paths.PATCHES)
 
     def random_from_distribution(self, mu: float, sigma: float, range_min: float = -math.inf,
                                  range_max: float = math.inf):
@@ -173,11 +173,11 @@ class InputTemplate:
         if not targets or 'search' in targets:
             patch_data['search'] = self.randomize_search_points()
 
-        if spoil:
-            self.generate_spoiler_file(dict(item for item in [*patch_data.items()][4:]))
-
         with open(output, 'w') as f:
             json.dump(patch_data, f, indent=4)
+
+        if spoil:
+            self.generate_spoiler_file(dict(item for item in [*patch_data.items()][4:]))
 
     @staticmethod
     def generate_artes_input():
@@ -255,7 +255,7 @@ class InputTemplate:
             details: list = [
                 self.artes_ids[arte['id']], arte['tp_cost'], arte['cast_time'] if arte['cast_time'] else "N/A",
                 *learn_conditions, *evolve_conditions,
-                FatalStrikeType(arte['fatal_strike_type']).name
+                enums.FatalStrikeType(arte['fatal_strike_type']).name
             ]
 
             report_list.append(details)
@@ -285,7 +285,7 @@ class InputTemplate:
         report_list: list = []
         for skill in [*patched_skills.values()]:
             report_list.append([
-                self.skill_ids[skill['id']], skill['sp_cost'], skill['lp_cost'], Symbol(skill['symbol']).name,
+                self.skill_ids[skill['id']], skill['sp_cost'], skill['lp_cost'], enums.Symbol(skill['symbol']).name,
                 skill['symbol_weight'], 'Yes' if skill['is_equippable'] else 'No'
             ])
 
@@ -447,7 +447,7 @@ class InputTemplate:
             for content in patched_items['contents'][last_cont_idx:next_cont_end]:
                 item_ranges.append(content['item_range'])
 
-            report_list.append([search_point_names[i], SearchPointType(definition['type']).name])
+            report_list.append([search_point_names[i], enums.SearchPointType(definition['type']).name])
             for idx, r in enumerate(item_ranges):
                 report_list.append([f"Item Pool #{idx}",
                                     self.item_ids[patched_items['items'][last_itm_idx]['id']],
@@ -722,7 +722,7 @@ class InputTemplate:
             data = items_data_table[item['id']]
 
             characters: list[int] = []
-            for i, character in enumerate(Characters):
+            for i, character in enumerate(enums.Characters):
                 if data['character_usable'] & character.value > 0:
                     characters.append(i + 1)
 

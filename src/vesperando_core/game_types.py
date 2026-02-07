@@ -8,7 +8,7 @@ import mmap
 import sys
 import os
 
-from utils import read_null_terminated_string
+from vesperando_core.utils import read_null_terminated_string
 
 
 class InstructionType(IntEnum):

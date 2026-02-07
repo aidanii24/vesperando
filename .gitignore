@@ -1,23 +1,27 @@
 # Jetbrains
 .idea
 
-# Production Configurations
+# Development
+**/patches/*
+**/build/*
+**/output/*
+**/artifacts/*
 /references/
-/dependencies/
 /builds/
 /output/
 config.json
+config.toml
+
+# Binaries
+*.so
+*.dll
+*.dynlib
+
+# Build
+/dist/
+*egg-info
+*spec
+!ToVRandomizerTools.spec
 
 # Cache
 *.pyc
-
-# Helper Artifacts
-/artifacts/*
-/patches/
-/global.json
-
-# Compile
-/build/
-/dist/
-*spec
-!ToVRandomizerTools.spec

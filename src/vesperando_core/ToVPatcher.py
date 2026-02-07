@@ -1,14 +1,14 @@
 from concurrent.futures import ThreadPoolExecutor
 import platform
-import utils
 import time
 import json
 import sys
 import os
+from configparser import ConfigParser
 
-from conf.settings import Paths
-from patcher import GamePatcher
-import packer
+from vesperando_core.conf.settings import Paths
+from vesperando_core.patcher import GamePatcher
+from vesperando_core import packer, utils
 
 
 class GamePatchProcedure:
@@ -166,15 +166,22 @@ def generate_config():
     elif system == "Windows":
         vesperia = os.path.join("C:\\Program Files (x86)", Paths.GAME)
 
+    config = {"vesperia" : vesperia}
+
     with open(Paths.CONFIG, "x+") as file:
-        json.dump({"vesperia" : vesperia}, file, indent=4)
+        json.dump(config, file, indent=4)
 
         file.close()
 
+    if not os.path.isdir(vesperia):
+        print("[ERROR]\tCould not automatically determine Tales of Vesperia: Definitive Edition game path. "
+              "\nPlease check config.json and provide the correct path to the game directory there.")
+
+    return config
+
 def get_config():
     if not os.path.isfile(Paths.CONFIG):
-        generate_config()
-        return {"vesperia": Paths.GAME}
+        return generate_config()
 
     return json.load(open(Paths.CONFIG))
 

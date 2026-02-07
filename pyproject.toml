@@ -1,0 +1,20 @@
+[project]
+name = "vesperando_core"
+version = "0.2.0"
+authors = [{ name="aidanii", email="aidanii_real@proton.me" }]
+description = "Core library for generating randomization patches and application of patches to Tales of Vesperia: Definitive Edition."
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE*"]
+
+[project.urls]
+Homepage = "https://github.com/aidanii24/tov-ap-patcher"
+
+[build-system]
+requires = ["setuptools >= 80.9.0"]
+build-backend = "setuptools.build_meta"
+
+[tools.setuptools.packages.find]
+where = ["src/vesperando_core"]
+exclude = ["/tests*"]
