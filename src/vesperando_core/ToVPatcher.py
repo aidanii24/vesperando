@@ -168,6 +168,9 @@ def generate_config():
 
     config = {"vesperia" : vesperia}
 
+    if not os.path.isdir(os.path.dirname(Paths.CONFIG)):
+        os.makedirs(os.path.dirname(Paths.CONFIG))
+
     with open(Paths.CONFIG, "x+") as file:
         json.dump(config, file, indent=4)
 
