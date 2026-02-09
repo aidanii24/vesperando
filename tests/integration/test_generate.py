@@ -1,7 +1,7 @@
 import shutil
 import os
 
-from vesperando_core import ToVBasicRandomizer
+from vesperando_core import randomizer
 
 
 if __name__ == "__main__":

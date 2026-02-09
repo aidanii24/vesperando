@@ -1,7 +1,7 @@
 import shutil
 import os
 
-from vesperando_core import ToVPatcher
+from vesperando_core import procedure
 
 
 if __name__ == "__main__":
