@@ -15,7 +15,7 @@ def cli():
 @click.option("--interactive", "-i", is_flag=True)
 @click.argument("targets", nargs=-1,
                 type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
-def generate(options, seed, spoiler, targets):
+def generate(options, name, seed, spoiler, targets):
     template = randomizer.InputTemplate(targets, seed=seed)
 
 @cli.command(help="Patch the game with a randomizer patch file")
