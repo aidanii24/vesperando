@@ -10,9 +10,11 @@ if __name__ == "__main__":
 
     patch: str = ""
     for f in os.listdir(os.path.join(".", "patches")):
-        if f.endswith(".tovdepatch"):
+        if conf.settings.Extensions.is_valid_patch(f):
             patch = os.path.join(".", "patches", f)
             break
+
+    assert patch, "No valid patch found to test!"
 
     procedure = procedure.GamePatchProcedure(patch, 12)
     procedure.begin()

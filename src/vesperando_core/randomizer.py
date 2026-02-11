@@ -11,7 +11,7 @@ from odfdo import Document, Table, Row
 
 from vesperando_core.res import enums
 from vesperando_core.utils import keys_to_int
-from vesperando_core.conf.settings import Paths
+from vesperando_core.conf.settings import Paths, Extensions
 
 
 VALID_TARGETS: list[str] = [
@@ -44,7 +44,7 @@ class InputTemplate:
     random: random.Random
 
     identifier: str = "randomizer"
-    patch_output: str = os.path.join(Paths.PATCHES, "randomizer.tovdepatch")
+    patch_output: str = os.path.join(Paths.PATCHES, f"randomizer.{Extensions.BASIC_PATCH}")
     report_output: str = os.path.join(Paths.PATCHES, "tovde-spoiler.ods")
 
     def __init__(self, targets: list[str], seed = random.randint(1, 0xFFFFFFFF)):
@@ -52,7 +52,7 @@ class InputTemplate:
         self.random = random.Random(seed)
 
         self.identifier = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
-        self.patch_output = os.path.join(Paths.PATCHES, f"{self.identifier}.tovdepatch")
+        self.patch_output = os.path.join(Paths.PATCHES, f"{self.identifier}.{Extensions.BASIC_PATCH}")
         self.report_output = os.path.join(Paths.PATCHES, f"tovde-spoiler-{self.identifier}.ods")
 
         if not targets or 'artes' in targets:

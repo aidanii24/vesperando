@@ -56,7 +56,6 @@ def get_chest_maps() -> list[str]:
         return table
 
     packer: GamePatchPacker = GamePatchPacker()
-    packer.check_dependencies()
 
     work_dir: str = os.path.join("../builds/npc")
     assert os.path.isdir(work_dir)

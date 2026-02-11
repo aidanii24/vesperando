@@ -23,7 +23,11 @@ class Paths:
     UI = os.path.join("Data64", "UI.svo")
     SCENARIO = os.path.join("Data64", "language", "scenario_ENG.dat")
 
-class Extension:
-    BASIC_PATCH = ".vbr"
-    APPATCH = ".vap"
+class Extensions:
+    BASIC_PATCH = ".vbrp"
+    APPATCH = ".vapp"
     PATCHES = [BASIC_PATCH, APPATCH]
+
+    @classmethod
+    def is_valid_patch(cls, patch_name: str):
+        return any(patch_name.endswith(ext) for ext in cls.PATCHES)

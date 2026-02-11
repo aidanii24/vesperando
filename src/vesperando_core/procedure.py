@@ -1,10 +1,10 @@
 from concurrent.futures import ThreadPoolExecutor
-import platform
 import time
 import json
 import sys
 import os
 
+from vesperando_core.conf.settings import Extensions
 from vesperando_core.patcher import GamePatcher
 from vesperando_core import packer, configs, utils
 
@@ -205,7 +205,7 @@ if __name__ == '__main__':
             game_path: str = configs.get_config().get('paths', {}).get('game')
             packer.restore_backup(game_path)
             sys.exit(0)
-        elif os.path.isfile(arg) and arg.endswith(".tovdepatch"):
+        elif os.path.isfile(arg) and Extensions.is_valid_patch(arg):
             patch_file = arg
 
     try:
