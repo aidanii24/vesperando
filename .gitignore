@@ -10,7 +10,7 @@
 /builds/
 /output/
 config.json
-config.toml
+config.y[a]ml
 
 # Binaries
 *.so

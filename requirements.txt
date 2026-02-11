@@ -10,3 +10,4 @@ setuptools==80.9.0
 libvespy~=0.1.0
 click~=8.3.1
 vesperando_core~=0.2.0
+PyYAML~=6.0.3

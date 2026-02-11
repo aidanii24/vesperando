@@ -4,7 +4,6 @@ import time
 import json
 import sys
 import os
-from configparser import ConfigParser
 
 from vesperando_core.conf.settings import Paths
 from vesperando_core.patcher import GamePatcher

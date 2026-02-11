@@ -9,7 +9,7 @@ class Paths:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) if not IS_EXEC else sys._MEIPASS
     STATIC_DIR = os.path.join(BASE_DIR, 'static')
 
-    CONFIG = os.path.join(EXEC_DIR, "config", "config.json")
+    CONFIG = os.path.join(EXEC_DIR, "config", "config.yaml")
     PATCHES = os.path.join(EXEC_DIR, "patches")
     BUILD = os.path.join(EXEC_DIR, "build")
     MANIFESTS = os.path.join(BUILD, ".manifests")
