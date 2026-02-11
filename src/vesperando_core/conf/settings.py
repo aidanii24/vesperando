@@ -22,3 +22,8 @@ class Paths:
     NPC = os.path.join("Data64", "npc.svo")
     UI = os.path.join("Data64", "UI.svo")
     SCENARIO = os.path.join("Data64", "language", "scenario_ENG.dat")
+
+class Extension:
+    BASIC_PATCH = ".vbr"
+    APPATCH = ".vap"
+    PATCHES = [BASIC_PATCH, APPATCH]

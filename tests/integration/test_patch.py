@@ -1,7 +1,7 @@
 import shutil
 import os
 
-from vesperando_core import procedure
+from vesperando_core import procedure, conf
 
 
 if __name__ == "__main__":
@@ -14,5 +14,5 @@ if __name__ == "__main__":
             patch = os.path.join(".", "patches", f)
             break
 
-    procedure = ToVPatcher.GamePatchProcedure(patch, 12)
+    procedure = procedure.GamePatchProcedure(patch, 12)
     procedure.begin()

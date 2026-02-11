@@ -25,9 +25,8 @@ class GamePatchPacker:
     def __init__(self, config: dict, patch_id: str, apply_immediately: bool = False):
         self.checksums: dict[str, str] = json.load(open(os.path.join(Paths.STATIC_DIR, "checksums.json")))
 
-        if "vesperia" in config and config["vesperia"]:
-            self.game_dir = config["vesperia"]
-            self.backup_dir = os.path.join(self.game_dir, "Data64", ".backup")
+        self.game_dir = config.get('paths', {}).get('game')
+        self.backup_dir = os.path.join(self.game_dir, Paths.BACKUP)
 
         if not os.path.isdir(self.build_dir):
             os.makedirs(self.build_dir)

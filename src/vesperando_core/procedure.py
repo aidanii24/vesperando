@@ -5,9 +5,8 @@ import json
 import sys
 import os
 
-from vesperando_core.conf.settings import Paths
 from vesperando_core.patcher import GamePatcher
-from vesperando_core import packer, utils
+from vesperando_core import packer, configs, utils
 
 
 class GamePatchProcedure:
@@ -26,7 +25,7 @@ class GamePatchProcedure:
 
     def __init__(self, patch_data: str, max_threads: int = 4, apply_immediately: bool = False,
                  clean_build: bool = False):
-        self.config = get_config()
+        self.config = configs.get_config()
         self.patch_data = json.load(open(patch_data), object_hook=utils.keys_to_int)
 
         self.identifier = f"{self.patch_data['player']}-{self.patch_data['created']}"
@@ -156,51 +155,6 @@ class GamePatchProcedure:
 
         self.packer.copy_to_output('npc')
 
-def generate_config():
-    system: str = platform.system()
-
-    vesperia: str = Paths.GAME
-    if system == "Linux":
-        vesperia = os.path.join(os.path.expanduser("~"), ".steam", Paths.GAME)
-    elif system == "Windows":
-        vesperia = os.path.join("C:\\Program Files (x86)", Paths.GAME)
-
-    config = {"vesperia" : vesperia}
-
-    if not os.path.isdir(os.path.dirname(Paths.CONFIG)):
-        os.makedirs(os.path.dirname(Paths.CONFIG))
-
-    with open(Paths.CONFIG, "x+") as file:
-        json.dump(config, file, indent=4)
-
-        file.close()
-
-    if not os.path.isdir(vesperia):
-        print("[ERROR]\tCould not automatically determine Tales of Vesperia: Definitive Edition game path. "
-              "\nPlease check config.json and provide the correct path to the game directory there.")
-
-    return config
-
-def get_config():
-    if not os.path.isfile(Paths.CONFIG):
-        return generate_config()
-
-    return json.load(open(Paths.CONFIG))
-
-def get_game_directory():
-    config_data: dict = get_config()
-
-    if not config_data.get("vesperia", ""):
-        print("Path to game directory is not provided. Please specify the path in the config.json")
-        sys.exit(1)
-
-    game_dir: str = config_data["vesperia"]
-    if not os.path.isdir(game_dir):
-        print(f"{game_dir} does not exist. Please check the specified path in the config.json")
-        sys.exit(1)
-
-    return game_dir
-
 if __name__ == '__main__':
     patch_file: str = ""
     threads: int = 4
@@ -240,16 +194,16 @@ if __name__ == '__main__':
             path: str = sys.argv[i + 2]
             check: str = os.path.join(path, "Data64")
             if len(sys.argv) - 1 - i > 1 and os.path.isdir(path) and os.path.isdir(check):
-                game: str = get_game_directory()
-                packer.restore_backup(game, True)
-                packer.apply_patch(path, game)
+                game_path: str = configs.get_config().get('paths', {}).get('game')
+                packer.restore_backup(game_path, True)
+                packer.apply_patch(path, game_path)
                 print(f"> Patch \"{path}\" has been applied to the game directory.")
             else:
                 print(f"> The patch output \"{path}\" either does not exist or is not a valid patch directory.")
             sys.exit(0)
         elif arg in ("-r", "--restore-backup"):
-            game: str = get_game_directory()
-            packer.restore_backup(game)
+            game_path: str = configs.get_config().get('paths', {}).get('game')
+            packer.restore_backup(game_path)
             sys.exit(0)
         elif os.path.isfile(arg) and arg.endswith(".tovdepatch"):
             patch_file = arg
