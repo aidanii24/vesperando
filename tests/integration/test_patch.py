@@ -17,4 +17,4 @@ if __name__ == "__main__":
     assert patch, "No valid patch found to test!"
 
     procedure = procedure.GamePatchProcedure(patch, 12)
-    procedure.begin()
+    procedure.patch()

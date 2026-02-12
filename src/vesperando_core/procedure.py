@@ -1,10 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
+from enum import IntEnum
 import time
 import json
 import sys
 import os
 
-from vesperando_core.conf.settings import Extensions
+from vesperando_core.conf.settings import Paths, Extensions
 from vesperando_core.patcher import GamePatcher
 from vesperando_core import packer, configs, utils
 
@@ -35,10 +36,10 @@ class GamePatchProcedure:
         self.apply_immediately = apply_immediately
         self.clean = clean_build
 
-    def begin(self):
+    def patch(self):
         start: float = time.time()
 
-        print("--- Tales of Vesperia: Definitive Edition Patcher -------------\n"
+        print("--- Vesperando Patcher -------------\n"
               f"\tPlayer: {self.patch_data['player']}\n"
               f"\tGeneration Date: {self.patch_data['created']}\n"
               f"\tSeed: {self.patch_data['seed']}\n"
@@ -155,9 +156,19 @@ class GamePatchProcedure:
 
         self.packer.copy_to_output('npc')
 
+    def restore(self):
+        packer.restore_backup(self.packer.game_dir)
+
+
 if __name__ == '__main__':
+    class Mode(IntEnum):
+        PATCH = 0,
+        SET = 1
+        RESTORE = 2,
+
     patch_file: str = ""
     threads: int = 4
+    mode: Mode = Mode.PATCH
     clean: bool = False
     apply: bool = False
 
@@ -191,28 +202,35 @@ if __name__ == '__main__':
         elif arg in ("-c", "--clean"):
             clean = True
         elif arg in ("-s", "--set"):
-            path: str = sys.argv[i + 2]
-            check: str = os.path.join(path, "Data64")
-            if len(sys.argv) - 1 - i > 1 and os.path.isdir(path) and os.path.isdir(check):
-                game_path: str = configs.get_config().get('paths', {}).get('game')
-                packer.restore_backup(game_path, True)
-                packer.apply_patch(path, game_path)
-                print(f"> Patch \"{path}\" has been applied to the game directory.")
-            else:
-                print(f"> The patch output \"{path}\" either does not exist or is not a valid patch directory.")
-            sys.exit(0)
+            mode = Mode.SET
         elif arg in ("-r", "--restore-backup"):
-            game_path: str = configs.get_config().get('paths', {}).get('game')
-            packer.restore_backup(game_path)
-            sys.exit(0)
+            mode = Mode.RESTORE
         elif os.path.isfile(arg) and Extensions.is_valid_patch(arg):
             patch_file = arg
 
-    try:
-        assert patch_file != ""
-    except AssertionError:
-        print("<!> No Valid Patch File was provided!")
-        sys.exit(1)
+    if mode == Mode.PATCH:
+        try:
+            assert patch_file != ""
+        except AssertionError:
+            print("<!> No Valid Patch File was provided!")
+            sys.exit(1)
 
-    app = GamePatchProcedure(patch_file, threads, apply, clean)
-    app.begin()
+        app = GamePatchProcedure(patch_file, threads, apply, clean)
+        app.patch()
+        sys.exit(0)
+
+    game_dir: str = configs.get_config().get('paths', {}).get('game', '')
+    if mode == Mode.RESTORE:
+        packer.restore_backup(game_dir)
+    elif mode == Mode.SET:
+        patched_path: str = patch_file
+        if Extensions.is_valid_patch(patched_path):
+            data = json.load(open(patch_file), object_hook=utils.keys_to_int)
+            identifier = f"{data['player']}-{data['created']}"
+
+            patched_path = os.path.join(Paths.OUTPUT, identifier)
+
+        if not os.path.isdir(patched_path):
+            raise NotADirectoryError("[ERROR]\tPatch does not exist")
+
+        packer.apply_patch(patched_path, game_dir)
