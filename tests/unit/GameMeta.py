@@ -6,10 +6,10 @@ def strip_formatting(string: str) -> str:
     return string.replace("\n", "").replace("\t", "").replace("\r", "")
 
 class IDTables:
-    manifest: str = "../builds/manifests"
+    manifest: str = "artifacts/.manifests"
 
     string_data: str = os.path.join(manifest, "strings.json")
-    artes_data: str = os.path.join(manifest, "0004R.json")
+    artes_data: str = os.path.join(manifest, "artes.json")
     skills_data: str = os.path.join(manifest, "skills.json")
     items_data: str = os.path.join(manifest, "item.json")
 

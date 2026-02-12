@@ -7,10 +7,12 @@ import os
 from GameMeta import IDTables
 from debug import test_structure
 
-from packer import GamePatchPacker
-from game_types import ChestHeader, ChestEntry, ChestItemEntry
+from vesperando_core import configs
+from vesperando_core.packer import GamePatchPacker
+from vesperando_core.game_types import ChestHeader, ChestEntry, ChestItemEntry
 
-chest_files_data: str = "../artifacts/chest_files.txt"
+
+chest_files_data: str = os.path.join("artifacts", "chest_files.txt")
 
 item_table = IDTables().get_item_table()
 
@@ -55,13 +57,17 @@ def get_chest_maps() -> list[str]:
 
         return table
 
-    packer: GamePatchPacker = GamePatchPacker()
+    packer: GamePatchPacker = GamePatchPacker(configs.get_config(), "temp")
 
-    work_dir: str = os.path.join("../builds/npc")
-    assert os.path.isdir(work_dir)
+
+    work_dir: str = os.path.join("build", "temp")
+
+    maps_dir: str = os.path.join(work_dir, "maps")
 
     npc: str = os.path.join(work_dir, "npc")
-    assert os.path.isdir(npc)
+
+    if not os.path.isdir(npc) or len(os.listdir(npc)) < 290:
+        packer.unpack_npc()
 
     game_maps: list[str] = []
     npc_files = os.listdir(npc)
@@ -72,12 +78,12 @@ def get_chest_maps() -> list[str]:
         if not os.path.isdir(os.path.join(work_dir, file_name)):
             packer.extract_map(npc_file)
 
-        chests_file: str = os.path.join(work_dir, file_name, f"{file_name}.tlzc.ext", "0004")
+        chests_file: str = os.path.join(maps_dir, file_name, f"{file_name}.tlzc.ext", "0004")
         if not os.path.isfile(chests_file):
             print(f"<!> No chest file! Expected at {chests_file}")
             continue
 
-        extracted_file: str = chests_file + ".tlzc"
+        extracted_file: str = chests_file + ".dec"
         game_maps.append(extracted_file)
         print(f"[-/-] Successfully extracted.")
         if not os.path.isfile(extracted_file):
@@ -91,14 +97,14 @@ def get_chest_maps() -> list[str]:
     return game_maps
 
 def generate_maps(dirs: list[str]):
-    out_dir: str = os.path.join("..", "artifacts")
+    out_dir: str = os.path.join("artifacts")
     assert os.path.isdir(out_dir)
 
     output: str = os.path.join(out_dir, "maps.csv")
     with open(output, "w+") as f:
         writer = csv.writer(f)
         writer.writerow(["Filename"])
-        writer.writerows([[dir.split("/")[-3]] for dir in dirs])
+        writer.writerows([[d.split("/")[-3]] for d in dirs])
 
 def generate_chest_table(game_maps: list[str]):
     chests: dict = {}
@@ -107,15 +113,14 @@ def generate_chest_table(game_maps: list[str]):
         if file_name == "NPC": continue
         print(f"Processing {file_name}")
 
-        entries: dict = {chest : [i.to_dict() for i in items]
-                         for chest, items in get_chests(file).items()}
+        entries: dict = get_chests(file)
         chests[file_name] = entries
 
-    output: str = os.path.join("..", "artifacts", "chests.json")
+    output: str = os.path.join("artifacts", "chests.json")
     with open(output, "w+") as f:
         json.dump(chests, f, indent=4)
 
-    output: str = os.path.join("..", "artifacts", "chest_table.csv")
+    output: str = os.path.join("artifacts", "chest_table.csv")
     with open(output, "w+") as f:
         writer = csv.writer(f)
         writer.writerow(["Chest ID", "Amount", "Item"])
@@ -123,9 +128,10 @@ def generate_chest_table(game_maps: list[str]):
         for game_map, contents in chests.items():
             writer.writerow([game_map])
             for chest, items in contents.items():
-                writer.writerow([chest, items[0]['amount'], items[0]['item_id']])
+                item_list: list = items["items"]
+                writer.writerow([chest, item_list[0]['amount'], item_list[0]['item_id']])
                 if len(items) > 1:
-                    writer.writerows([["", item['amount'], item['item_id']] for item in items[1:]])
+                    writer.writerows([["", item['amount'], item['item_id']] for item in item_list[1:]])
 
     # output: str = os.path.join("..", "helper", "artifacts", "chests.txt")
     # with open(output, "w+") as f:
@@ -138,13 +144,13 @@ def generate_chest_table(game_maps: list[str]):
     #         f.write("\n")
 
 def get_chests(target) -> dict:
-    assert os.path.isfile(target)
+    assert os.path.isfile(target), f"Expected file {target}, but it does not exist."
 
     header_size: int = ctypes.sizeof(ChestHeader)
     item_size: int = ctypes.sizeof(ChestItemEntry)
 
     chests: list[ChestEntry] = []
-    chests_table: dict[ChestEntry, list[ChestItemEntry]] = {}
+    chests_table: dict = {}
 
     with open(target, "rb") as f:
         mm = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
@@ -153,23 +159,27 @@ def get_chests(target) -> dict:
 
         mm.seek(header.chest_start)
         for i in range(header.chest_entries):
-            chest_id: int = int.from_bytes(mm.read(4), byteorder="little")
-
-            # mm.seek(0x8, 1)
-            # chest_type: int = int.from_bytes(mm.read(4), byteorder="little")
-
-            mm.seek(0x38, 1)
-            amount: int = int.from_bytes(mm.read(4), byteorder="little")
-
-            chests.append(ChestEntry(chest_id, amount))
+            chests.append(ChestEntry.from_buffer_copy(mm.read(ctypes.sizeof(ChestEntry))))
 
         mm.seek(header.item_start)
         for found_chest in chests:
-            for _ in range(found_chest.item_amount):
-                chests_table.setdefault(found_chest.chest_id, []).append(ChestItemEntry.from_buffer_copy(mm.read(item_size)))
+            chest_data: dict = {
+                'chest_type': found_chest.chest_type,
+                'scenario_begin': found_chest.scenario_begin,
+                'scenario_end': found_chest.scenario_end,
+                'items': []
+            }
+
+            for _ in range(found_chest.item_count):
+                item : ChestItemEntry = ChestItemEntry.from_buffer_copy(mm.read(item_size))
+
+                chest_data.setdefault('items', []).append(item.to_dict())
+
+            chests_table[found_chest.chest_id] = chest_data
 
         mm.close()
 
+    print(chests_table)
     return chests_table
 
 if __name__ == "__main__":

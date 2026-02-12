@@ -122,7 +122,7 @@ class GamePatchProcedure:
             with ThreadPoolExecutor(max_workers=self.threads) as executor:
                 for area in self.patch_data['chests'].keys():
                     work_dir: str = os.path.join(base_dir, area)
-                    chest: str = os.path.join(work_dir, area + ".tlzc.ext", "0004")
+                    chest: str = os.path.join(work_dir, area + ".dec.ext", "0004")
                     decomp_path: str = os.path.join(work_dir, "0004")
 
                     executor.submit(_extract_job, area, chest, decomp_path)
@@ -134,8 +134,8 @@ class GamePatchProcedure:
             with ThreadPoolExecutor(max_workers=self.threads) as executor:
                 for area in self.patch_data['chests'].keys():
                     work_dir: str = os.path.join(base_dir, area)
-                    dec_data: str = os.path.join(work_dir, "0004.tlzc")
-                    chest_data: str = os.path.join(work_dir, area + ".tlzc.ext", "0004")
+                    dec_data: str = os.path.join(work_dir, "0004.dec")
+                    chest_data: str = os.path.join(work_dir, area + ".dec.ext", "0004")
 
                     executor.submit(_pack_job, area, chest_data, dec_data)
 
@@ -143,15 +143,15 @@ class GamePatchProcedure:
             print("> Patching Search Points...")
             search_room: str = "FIELD"
             work_dir: str = os.path.join(base_dir, search_room)
-            search_path: str = os.path.join(work_dir, f"{search_room}.tlzc.ext", "0005")
+            search_path: str = os.path.join(work_dir, f"{search_room}.dec.ext", "0005")
             decomp_path: str = os.path.join(work_dir, "0005")
 
             self.packer.extract_map(search_room)
             self.packer.decompress_data(search_path, decomp_path)
 
-            self.patcher.patch_search_points(decomp_path + ".tlzc", self.patch_data['search'])
+            self.patcher.patch_search_points(decomp_path + ".dec", self.patch_data['search'])
 
-            self.packer.compress_data(decomp_path + ".tlzc", search_path)
+            self.packer.compress_data(decomp_path + ".dec", search_path)
             self.packer.pack_map(search_room)
 
         self.packer.copy_to_output('npc')

@@ -179,7 +179,7 @@ class GamePatchPacker:
         work_dir: str = os.path.join(self.build_dir, "maps", data_name)
         if not os.path.isdir(work_dir): os.makedirs(work_dir)
 
-        decompress_name: str = f"{data_name}.tlzc"
+        decompress_name: str = f"{data_name}.dec"
         field_decompress: str = os.path.join(work_dir, decompress_name)
         tlzc.decompress(path, field_decompress)
         fps4.extract(field_decompress, "", os.path.join(self.manifest_dir, decompress_name + ".json"))
@@ -188,7 +188,7 @@ class GamePatchPacker:
     def decompress_data(file: str, out: str = ""):
         assert os.path.isfile(file), f"Expected file {file}, but it does not exist."
 
-        output: str = file if not out else out + ".tlzc"
+        output: str = file if not out else out + ".dec"
         tlzc.decompress(file, output)
 
     def unpack_ui(self):
@@ -258,13 +258,13 @@ class GamePatchPacker:
 
         data_name: str = map_data if not map_data.endswith(".DAT") else map_data.replace(".DAT", "")
         work_dir: str = os.path.join(base_dir, data_name)
-        extract_dir: str = os.path.join(work_dir, data_name + ".tlzc.ext")
+        extract_dir: str = os.path.join(work_dir, data_name + ".dec.ext")
         assert os.path.isdir(extract_dir), f"Expected directory {extract_dir}, but it does not exist."
 
-        manifest: str = os.path.join(self.manifest_dir, data_name + ".tlzc.json")
+        manifest: str = os.path.join(self.manifest_dir, data_name + ".dec.json")
         assert os.path.isfile(manifest), f"Expected manifest {manifest}, but it does not exist."
 
-        map_decompressed: str = os.path.join(work_dir, data_name + ".tlzc")
+        map_decompressed: str = os.path.join(work_dir, data_name + ".dec")
         fps4.pack_from_manifest(map_decompressed, manifest)
 
         data_file: str = os.path.join(self.build_dir, "npc", data_name + ".DAT")
@@ -274,11 +274,11 @@ class GamePatchPacker:
     def compress_data(file: str, out: str = ""):
         assert os.path.isfile(file), f"Expected file {file}, but it does not exist."
         if not out:
-            if file.endswith(".tlzc"):
-                output: str = file.replace(".tlzc", "")
+            if file.endswith(".dec"):
+                output: str = file.replace(".dec", "")
             else:
                 output: str = file
-                file = file + ".tlzc"
+                file = file + ".dec"
         else:
             output: str = out
 

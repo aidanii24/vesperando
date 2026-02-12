@@ -3,7 +3,6 @@ import json
 import csv
 import os
 
-import utils
 
 class Characters(enum.Enum):
     YURI = 1
@@ -22,8 +21,24 @@ def strip_formatting(string: str) -> str:
 def keys_to_int(x):
     return {int(k): v for k, v in x.items()}
 
+def convert_strings_csv():
+    strings_csv = os.path.join("artifacts", "strings.csv")
+    assert os.path.isfile(strings_csv)
+
+    strings: dict = {}
+    with open(strings_csv, 'r') as f:
+        for pair in csv.DictReader(f):
+            index, value = pair.values()
+            strings[index] = value
+
+    strings_json = os.path.join("artifacts", "strings.json")
+    with open(strings_json, 'w') as f:
+        json.dump(strings, f)
+        f.flush()
+        f.close()
+
 def generate_strings_table():
-    strings_json: str = os.path.join("..", "artifacts", "strings.json")
+    strings_json: str = os.path.join("artifacts", "strings.json")
     assert os.path.isfile(strings_json)
 
     strings: dict = json.load(open(strings_json), object_hook=keys_to_int)
@@ -36,11 +51,11 @@ def generate_strings_table():
         f.close()
 
 def generate_artes_table():
-    json_file: str = os.path.join("..", "builds", "manifests", "0004R.json")
+    json_file: str = os.path.join("artifacts", "0004R.json")
     assert os.path.isfile(json_file)
 
-    artes_id_table: str = os.path.join('..', 'artifacts', 'artes_id_table.csv')
-    assert os.path.isfile(artes_id_table), f'{artes_id_table} does not exist'
+    # artes_id_table: str = os.path.join('..', 'artifacts', 'artes_id_table.csv')
+    # assert os.path.isfile(artes_id_table), f'{artes_id_table} does not exist'
 
     # artes_ids = {int(data['ID']): strip_formatting(data['Name'])
     #              for data in csv.DictReader(open(artes_id_table))}
@@ -361,7 +376,7 @@ def generate_shops_similarities():
     by_shop_file: str = os.path.join("..", "artifacts", "items_by_shop.json")
     assert os.path.isfile(by_shop_file)
 
-    by_shop: dict = json.load(open(by_shop_file), object_hook=utils.keys_to_int)
+    by_shop: dict = json.load(open(by_shop_file), object_hook=keys_to_int)
     shop_relationships: dict[int, dict] = {
         7: {'prev': None, 'next': 24},
         9: {'prev': None, 'next': 23},
@@ -498,4 +513,4 @@ class DataTableGenerator:
 
 
 if __name__ == "__main__":
-    generate_shops_similarities()
+    generate_artes_table()

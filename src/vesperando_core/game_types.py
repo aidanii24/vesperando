@@ -610,8 +610,21 @@ class ChestEntry(ctypes.Structure):
     _pack_ = 1
     _fields_ = [
         ("chest_id", ctypes.c_uint32),
-        # ("chest_type", ctypes.c_uint32),
-        ("item_amount", ctypes.c_uint32),
+        ("scenario_begin", ctypes.c_uint32),
+        ("scenario_end", ctypes.c_uint32),
+        ("chest_type", ctypes.c_uint32),
+        ("unknown0", ctypes.c_uint32),
+        ("x_coord", ctypes.c_int32),
+        ("y_coord", ctypes.c_int32),
+        ("z_coord", ctypes.c_int32),
+        ("unknown1", ctypes.c_uint32),
+        ("unknown2", ctypes.c_uint32),
+        ("unknown3", ctypes.c_uint32),
+        ("unknown4", ctypes.c_uint32),
+        ("unknown5", ctypes.c_uint32),
+        ("unknown6", ctypes.c_uint32),
+        ("entry", ctypes.c_uint32),
+        ("item_count", ctypes.c_uint32),
     ]
 
 class ChestItemEntry(ctypes.Structure):
