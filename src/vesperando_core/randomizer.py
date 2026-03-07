@@ -1,3 +1,5 @@
+from typing import Literal
+from copy import deepcopy
 import datetime
 import random
 import math
@@ -7,23 +9,559 @@ import time
 import sys
 import os
 
-from odfdo import Document, Table, Row
-
-from vesperando_core.res import enums
+from vesperando_core.conf.settings import Paths, Extensions, Weights
+from vesperando_core.res import enums, schema
 from vesperando_core.utils import keys_to_int
-from vesperando_core.conf.settings import Paths, Extensions
+from vesperando_core.spoil import PatchSpoiler
 
 
-VALID_TARGETS: list[str] = [
-    'artes',
-    'skills',
-    'items',
-    'shops',
-    'chests',
-    'search'
-]
+class BaseRandomizer:
+    candidates: dict
+    random: random.Random
 
-class InputTemplate:
+    def randomize(self):
+        pass
+
+    def plandomize(self, plando: dict):
+        self.candidates.update(deepcopy(plando))
+
+    def fetch(self):
+        return self.candidates
+
+    def random_from_distribution(self, mu: float, sigma: float, range_min: float = -math.inf,
+                                 range_max: float = math.inf):
+        return int(math.ceil(min(max(self.random.gauss(mu, sigma), range_min), range_max)))
+
+    def random_from_triangular(self, minimum: int, maximum: int, mode: Literal['min', 'max'] = "min"):
+        if mode == "max":
+            return max(self.random.randint(minimum, maximum), self.random.randint(minimum, maximum))
+        else:
+            return min(self.random.randint(minimum, maximum), self.random.randint(minimum, maximum))
+
+
+class ArteRandomizer(BaseRandomizer):
+    def __init__(self, random_obj: random.Random, data: dict, options: dict) -> None:
+        self.random = random_obj
+        self.artes_data = data['artes_data']
+        self.artes_by_char = data['artes_by_char']
+        self.skills_by_char = data['skills_by_char']
+        self.options = options
+        self.statistics: dict = {
+            'Artes': 0,
+            'TP Cost': 0,
+            'Cast Time': 0,
+            'Fatal Strikes': 0,
+            'Evolutions': 0,
+            'Learn Conditions': 0
+        }
+
+        # `artes_by_char` should already have all the valid candidates
+        candidates: dict = {aid: artes for aid, artes in self.artes_data.items()
+                            if aid in set(sum(self.artes_by_char.values(), []))}
+
+        self.candidates = schema.Artes.extract(candidates)
+
+    def randomize(self):
+        for arte in self.candidates.values():
+            # Candidacy
+            if self.random.random() <= Weights.ARTE_CANDIDACY:
+                continue
+
+            self.statistics['Artes'] += 1
+            data: dict = self.artes_data[arte['id']]
+            user: int = data['character_ids'][0]
+
+            # TP Cost
+            if self.random.random() <= Weights.ARTE_TP_COST:
+                self.randomize_tp_cost(arte)
+
+            # Cast Time
+            if arte['cast_time'] > 0 and self.random.random() <= Weights.ARTE_CAST_TIME:
+                self.randomize_cast_time(arte)
+
+            # Fatal Strike
+            if self.random.random() <= Weights.ARTE_FS:
+                self.randomize_fatal_strike(arte)
+
+            # Evolutions
+            has_evolve: bool = bool(arte.get('evolve', False))
+            if has_evolve:
+                if self.random.random() <= Weights.ARTE_EVOLVE:
+                    self.randomize_evolutions(arte, user)
+                ## On failed roll, instead randomize the usage requirements for learning the evolution
+                elif self.random.random() > Weights.ARTE_EVOLVE_REQUIREMENT:
+                    self.randomize_evolution_requirement(arte)
+
+
+            # Learn Conditions
+            if self.random.random() < Weights.ARTE_LEARN_OPPORTUNITIES[has_evolve + 1]:
+                self.randomize_learn(arte, user, has_evolve)
+
+    def randomize_tp_cost(self, arte):
+        self.statistics['TP Cost'] += 1
+        arte['tp_cost'] = math.ceil(int(arte['tp_cost']) * self.random_from_triangular(10, 200) * 0.01)
+
+    def randomize_cast_time(self, arte):
+        self.statistics['Cast Time'] += 1
+        arte['cast_time'] = math.ceil(int(arte['cast_time']) * self.random.randrange(10, 200) * 0.01)
+
+    def randomize_fatal_strike(self, arte):
+        self.statistics['Fatal Strikes'] += 1
+        arte['fatal_strike_type'] = self.random.randrange(0, 3)
+
+    def randomize_evolutions(self, arte, user):
+        self.statistics['Evolutions'] += 1
+
+        arte['evolve_base'] = self.random.choice(self.artes_by_char[user])
+
+        continue_iter: bool = True
+        iterations: int = 1
+        while iterations < len(Weights.ARTE_EVOLVE_OPPORTUNITIES):
+            if continue_iter:
+                arte[f'evolve_condition{iterations}'] = 3
+                arte[f'evolve_parameter{iterations}'] = self.random.choice(self.skills_by_char[user])
+            else:
+                arte[f'evolve_condition{iterations}'] = 0
+                arte[f'evolve_parameter{iterations}'] = 0
+
+            if continue_iter and self.random.random() > Weights.ARTE_EVOLVE_OPPORTUNITIES[iterations]:
+                continue_iter = False
+
+            iterations += 1
+
+        arte['learn_condition1'] = enums.ArteLearningTypes.ARTE_USAGE.value
+        arte['learn_parameter1'] = int(arte['id'])
+
+        self.randomize_evolution_requirement(arte)
+
+    def randomize_evolution_requirement(self, arte):
+        arte['unknown3'] = self.random.randrange(50, 200)
+
+    def randomize_learn(self, arte, user, has_evolve: bool):
+        self.statistics['Learn Conditions'] += 1
+
+        continue_iter: bool = True
+        iterations: int = 2 if has_evolve else 1
+        while iterations < len(Weights.ARTE_LEARN_OPPORTUNITIES):
+            if continue_iter:
+                condition_population: list[int] = [_ for _ in range((1 if iterations <= 1 else 2), 4)]
+                condition_chances: list[float] = [0.6] if iterations <= 1 else []
+                condition_chances.extend(Weights.ARTE_LEARN_TYPE_OPPORTUNITIES[iterations])
+
+                meta: int = 0
+
+                condition: int = self.random.choices(condition_population, weights=condition_chances)[0]
+                if condition == 1:
+                    cap_level: int = self.random_from_triangular(5, 100)
+                    parameter = self.random.randint(1, cap_level)
+                elif condition == 2:
+                    parameter: int = self.random.choice(self.artes_by_char[user])
+                    ranges = sorted([int(self.random_from_triangular(50, 100)),
+                                    int(self.random_from_triangular(50, 200))])
+                    meta = max(self.random_from_triangular(*ranges) // 5 * 5, 5)
+                else:
+                    parameter: int = self.random.choice(self.skills_by_char[user])
+
+                arte[f'learn_condition{iterations}'] = condition
+                arte[f'learn_parameter{iterations}'] = parameter
+                arte[f'unknown{iterations + 2}'] = meta
+            else:
+                arte[f"learn_condition{iterations}"] = 0
+                arte[f"learn_parameter{iterations}"] = 0
+                arte[f"unknown{iterations + 2}"] = 0
+
+            if continue_iter and self.random.random() > Weights.ARTE_LEARN_OPPORTUNITIES[iterations]:
+                continue_iter = False
+
+            iterations += 1
+
+        # If Arte has Evolve Conditions from Vanilla, remove them if Learn Condition is randomized
+        if not has_evolve and arte['evolve_base']:
+            arte['evolve_base'] = 0
+            for _ in range(1, 5):
+                arte[f'evolve_condition{_}'] = 0
+                arte[f'evolve_parameter{_}'] = 0
+
+
+class SkillRandomizer(BaseRandomizer):
+    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+        self.random = random_obj
+        self.skills_data = data['skills_data']
+
+        self.statistics: dict = {
+            'Skills': 0,
+            'SP Cost': 0,
+            'LP': 0,
+            'Symbols': 0,
+            'Symbol Weights': 0,
+        }
+
+        # Filter out dummy skill and enemy exclusive skill "Heal Down" (id 445)
+        candidates: dict = {sid: skill for sid, skill in self.skills_data.items()
+                            if sid > 0 and sid != 445}
+        self.candidates = schema.Skills.extract(candidates)
+
+    def randomize(self):
+        for skill in self.candidates.values():
+            # Candidacy
+            if self.random.random() <= Weights.SKILL_CANDIDACY:
+                continue
+
+            self.statistics['Skills'] += 1
+
+            # SP Cost
+            if skill['sp_cost'] and self.random.random() <= 0.95:
+                self.statistics['SP Cost'] += 1
+                skill['sp_cost'] = self.random_from_distribution(Weights.SKILL_SP_MU, Weights.SKILL_SP_SIGMA,
+                                                                 1, 30)
+
+            # LP
+            if skill['lp_cost']:
+                self.statistics['LP'] += 1
+                ranges = sorted([int(self.random_from_triangular(100, 1600)),
+                                 int(self.random_from_triangular(100, 600))])
+                base = round(self.random_from_triangular(*ranges), -2)
+                skill['lp_cost'] = base
+
+            # Symbol Type
+            if self.random.random() <= Weights.SKILL_SYMBOL:
+                self.statistics['Symbols'] += 1
+                skill['symbol'] = self.random.choices([c.value for c in enums.SkillSymbols],
+                                                      Weights.SKILL_SYMBOL_DISTRIBUTION)[0]
+
+            # Symbol Weight
+            if self.random.random() <= Weights.SKILL_SYMBOL_WEIGHT:
+                self.statistics['Symbol Weights'] += 1
+                skill['symbol_weight'] = self.random_from_distribution(Weights.SKILL_SYMBOL_WEIGHT_MU,
+                                                                       Weights.SKILL_SYMBOL_WEIGHT_SIGMA,
+                                                                       1, 30)
+
+
+class ItemRandomizer(BaseRandomizer):
+    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+        self.random = random_obj
+        self.items_list = data['items_list']
+        self.skills_lp_table = data['skills_lp_table']
+        self.skills_by_char = data['skills_by_char']
+        self.items_data_table: dict = {item['id'] : item for item in self.items_list}
+
+        self.statistics: dict = {
+            'Items': 0,
+            'Prices': 0,
+            'Skills': 0,
+        }
+
+        self.candidates = {
+            'base': schema.Items.extract(self.items_data_table)
+        }
+
+    def randomize(self):
+        set_skills_per_char: dict[int, set] = {c.value: set() for c in enums.Characters}
+        for iid, item in self.candidates['base'].items():
+            # Candidacy
+            if self.random.random() <= Weights.ITEM_CANDIDACY:
+                continue
+
+            self.statistics['Items'] += 1
+            data: dict = self.items_data_table[iid]
+
+            # Get Characters that equip this item
+            users: list[int] = []
+            for i, character in enumerate(enums.Characters):
+                if data['character_usable'] & character.bitflag() > 0:
+                    users.append(character.value)
+
+            # Buy Price
+            if item['buy_price'] and self.random.random() <= 0.95:
+                self.statistics['Prices'] += 1
+                base = int(item['buy_price'] * self.random_from_triangular(25, 200) / 100)
+                item['buy_price'] = base // 10 * 10
+
+            # Weapon Properties
+            if enums.ItemCategory.is_weapon(data['category']):
+                skills_candidates: set[int] = set(skill for char in users
+                                                 for skill in self.skills_by_char[char]
+                                                 if char in self.skills_by_char)
+
+                skills_set: set[int] =  skills_candidates.difference(*[set_skills_per_char[s] for s in users])
+
+                ## Get all valid skill candidates that are not already set
+                if abs(len(skills_candidates) - len(skills_set)) > 3:
+                    skills_candidates -= skills_set
+                ## If there are not enough candidates left, reset the skills set list for the involved characters
+                else:
+                    for u in users:
+                        set_skills_per_char[u] -= skills_candidates
+
+                # Skills
+                continue_iter: bool = True
+                for i, opp in enumerate(Weights.ITEM_SKILL_OPPORTUNITIES):
+                    if continue_iter and self.random.random() <= opp:
+                        self.statistics['Skills'] += 1
+                        skill: int = self.random.choice([*skills_candidates])
+
+                        item[f'skill{i + 1}'] = skill
+
+                        if skill in self.skills_lp_table:
+                            item[f'skill{i + 1}_lp'] = self.skills_lp_table[skill]
+                        else:
+                            item[f'skill{i + 1}_lp'] = int(self.random_from_distribution(Weights.SKILL_LP_MU,
+                                                                                         Weights.SKILL_LP_SIGMA,
+                                                                                         100, 1600))
+
+                        skills_candidates.discard(skill)
+                        for u in users:
+                            set_skills_per_char[u].discard(skill)
+
+                        if not len(skills_candidates):
+                            continue_iter = False
+                    else:
+                        item[f'skill{i + 1}'] = 0
+                        item[f'skill{i + 1}_lp'] = 0
+
+                        continue_iter = False
+
+
+class ShopRandomizer(BaseRandomizer):
+    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+        self.random = random_obj
+        self.shop_data = data['shop_data']
+        self.item_to_category = data['item_to_category']
+        self.item_by_category = data['item_by_category']
+        self.common_items = data['common_items']
+
+        self.statistics: dict = {
+            'Items': 0,
+            'Full Shuffle': 0,
+            'Same Category': 0
+        }
+
+        self.candidates = deepcopy(self.shop_data['items'])
+
+    def randomize(self):
+        items_cache: dict[int, set[int]] = {}
+        for shop_group in self.candidates['commons']:
+            placed: set[int] = set(items_cache.get(shop_group['shops'][0], []))
+
+            new_items: set[int] = set()
+            for item in shop_group['items']:
+                # Do not randomize dummy items, Key Items and DLC
+                if not enums.ItemCategory.is_common(self.item_to_category[item]):
+                    new_items.add(item)
+                    continue
+
+                new_items.add(self.randomize_item(item, set.union(placed, new_items)))
+
+            shop_group['items'] = [*new_items]
+            for evolution in shop_group['shops']:
+                items_cache.setdefault(evolution, set()).update(new_items)
+
+        for shop, items in self.candidates['uniques'].items():
+            placed: set[int] = set(items_cache.get(shop, []))
+
+            new_items: set[int] = set()
+            for item in items:
+                # Do not randomize dummy items, Key Items and DLC
+                if not enums.ItemCategory.is_common(self.item_to_category[item]):
+                    new_items.add(item)
+                    continue
+
+                new_items.add(self.randomize_item(item, set.union(placed, new_items)))
+
+            self.candidates['uniques'][shop] = [*new_items]
+
+    def randomize_item(self, item: int, blacklist: set[int]):
+        self.statistics['Items'] += 1
+
+        category = self.item_to_category[item]
+        new_item: int = item
+
+        # Set up weights depending on item category
+        ## Consumables should be rarely randomized
+        if category == enums.ItemCategory.CONSUMABLE.value:
+            if item in blacklist:
+                candidacy_chance = -1.00
+                same_category_chance = -1.00
+            else:
+                candidacy_chance = Weights.SHOP_CANDIDACY_CONSUMABLE
+                same_category_chance = Weights.SHOP_CANDIDACY_CONSUMABLE_REPEAT
+        else:
+            if item in blacklist:
+                candidacy_chance = -1.00
+            else:
+                candidacy_chance = Weights.SHOP_CANDIDACY
+            same_category_chance = Weights.SHOP_CANDIDACY_REPEAT
+
+        if self.random.random() >= candidacy_chance:
+            self.statistics['Items'] += 1
+            category: int = self.item_to_category[item]
+            category_candidates: set[int] = set(self.item_by_category[category]).difference(blacklist)
+            if category_candidates and self.random.random() <= same_category_chance:
+                self.statistics['Same Category'] += 1
+                new_item: int = self.random.choice([*category_candidates])
+            else:
+                self.statistics['Full Shuffle'] += 1
+                new_item: int = self.random.choice(self.common_items)
+
+        return new_item
+
+
+class ChestRandomizer(BaseRandomizer):
+    GALD_ID = 0xFFFFFFFE
+
+    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+        self.random = random_obj
+        self.chest_data = data['chest_data']
+        self.item_to_category = data['item_to_category']
+        self.item_by_category = data['item_by_category']
+        self.eligible_items = data['common_items'] + tuple([self.GALD_ID])
+
+        self.statistics: dict = {
+            'Chests': 0,
+            'Full Shuffle': 0,
+            'Same Category': 0,
+            'Item Amount': 0,
+            'Gald Amount': 0,
+        }
+
+        self.candidates = deepcopy(self.chest_data)
+
+    def randomize(self):
+        chest_types: list[int] = [c.value for c in enums.ChestType]
+
+        for area, chests in self.candidates.items():
+            for chest, details in chests.items():
+                # Type
+                if self.random.random() <= Weights.CHEST_TYPE:
+                    self.candidates[area][chest]['chest_type'] = self.random.choice(chest_types)
+
+                # Items
+                new_items: list[dict] = []
+                for item in details['items']:
+                    iid: int = item['item_id']
+                    category: int = self.item_to_category.get(iid, -1)
+                    if iid == self.GALD_ID or enums.ItemCategory.is_common(category):
+                        new_items.append(self.randomize_item(iid, item['amount'], category))
+                    else:
+                        new_items.append(item)
+
+                self.candidates[area][chest]['items'] = new_items
+
+    def randomize_item(self, item: int, amount: int = 1, item_category: int = enums.ItemCategory.DUMMY.value) -> dict:
+        if not item_category:
+            item_category = self.item_to_category[item]
+
+        new_item: int = item
+        new_category = item_category
+        new_amount: int = amount
+
+        # Set up weights depending on item category
+        ## Consumables should be rarely randomized
+        same_category_chance: float = 0.2 if not item_category == enums.ItemCategory.CONSUMABLE.value else 0.85
+
+        if self.random.random() <= Weights.CHEST_CANDIDACY:
+            self.statistics['Chests'] += 1
+            if new_item != self.GALD_ID and self.random.random() <= same_category_chance:
+                self.statistics['Same Category'] += 1
+                new_item = random.choice(self.item_by_category[item_category])
+            else:
+                self.statistics['Full Shuffle'] += 1
+                new_item = random.choice(self.eligible_items)
+                new_category = self.item_to_category[new_item]
+
+        is_new_item_abundant: bool = enums.ItemCategory.is_abundant(new_category)
+
+        # Set up new amount of the item
+        ## All normal items should be rarely randomized
+        if new_item != self.GALD_ID and self.random.random() <= Weights.CHEST_ITEM_AMOUNT:
+            self.statistics['Item Amount'] += 1
+            if is_new_item_abundant:
+                new_amount = self.random.randrange(1, 15)
+            else:
+                new_amount = 1
+                while self.random.random() <= (Weights.CHEST_ITEM_AMOUNT / new_amount) and new_amount < 15:
+                    new_amount += 1
+        elif new_item == self.GALD_ID:
+            self.statistics['Gald Amount'] += 1
+            new_amount = self.randomize_gald_amount(new_amount)
+        elif item == self.GALD_ID and new_item != item:
+            new_amount = amount % 15
+
+        return {
+            'item_id': new_item,
+            'amount': new_amount,
+        }
+
+    def randomize_gald_amount(self, amount_basis = 100):
+        if self.random.random() <= Weights.CHEST_CANDIDACY:
+            return math.ceil(amount_basis * self.random_from_triangular(1, 100) / 10)
+
+        return amount_basis
+
+
+class SearchPointRandomizer(BaseRandomizer):
+    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+        self.random = random_obj
+        self.item_to_category = data['item_to_category']
+        self.item_by_category = data['item_by_category']
+        self.common_items = data['common_items']
+
+        self.statistics: dict = {
+            'Contents': [],
+            'Items': [],
+            'Average Contents per Definition': 0,
+            'Average Items per Content': 0,
+        }
+
+        self.candidates = {
+            'guarantee': True,
+            'definitions': [],
+            'contents': [],
+            'items': [],
+        }
+
+    def randomize(self):
+        # We offset back by the two duplicate definitons present in Vanilla
+        definition_count = 88
+
+        definition_types: list[int] = [d.value for d in enums.SearchPointType]
+
+        for _ in range(definition_count):
+            # Randomize Definition
+            content_range: int = self.random_from_triangular(1, 5)
+            self.candidates['definitions'].append({
+                'type': self.random.choice(definition_types),
+                'content_range': content_range,
+                'max_use': self.random_from_triangular(1, 5)
+            })
+
+            # Randomize Content
+            item_ranges: list[int] = [self.random.randint(1, 5) for _ in range(content_range)]
+            for r in item_ranges:
+                self.candidates['contents'].append({
+                    'item_range': r,
+                    'chance': self.random_from_triangular(1, 10, 'max')
+                })
+
+            # Randomize Items
+            for count in item_ranges:
+                placed: set[int] = set()
+                for _ in range(count):
+                    iid: int = self.random.choice([*set(self.common_items).difference(placed)])
+                    count: int = 1
+                    if enums.ItemCategory.is_abundant(self.item_to_category[iid]):
+                        count = self.random_from_triangular(1, 15)
+
+                    self.candidates['items'].append({
+                        'id': iid,
+                        'count': count
+                    })
+
+            self.statistics['Contents'].append(content_range)
+            self.statistics['Items'].extend(item_ranges)
+
+
+class BasicRandomizerProcedure:
     artes_data_table: dict
     skills_data_table: dict
 
@@ -37,11 +575,17 @@ class InputTemplate:
     items_list: dict
     item_to_category: dict
     item_by_category: dict
-    common_items: list[int] # Any valid non-key and non-DLC item
-    key_items: list[int]
+    common_items: tuple # Any valid non-key and non-DLC item
 
     seed: int
     random: random.Random
+
+    arte_randomizer: ArteRandomizer
+    skill_randomizer: SkillRandomizer
+    item_randomizer: ItemRandomizer
+    shop_randomizer: ShopRandomizer
+    chest_randomizer: ChestRandomizer
+    search_point_randomizer: SearchPointRandomizer
 
     identifier: str = "randomizer"
     patch_output: str = os.path.join(Paths.PATCHES, f"randomizer.{Extensions.BASIC_PATCH}")
@@ -52,96 +596,85 @@ class InputTemplate:
         self.random = random.Random(seed)
 
         self.identifier = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
-        self.patch_output = os.path.join(Paths.PATCHES, f"{self.identifier}.{Extensions.BASIC_PATCH}")
+        self.patch_output = os.path.join(Paths.PATCHES, f"{self.identifier}{Extensions.BASIC_PATCH}")
         self.report_output = os.path.join(Paths.PATCHES, f"tovde-spoiler-{self.identifier}.ods")
 
         if not targets or 'artes' in targets:
-            artes_ids_file: str = os.path.join(Paths.STATIC_DIR, 'artes_id_table.json')
-            artes_data_file: str = os.path.join(Paths.STATIC_DIR, 'artes.json')
-
-            assert os.path.isfile(artes_ids_file), f'{artes_ids_file} does not exist'
-            assert os.path.isfile(artes_data_file), f'{artes_data_file} does not exist'
-
-            self.artes_ids = json.load(open(artes_ids_file), object_hook=keys_to_int)
-            artes_data = json.load(open(artes_data_file))['artes']
-
-            artes_data_table = {}
-            artes_by_char = {}
-            for arte in artes_data:
-                artes_data_table[int(arte['id'])] = arte
-
-                for char in arte['character_ids']:
-                    if arte['arte_type'] not in [12, 14, 15] and any(0 < chara < 10 for chara in arte['character_ids']) \
-                            and arte['tp_cost'] > 0:
-                        artes_by_char.setdefault(char, []).append(arte['id'])
-
-            self.artes_data_table = artes_data_table
-            self.artes_by_char = artes_by_char
+            self.load_artes_data()
 
         if not targets or {'artes', 'skills', 'items'}.intersection(targets):
-            skills_ids_file: str = os.path.join(Paths.STATIC_DIR, 'skills_id_table.json')
-            skills_data_file: str = os.path.join(Paths.STATIC_DIR, 'skills.json')
-            skills_char_data_file: str = os.path.join(Paths.STATIC_DIR, 'skills_by_char.json')
-
-            assert os.path.isfile(skills_data_file), f'{skills_ids_file} does not exist'
-            assert os.path.isfile(skills_data_file), f'{skills_data_file} does not exist'
-            assert os.path.isfile(skills_char_data_file), f'{skills_char_data_file} does not exist'
-
-            self.skill_ids = json.load(open(skills_ids_file), object_hook=keys_to_int)
-
-            self.skills_data_table = {int(skill['id']) : skill
-                                      for skill in json.load(open(skills_data_file))['skills']}
-
-            self.skills_by_char = json.load(open(skills_char_data_file), object_hook=keys_to_int)
+            self.load_skills_data()
 
         item_dependents: set[str] = set(targets).intersection({'items', 'shops', 'chests', 'search'})
-        search_only: bool = len(item_dependents) == 1 and 'search' in item_dependents
+        is_search_only: bool = len(item_dependents) == 1 and 'search' in item_dependents
         if not targets or item_dependents:
-            items_ids_file: str = os.path.join(Paths.STATIC_DIR, "items_id_table.json")
-            items_file: str = os.path.join(Paths.STATIC_DIR, "item.json")
-
-            assert os.path.isfile(items_ids_file), f"File {items_file} does not exist."
-            assert os.path.isfile(items_file), f"File {items_file} does not exist."
-
-            self.item_ids = json.load(open(items_ids_file), object_hook=keys_to_int)
-            self.items_list = json.load(open(items_file))['items']
-
-            self.item_by_category = {}
-            self.common_items = []
-            self.key_items = []
-
-            if not search_only:
-                self.item_to_category = {}
-
-            for item in self.items_list:
-                self.item_by_category.setdefault(item['category'], []).append(item['id'])
-
-                if 1 < item['category'] < 10:
-                    self.common_items.append(item['id'])
-                elif item['category'] == 10:
-                    self.key_items.append(item['id'])
-
-                if search_only: continue
-                self.item_to_category[item['id']] = item['category']
+            self.load_items_data(not is_search_only)
 
         if not os.path.isdir(Paths.PATCHES):
             os.makedirs(Paths.PATCHES)
 
-    def random_from_distribution(self, mu: float, sigma: float, range_min: float = -math.inf,
-                                 range_max: float = math.inf):
-        return int(math.ceil(min(max(self.random.gauss(mu, sigma), range_min), range_max)))
+    def load_artes_data(self):
+        artes_data_table = json.load(open(os.path.join(Paths.STATIC_DIR, "artes.json")), object_hook=keys_to_int)
 
-    def random_from_triangular(self, minimum: int, maximum: int, mode: str = "min"):
-        if mode == "max":
-            return max(self.random.randint(minimum, maximum), self.random.randint(minimum, maximum))
-        else:
-            return min(self.random.randint(minimum, maximum), self.random.randint(minimum, maximum))
+        properties_table = {}
+        artes_by_char = {}
+        for arte in artes_data_table['entries']:
+            properties_table[int(arte['id'])] = arte
+
+            # We get all the valid artes for randomization here as well, conforming to these conditions:
+            ##  a. Must be only used by a playable character
+            ##  b. Must not be a special arte type (This filters out Fatal Strikes, Overlimits and Skill)
+            ##  c. Must have a TP Cost (This filters out variations of artes if any)
+            only_used_by_playable: bool = any(0 < chara < 10 for chara in arte['character_ids'])
+            if not only_used_by_playable: continue
+            for char in arte['character_ids']:
+                # Check if arte is not special (Fatal Strike, Overlimit or Skill)
+                if enums.ArteTypes.is_normal(arte['arte_type']): continue
+                # Check if arte has TP Cost
+                if arte['tp_cost'] <= 0: continue
+
+                artes_by_char.setdefault(char, []).append(arte['id'])
+
+        self.artes_data_table = properties_table
+        self.artes_by_char = artes_by_char
+
+    def load_skills_data(self):
+        skills_data_table: dict = json.load(open(os.path.join(Paths.STATIC_DIR, 'skills.json')),
+                                            object_hook=keys_to_int)
+        self.skills_data_table = {int(sid): skill['properties']
+                                  for sid, skill in skills_data_table['entries'].items()}
+
+        skills_by_char = {}
+        for sid, data in skills_data_table['entries'].items():
+            if not data['users']: continue
+            for user in data['users']:
+                skills_by_char.setdefault(user, []).append(sid)
+
+        self.skills_by_char = skills_by_char
+
+    def load_items_data(self, map_categories: bool = False):
+        self.items_list = json.load(open(os.path.join(Paths.STATIC_DIR, "items.json")))
+
+        self.item_by_category = {}
+        self.item_to_category = {}
+        self.common_items = tuple()
+
+        for item in self.items_list:
+            self.item_by_category.setdefault(item['category'], []).append(item['id'])
+
+            if not map_categories: continue
+            self.item_to_category[item['id']] = item['category']
+
+        if map_categories:
+            self.common_items = tuple([item for category, items in self.item_by_category.items()
+                                       for item in items
+                                       if enums.ItemCategory.is_common(category)])
 
     def generate(self, targets: list, spoil: bool = False):
         output: str = self.patch_output
 
         patch_data: dict = {
-            'version': '0.1',
+            'version': '0.2',
             'created': self.identifier,
             'seed': self.seed,
             'player': "test",
@@ -151,859 +684,94 @@ class InputTemplate:
             os.remove(self.report_output)
 
         if not targets or 'artes' in targets:
-            artes_input = self.randomize_artes_input([arte_entry for arte_entry in self.generate_artes_input()])
-            patch_data['artes'] = artes_input
+            data: dict = {
+                'artes_data': self.artes_data_table,
+                'artes_by_char': self.artes_by_char,
+                'skills_by_char': self.skills_by_char,
+            }
+            self.arte_randomizer = ArteRandomizer(self.random, data, {})
+            self.arte_randomizer.randomize()
+            patch_data['artes'] = self.arte_randomizer.fetch()
 
         if not targets or 'skills' in targets:
-            skills_input = self.randomize_skills_input(self.generate_skills_input())
-            patch_data['skills'] = skills_input
-
-        if not targets or 'items' in targets:
-            items_input = self.randomize_items_input(self.generate_items_input())
-            patch_data['items'] = items_input
-
-        if not targets or 'shops' in targets:
-            shop_input = self.randomize_shops_input(self.generate_shop_items_input())
-            patch_data['shops'] = shop_input
-
-        if not targets or 'chests' in targets:
-            chests_input = self.randomize_chests_input(self.generate_chests_input())
-            patch_data['chests'] = chests_input
-
-        if not targets or 'search' in targets:
-            patch_data['search'] = self.randomize_search_points()
-
-        with open(output, 'w') as f:
-            json.dump(patch_data, f, indent=4)
-
-        if spoil:
-            self.generate_spoiler_file(dict(item for item in [*patch_data.items()][4:]))
-
-    @staticmethod
-    def generate_artes_input():
-        artes_data: str = os.path.join(Paths.STATIC_DIR, "templates", "artes_api.json")
-        assert os.path.isfile(artes_data)
-
-        return json.load(open(artes_data))
-
-    @staticmethod
-    def generate_skills_input() -> dict:
-        skills_data: str = os.path.join(Paths.STATIC_DIR, "templates", "skills_api.json")
-        assert os.path.isfile(skills_data)
-
-        return json.load(open(skills_data))
-
-    @staticmethod
-    def generate_items_input() -> dict:
-        items_data: str = os.path.join(Paths.STATIC_DIR, "templates", "items_api.json")
-        assert os.path.isfile(items_data)
-
-        return json.load(open(items_data))
-
-    @staticmethod
-    def generate_shop_items_input() -> dict:
-        shop_items_data: str = os.path.join(Paths.STATIC_DIR, "templates", "shop_items_api.json")
-        assert os.path.isfile(shop_items_data)
-
-        return json.load(open(shop_items_data), object_hook=keys_to_int)
-
-    @staticmethod
-    def generate_chests_input() -> dict:
-        chests_data: str = os.path.join(Paths.STATIC_DIR, "chests.json")
-        assert os.path.isfile(chests_data)
-
-        return json.load(open(chests_data))
-
-    def generate_artes_report(self, patched_artes: dict) -> Table:
-        report_list: list = []
-        for arte in [*patched_artes.values()]:
-            learn_conditions: list = []
-            # Parse Learn Conditions
-            for _ in range(1, 7):
-                condition_id = arte[f'learn_condition{_}']
-                parameter_id = arte[f'learn_parameter{_}']
-                meta_id = arte[f'unknown{_ + 2}']
-
-                if condition_id == 0:
-                    if parameter_id >= 300:
-                        learn_conditions.extend(["Event", "", ""])
-                    else:
-                        learn_conditions.extend(["" for _ in range(3)])
-                elif condition_id == 1:
-                    learn_conditions.extend(["Level", parameter_id, ""])
-                elif condition_id == 2:
-                    learn_conditions.extend(["Arte Usage", self.artes_ids[parameter_id], f"x{meta_id}"])
-                elif condition_id == 3:
-                    learn_conditions.extend(["Equip Skill", self.skill_ids[parameter_id], ""])
-                else:
-                    learn_conditions.extend(["INVALID", "!", "!"])
-
-            # Parse Evolve Conditions
-            evolve_conditions: list = [self.artes_ids[arte['evolve_base']] if arte['evolve_base'] != 0
-                                       else ""]
-            for _ in range(1, 5):
-                condition_id = arte[f'evolve_condition{_}']
-                parameter_id = arte[f'evolve_parameter{_}']
-
-                if condition_id == 0:
-                    evolve_conditions.extend(["" for _ in range(2)])
-                elif condition_id == 3:
-                    evolve_conditions.extend(["Equip Skill", self.skill_ids[parameter_id]])
-                else:
-                    evolve_conditions.extend(["INVALID", "!"])
-
-            details: list = [
-                self.artes_ids[arte['id']], arte['tp_cost'], arte['cast_time'] if arte['cast_time'] else "N/A",
-                *learn_conditions, *evolve_conditions,
-                enums.FatalStrikeType(arte['fatal_strike_type']).name
-            ]
-
-            report_list.append(details)
-
-        field_names: list[str] = ["Arte", "TP", "Cast Time",
-                                  "Learn Condition 1", "Learn Parameter 1", "Learn Meta 1",
-                                  "Learn Condition 2", "Learn Parameter 2", "Learn Meta 2",
-                                  "Learn Condition 3", "Learn Parameter 3", "Learn Meta 3",
-                                  "Learn Condition 4", "Learn Parameter 4", "Learn Meta 4",
-                                  "Learn Condition 5", "Learn Parameter 5", "Learn Meta 5",
-                                  "Learn Condition 6", "Learn Parameter 6", "Learn Meta 6",
-                                  "Evolves From",
-                                  "Evolve Condition 1", "Evolve Parameter 1",
-                                  "Evolve Condition 2", "Evolve Parameter 2",
-                                  "Evolve Condition 3", "Evolve Parameter 3",
-                                  "Evolve Condition 4", "Evolve Parameter 4",
-                                  "Fatal Strike Type"]
-
-        report: Table = Table("ARTES")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
-
-        return report
-
-    def generate_skills_report(self, patched_skills: dict) -> Table:
-        report_list: list = []
-        for skill in [*patched_skills.values()]:
-            report_list.append([
-                self.skill_ids[skill['id']], skill['sp_cost'], skill['lp_cost'], enums.Symbol(skill['symbol']).name,
-                skill['symbol_weight'], 'Yes' if skill['is_equippable'] else 'No'
-            ])
-
-        field_names: list[str] = ["Skill", "SP", "LP", "Symbol", "Symbol Weight", "Equippable"]
-
-        report: Table = Table("SKILLS")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
-
-        return report
-
-    def generate_items_report(self, patched_items: dict) -> Table:
-        report_list: list = []
-        for item in [*patched_items['base'].values()]:
-            entry: list = [self.item_ids[item['id']], item['buy_price']]
-            for _ in range(1, 4):
-                if item[f'skill{_}']:
-                    entry.extend([self.skill_ids[item[f'skill{_}']], item[f'skill{_}_lp']])
-                else:
-                    entry.extend(["", ""])
-
-            report_list.append(entry)
-
-        field_names: list[str] = ["Item", "Price", "Skill 1", "Skill 1 LP", "Skill 2", "Skill 2 LP",
-                                  "Skill 3", "Skill 3 LP",]
-
-        report: Table = Table("ITEMS")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
-
-        return report
-
-    def generate_shop_items_report(self, patched_items: dict) -> Table:
-        # data_file: str = os.path.join(".", "artifacts", "shop_items_data.json")
-        # assert os.path.isfile(data_file)
-
-        # missable_shops_ids: set[int] = {1, 27, 28, 29, 34, 36, 39}
-        shop_to_name: dict = {
-            1: "Dummy",
-            7: "Fortune's Market (Imperial Capital) I",
-            8: "Vendor's Stall \"Vega\"",
-            9: "General Store \"Regulu\" I",
-            10: "Fortune's Market (Aspio)",
-            11: "Fortune's Market (Nor) I",
-            12: "Fortune's Market (Torim) I",
-            13: "Fortune's Market (Heliord) I",
-            14: "Fortune's Market (Dahngrest) I",
-            15: "Fortune's Market (Dahngrest) II",
-            16: "Fortune's Market (Nordopolica) I",
-            17: "Fortune's Market (Mantaic) I",
-            18: "General Store \"Polaris\"",
-            19: "Fortune's Market (Nordopolica) II",
-            20: "General Store \"Deneb\"",
-            21: "Fortune's Market (Nor) II",
-            22: "Fortune's Market (Torim) II",
-            23: "General Store \"Regulu\" II",
-            24: "Fortune's Market (Imperial Capital) II",
-            25: "Fortune's Market (Nordopolica) III",
-            26: "Fortune's Market I",
-            27: "Vendor's Stall \"Capella\" I",
-            28: "Vendor's Stall \"Capella\" II",
-            29: "Vendor's Stall \"Capella\" III",
-            31: "Fortune's Market (Yumanju)",
-            32: "Fortune's Market II",
-            33: "Fortune's Market (Aurnion 2)",
-            34: "Supply Depot \"Adecor\"",
-            35: "Fortune's Market (Heliord) II",
-            36: "Fortune's Market (1)",
-            37: "Fortune's Market (Dahngrest) III",
-            38: "Fortune's Market (Aurnion 1)",
-            39: "Vendor's Stall \"Mallow\"",
-            40: "Guild Gormet Banquet",
-            41: "Fortune's Market (Mantaic) II",
-        }
-
-        # groupings: dict = json.load(open(data_file), object_hook=utils.keys_to_int)['groups']
-
-        processed_groups: set[int] = set()
-
-        items_by_shop: dict = {}
-        for groups in patched_items['commons']:
-            processed_groups.update(groups['shops'])
-            for shop in groups['shops']:
-                items_by_shop.setdefault(shop, []).extend(groups['items'])
-
-        for shop, items in patched_items['uniques'].items():
-            processed_groups.add(shop)
-            items_by_shop.setdefault(shop, []).extend(items)
-
-        max_count: int = 0
-        for shop, items in items_by_shop.items():
-            max_count = max(max_count, len(items))
-            items_by_shop[shop] = [*sorted(items)]
-
-        max_count += 1
-
-        report: Table = Table("SHOPS")
-
-        for _ in range(max_count):
-            report.append_row(Row(len(items_by_shop.keys())))
-
-        count: int = 0
-        for shop, items in items_by_shop.items():
-            if shop < 7: continue
-            report.set_column_values(count, [shop_to_name[shop],
-                                             *[self.item_ids[i] for i in items],
-                                             *["" for _ in range(max_count - (len(items) + 1))]])
-            count += 1
-
-        return report
-
-    def generate_chests_report(self, patched_items: dict) -> Table:
-        def _get_item_name(item_id: int) -> str:
-            if item_id == 0xFFFFFFFE:
-                return "Gald"
-            elif item_id in self.item_ids:
-                return self.item_ids[item_id]
-            else:
-                return str(item_id)
-
-        name_file: str = os.path.join(Paths.STATIC_DIR, "named_npc_maps.json")
-        assert os.path.isfile(name_file), f"'{name_file}' not found"
-
-        id_to_name: dict[str, str] = json.load(open(name_file))
-
-        report_list = []
-        for area, chests in sorted(patched_items.items()):
-            report_list.append([id_to_name.get(area, area)])
-            for chest, contents in chests.items():
-                report_list.append([(id_to_name.get(chest, chest)),
-                                    _get_item_name(contents[0]['item_id']),
-                                    contents[0]['amount']])
-                for content in contents[1:]:
-                    report_list.append(["", _get_item_name(content['item_id']), content['amount']])
-
-        field_names: list[str] = ["Chest", "Item", "Amount"]
-
-        report: Table = Table("CHESTS")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
-
-        return report
-
-    def generate_search_report(self, patched_items: dict) -> Table:
-        search_point_file: str = os.path.join(Paths.STATIC_DIR, "named_search_points.json")
-        assert os.path.isfile(search_point_file), f"'{search_point_file}' not found"
-
-        search_point_names: list[str] = json.load(open(search_point_file))['FIELD']
-
-        report_list: list = []
-        last_cont_idx: int = 0
-        last_itm_idx: int = 0
-        for i, definition in enumerate(patched_items['definitions']):
-            next_cont_end: int = last_cont_idx + definition['content_range']
-            item_ranges: list[int] = []
-            for content in patched_items['contents'][last_cont_idx:next_cont_end]:
-                item_ranges.append(content['item_range'])
-
-            report_list.append([search_point_names[i], enums.SearchPointType(definition['type']).name])
-            for idx, r in enumerate(item_ranges):
-                report_list.append([f"Item Pool #{idx}",
-                                    self.item_ids[patched_items['items'][last_itm_idx]['id']],
-                                    patched_items['items'][last_itm_idx]['count']])
-                last_itm_idx += 1
-                if r < 2: continue
-
-                for count in range(r - 1):
-                    report_list.append(["",
-                                        self.item_ids[patched_items['items'][last_itm_idx]['id']],
-                                        patched_items['items'][last_itm_idx]['count']])
-                    last_itm_idx += 1
-
-            last_cont_idx = next_cont_end
-
-        field_names: list[str] = ["Search Point", "Item", "Amount"]
-
-        report: Table = Table("SEARCH POINTS")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
-
-        return report
-
-    def generate_spoiler_file(self, patch_data: dict):
-        print("> Generating Spoiler...")
-        reports: list[Table] = []
-
-        for entry, data in patch_data.items():
-            if entry == "artes":
-                reports.append(self.generate_artes_report(data))
-            elif entry == "skills":
-                reports.append(self.generate_skills_report(data))
-            elif entry == "items":
-                reports.append(self.generate_items_report(data))
-            elif entry == "shops":
-                reports.append(self.generate_shop_items_report(data))
-            elif entry == "chests":
-                reports.append(self.generate_chests_report(data))
-            elif entry == "search":
-                reports.append(self.generate_search_report(data))
-
-        if not reports or None in reports: return
-
-        spoiler: Document = Document("spreadsheet")
-        spoiler.body.clear()
-        spoiler.body.extend(reports)
-        spoiler.save(self.report_output)
-
-    def randomize_artes_input(self, patch):
-        # Based on average amount of character artes with evolve conditions
-        evolve_opportunities: list[int] = [0, 0.0258, 0.0041, 0.0005, 0.005]
-        # Based on average amount of character artes with learn conditions
-        learn_opportunities: list[int] = [0, 0.75, 0.042, 0.8, 0.077]
-        learn_type_opportunities: list[list[int]] = [[0, 0], [0.35, 0.05], [0.005, 0.005], [0.75, 0.05], [0.5, 0.5]]
-
-        def _randomize_evolve(target_arte, character, count):
-            target_arte[f'evolve_condition{count}'] = 3
-            target_arte[f'evolve_parameter{count}'] = self.random.choice(self.skills_by_char[character])
-
-        def _randomize_learn(target_arte, character, count):
-            condition_pop: list[int] = [_ for _ in range(1 if count <= 1 else 2, 4)]
-            condition_chances: list[float] = [0.6] if count <= 1 else []
-            condition_chances.extend(learn_type_opportunities[count])
-
-            meta: int = 0
-
-            condition: int = self.random.choices(condition_pop, weights=condition_chances)[0]
-            if condition == 1:
-                cap_level: int = self.random.randint(5, 20)
-                parameter = self.random.randint(1, cap_level)
-            elif condition == 2:
-                parameter: int = self.random.choice(self.artes_by_char[character])
-                meta = int(math.ceil(10 * (self.random.randrange(10, 200) / 100)))
-            else:
-                parameter: int = self.random.choice(self.skills_by_char[character])
-
-            target_arte[f'learn_condition{count}'] = condition
-            target_arte[f'learn_parameter{count}'] = parameter
-            target_arte[f'unknown{count + 2}'] = meta
-
-        print("> Randomizing Artes...")
-        new_input = {}
-
-        r_candidates: int = 0
-        r_tp: int = 0
-        r_cast: int = 0
-        r_fs: int = 0
-        r_evolve: int = 0
-        r_learn: int = 0
-        for arte in patch:
-            # Randomize Candidacy
-            if self.random.random() <= 0.05:
-                continue
-
-            r_candidates += 1
-            data = self.artes_data_table[int(arte['id'])]
-
-            # Randomize TP Cost
-            if self.random.random() <= 0.4:
-                r_tp += 1
-                arte['tp_cost'] = math.ceil(int(arte['tp_cost']) * (self.random.randrange(10, 200) * 0.01))
-
-            # Randomize Cast Time
-            if int(arte['cast_time']) > 0 and self.random.random() >= 0.3:
-                r_cast += 1
-                arte['cast_time'] = math.ceil(int(arte['cast_time']) *
-                                              (self.random.randrange(10, 200) * 0.01))
-
-            # Randomize FS Type
-            if self.random.random() <= 0.75:
-                r_fs += 1
-                arte['fatal_strike_type'] = self.random.randrange(0, 3)
-
-            # Randomize Evolution
-            ## Only Randomize Artes with Evolve Conditions already, as other artes seems to require
-            ## their arte type changed to Altered Artes to apply properly
-            ## Meebo reports this wasn't necessary, but currently cannot consistently reproduce
-            has_evolve: bool = False
-            if arte['evolve_base']:
-                has_evolve = True
-
-                # Average Total Artes over Altered Artes Count across all Party Members
-                if self.random.random() <= 0.6:   # 0.258
-                    r_evolve += 1
-
-                    arte['evolve_base'] = self.random.choice(self.artes_by_char[data['character_ids'][0]])
-
-                    continue_iter: bool = True
-                    iterations: int = 1
-                    while iterations < len(evolve_opportunities):
-
-                        if continue_iter:
-                            _randomize_evolve(arte, data['character_ids'][0], iterations)
-                        else:
-                            arte[f'evolve_condition{iterations}'] = 0
-                            arte[f'evolve_parameter{iterations}'] = 0
-
-                        if continue_iter and self.random.random() > evolve_opportunities[iterations]:
-                            continue_iter = False
-
-                        iterations += 1
-
-                    usage_req: int = self.random.randrange(5, 20)
-                    if self.random.random() <= 0.4: math.ceil(usage_req *
-                                                              (self.random.randrange(10, 100) / 100))
-
-                    arte['learn_condition1'] = 2
-                    arte['learn_parameter1'] = int(arte['id'])
-                    arte['unknown3'] = usage_req
-                else:
-                    arte['unknown3'] = self.random.randrange(5, 20)
-
-            # Randomize Learn Condition
-            if self.random.random() < learn_opportunities[has_evolve + 1]:
-                r_learn += 1
-                continue_iter: bool = True
-                iterations: int = 2 if has_evolve else 1
-                while iterations < len(learn_opportunities):
-                    if continue_iter: _randomize_learn(arte, data['character_ids'][0], iterations)
-                    else:
-                        arte[f"learn_condition{iterations}"] = 0
-                        arte[f"learn_parameter{iterations}"] = 0
-                        arte[f"unknown{iterations + 2}"] = 0
-
-                    if continue_iter and self.random.random() > learn_opportunities[iterations]:
-                        continue_iter = False
-
-                    iterations += 1
-
-                # If Arte has Evolve Conditions from Vanilla, remove them if Learn Condition is randomized
-                if not has_evolve and arte['evolve_base']:
-                    arte['evolve_base'] = 0
-                    for _ in range(1, 5):
-                        arte[f'evolve_condition{_}'] = 0
-                        arte[f'evolve_parameter{_}'] = 0
-
-            new_input[data['entry']] = arte
-
-        print("--- Artes Results -------------------")
-        print(f"Total Artes: {len(patch)}")
-
-        print(f"Randomized: {r_candidates} ({r_candidates / len(patch) * 100:.2f}%)")
-        print(f"Randomized TP: {r_tp} ({r_tp / r_candidates * 100:.2f}%)")
-        print(f"Randomized Cast Time: {r_cast} ({r_cast / r_candidates * 100:.2f}%)")
-        print(f"Randomized Fatal Strike Type: {r_fs} ({r_fs / r_candidates * 100:.2f}%)")
-        print(f"Randomized Evolve Conditions: {r_evolve} ({r_evolve / r_candidates * 100:.2f}%)")
-        print(f"Randomized Learn Conditions: {r_learn} ({r_learn / r_candidates * 100:.2f}%)\n")
-
-        return new_input
-
-    def randomize_skills_input(self, patch):
-        symbol_distribution: list[float] = [0.28, 0.20, 0.27, 0.25]
-
-        print("> Randomizing Skills...")
-        new_input: dict = {}
-
-        r_candidates: int = 0
-        r_sp: int = 0
-        r_lp: int = 0
-        r_sym: int = 0
-        r_sym_w: int = 0
-        for skill in patch:
-            # Randomize Candidacy
-            if self.random.random() <= 0.05:
-                continue
-
-            r_candidates += 1
-            data = self.skills_data_table[skill['id']]
-
-            # Randomize SP Cost
-            if skill['sp_cost'] and self.random.random() <= 0.95:
-                r_sp += 1
-                skill['sp_cost'] = self.random_from_distribution(7.6, 5, 0, 30)
-
-            # Randomize LP
-            if skill['lp_cost']:
-                if self.random.random() <= 0.95:
-                    r_lp += 1
-                    base = self.random_from_distribution(329.16, 226.17, 100, 1600)
-                    skill['lp_cost'] = int(max(int(math.ceil(base / 100.0)) * 10, 10) if base % 100 != 0 else base / 10)
-                else:
-                    skill['lp_cost'] = int(skill['lp_cost'] / 10)
-
-            # Randomize Symbol
-            if self.random.random() <= 0.75:
-                r_sym += 1
-                skill['symbol'] = self.random.choices([_ for _ in range(4)], symbol_distribution)[0]
-
-            # Randomize Symbol Weight
-            if self.random.random() <= 0.75:
-                r_sym_w += 1
-                skill['symbol_weight'] = self.random_from_distribution(3.48, 2.58, 0, 30)
-
-            new_input[data['entry']] = skill
-
-        print("--- Skills Results -------------------")
-        print(f"Total Skills: {len(patch)}")
-
-        print(f"Randomized: {r_candidates} ({r_candidates / len(patch) * 100:.2f}%)")
-        print(f"Randomized SP: {r_sp} ({r_sp / r_candidates * 100:.2f}%)")
-        print(f"Randomized LP: {r_lp} ({r_lp / r_candidates * 100:.2f}%)")
-        print(f"Randomized Symbol: {r_sym} ({r_sym / r_candidates * 100:.2f}%)")
-        print(f"Randomized Symbol Weight: {r_sym_w} ({r_sym_w / r_candidates * 100:.2f}%)\n")
-
-        return new_input
-
-    def randomize_items_input(self, patch):
-        skill_opportunities: list[float] = [0.96, 0.875, 0.61]
-
-        items_data_table: dict = {item['id'] : item for item in self.items_list}
-
-        new_input: dict = {}
-        if 'custom' in patch:
-            new_input['custom'] = patch['custom']
-
-        if 'base' not in patch:
-            return new_input
-
-        print("> Randomizing Items...")
-        new_input['base'] = {}
-
-        r_candidates: int = 0
-        r_price: int = 0
-        r_skills: int = 0
-        for item in patch['base']:
-            # Randomize Candidacy
-            if self.random.random() <= 0.05:
-                continue
-
-            r_candidates += 1
-            data = items_data_table[item['id']]
-
-            characters: list[int] = []
-            for i, character in enumerate(enums.Characters):
-                if data['character_usable'] & character.value > 0:
-                    characters.append(i + 1)
-
-            # Randomize Buy Price
-            if item['buy_price'] and self.random.random() <= 0.95:
-                r_price += 1
-                item['buy_price'] = int(item['buy_price'] * (self.random.randrange(25, 200, 5) / 100))
-
-            # Randomize Weapon Properties
-            ## Main Weapons are Category ID 3, Sub Items are Category ID 4
-            if data['category'] in [3, 4]:
-                valid_skills: list[int] = [*set(skills for char in characters
-                                                for skills in self.skills_by_char[char]
-                                                if char in self.skills_by_char)]
-
-                # Randomize Skills
-                continue_iter: bool = True
-                for i, opp in enumerate(skill_opportunities):
-                    if continue_iter and self.random.random() < opp:
-                        item[f'skill{i+1}'] = random.choice(valid_skills)
-                        item[f'skill{i+1}_lp'] = self.random.randrange(10, 100, 10)
-                    else:
-                        item[f'skill{i + 1}'] = 0
-                        item[f'skill{i + 1}_lp'] = 100
-
-                        continue_iter = False
-
-                    if i == 0:
-                        r_skills += 1
-
-            new_input['base'][data['entry']] = item
-
-        print("--- Items Results -------------------")
-        print(f"Total Items: {len(patch['base'])}")
-
-        print(f"Randomized: {r_candidates} ({r_candidates / len(patch['base']) * 100:.2f}%)")
-        print(f"Randomized Price: {r_price} ({r_price / r_candidates * 100:.2f}%)")
-        print(f"Randomized Skills: {r_skills} ({r_skills / r_candidates * 100:.2f}%)\n")
-
-        return new_input
-
-    def randomize_shops_input(self, patch):
-        new_input: dict = {}
-
-        if 'custom' in patch:
-            new_input['custom'] = patch['custom']
-
-        if 'commons' not in patch and 'uniques' not in patch:
-            return new_input
-
-        def _randomize_item(itm, blacklist, stats_struct) -> int:
-            category: int = self.item_to_category[itm]
-
-            stats_struct['total'] += 1
-            new_item: int = itm
-
-            # Consumables should rarely be randomized, but guarantee randomization if duplicated
-            if category == 2:
-                if itm in blacklist:
-                    candidacy_chance = 2.00
-                    same_category_chance = 2.00
-                else:
-                    candidacy_chance = 0.3
-                    same_category_chance = 0.4
-            else:
-                same_category_chance = 0.25
-                if itm in blacklist:
-                    candidacy_chance = 2.00
-                else:
-                    candidacy_chance = 0.9
-
-            if self.random.random() <= candidacy_chance:
-                stats_struct['candidates'] += 1
-                # Randomize to an item of the same category
-                category_candidates = [*set(self.item_by_category[category]).difference(blacklist)]
-                if category_candidates and self.random.random() <= same_category_chance:
-                    stats_struct['sameCategory'] += 1
-                    new_item = random.choice(category_candidates)
-                # Randomize to any eligible item
-                else:
-                    stats_struct['fullRandom'] += 1
-                    new_item = random.choice([*set(self.common_items).difference(blacklist)])
-
-            return new_item
-
-        print("> Randomizing Shop Items...")
-        stats: dict[str, int] = {
-            'total' : 0,
-            'candidates': 0,
-            'sameCategory': 0,
-            'fullRandom': 0,
-        }
-        items_cache: dict[int, list[int]] = {}
-        new_input['commons'] = []
-        for grouping in patch['commons']:
-            new_grouping: dict[str, list] = grouping
-            already_present: list[int] = items_cache.get(new_grouping['shops'][0], [])
-            new_items = []
-            for item in grouping['items']:
-                # Do not randomize dummy items, Key Items and DLC
-                if item not in self.common_items:
-                    new_items.append(item)
-                    continue
-
-                new_items.append(_randomize_item(item, {*new_items, *already_present}, stats))
-
-            new_grouping['items'] = new_items
-            new_input['commons'].append(new_grouping)
-
-            for ev_shop in new_grouping['shops']:
-                items_cache.setdefault(ev_shop, []).extend(new_items)
-
-        new_input['uniques'] = {}
-        for shop, items in patch['uniques'].items():
-            new_items = []
-            already_present: list[int] = items_cache.get(shop, [])
-            for item in items:
-                # Do not randomize dummy items, Key Items and DLC
-                if item not in self.common_items:
-                    new_items.append(item)
-                    continue
-
-                new_items.append(_randomize_item(item, {*new_items, *already_present}, stats))
-
-            new_input['uniques'][shop] = new_items
-
-        print("--- Shop Items Results -------------------")
-        print(f"Total Shop Items: {stats['total']}")
-
-        print(f"Randomized: {stats['candidates']} ({stats['candidates'] / stats['total'] * 100:.2f}%)")
-        print(f"Randomized by Same Category: "
-              f"{stats['sameCategory']} ({stats['sameCategory'] / stats['candidates'] * 100:.2f}%)")
-        print(f"Randomized against any Item: "
-              f"{stats['fullRandom']} ({stats['fullRandom'] / stats['candidates'] * 100:.2f}%)\n")
-
-        return new_input
-
-    def randomize_chests_input(self, patch):
-        new_input: dict = {}
-
-        gald_id: int = 0xFFFFFFFE
-
-        eligible_items: list[int] = [*self.common_items, gald_id]
-
-        def _randomize_entry(itm, stats_struct) -> dict[str, int]:
-            category: int = self.item_to_category.get(itm['item_id'], 0) if itm['item_id'] != gald_id else -1
-
-            if category != -1 and (category <= 1 or category >= 10): return itm
-            stats_struct['total'] += 1
-
-            new_id: int = itm['item_id']
-            new_amt: int = itm['amount']
-
-            # Consumables should rarely be randomized, but guarantee randomization if duplicated
-            candidacy_chance : float = 0.85
-            same_category_chance : float = 0.2 if not category == -1 else 0.85
-
-            if self.random.random() <= candidacy_chance:
-                stats_struct['candidates'] += 1
-                # Randomize to an item of the same category
-                if self.random.random() <= same_category_chance:
-                    if category != -1:
-                        stats_struct['sameCategory'] += 1
-                        new_id = random.choice(self.item_by_category[category])
-                # Randomize to any eligible item
-                else:
-                    stats_struct['fullRandom'] += 1
-                    new_id = random.choice(eligible_items)
-
-
-            if new_id != gald_id and self.random.random() <= 0.1:
-                stats_struct['amount'] += 1
-                new_amt = self.random.randrange(1, 15)
-            elif new_id == gald_id:
-                stats_struct['gald_amount'] += 1
-                new_amt = _randomize_gald_amount(new_amt)
-
-            new_item: dict = {
-                'item_id': new_id,
-                'amount': new_amt,
+            data: dict = {
+                'skills_data': self.skills_data_table,
             }
 
-            return new_item
+            self.skill_randomizer = SkillRandomizer(self.random, data, {})
+            self.skill_randomizer.randomize()
+            patch_data['skills'] = self.skill_randomizer.fetch()
 
-        def _randomize_gald_amount(base_amount: int) -> int:
-            new_amt: int = base_amount
+        if not targets or 'items' in targets:
+            skills_lp_table: dict = {}
+            if 'skills' in patch_data:
+                skills_lp_table = {sid: v['lp_cost'] for sid,v in patch_data['skills'].items()}
 
-            if self.random.random() <= 0.9:
-                if self.random.random() <= 0.5 and base_amount > 100:
-                    new_amt = math.ceil(new_amt * self.random.randrange(1, 15) / 10)
-                else:
-                    new_amt = math.ceil(new_amt * self.random.randrange(2, 10))
+            data: dict = {
+                'items_list': self.items_list,
+                'skills_lp_table': skills_lp_table,
+                'skills_by_char': self.skills_by_char,
+            }
 
-            return new_amt
+            self.item_randomizer = ItemRandomizer(self.random, data, {})
+            self.item_randomizer.randomize()
+            patch_data['items'] = self.item_randomizer.fetch()
 
-        print("> Randomizing Chest Items...")
-        stats: dict[str, int] = {
-            'total': 0,
-            'candidates': 0,
-            'sameCategory': 0,
-            'fullRandom': 0,
-            'gald_amount': 0,
-            'amount': 0
-        }
-        for area, chests in patch.items():
-            new_input[area] = {}
-            for chest, items in chests.items():
-                new_input[area][chest] = []
-                for item in items:
-                    if item['item_id'] == gald_id or 1 < self.item_to_category.get(item['item_id'], 0) < 10:
-                        new_input[area][chest].append(_randomize_entry(item, stats))
-                    else:
-                        new_input[area][chest].append(item)
+        if not targets or 'shops' in targets:
+            data: dict = {
+                'shop_data': json.load(open(os.path.join(Paths.STATIC_DIR, "shop.json")), object_hook=keys_to_int),
+                'item_to_category': self.item_to_category,
+                'item_by_category': self.item_by_category,
+                'common_items': self.common_items,
+            }
 
-        print("--- Chests Results -------------------")
-        print(f"Total Chest Items: {stats['total']}")
+            self.shop_randomizer = ShopRandomizer(self.random, data, {})
+            self.shop_randomizer.randomize()
+            patch_data['shops'] = self.shop_randomizer.fetch()
 
-        print(f"Randomized: {stats['candidates']} ({stats['candidates'] / stats['total'] * 100:.2f}%)")
-        print(f"Randomized by Same Category: "
-              f"{stats['sameCategory']} ({stats['sameCategory'] / stats['candidates'] * 100:.2f}%)")
-        print(f"Randomized against any Item: "
-              f"{stats['fullRandom']} ({stats['fullRandom'] / stats['candidates'] * 100:.2f}%)")
-        print(f"Randomized Amount: "
-              f"{stats['amount']} ({stats['amount'] / stats['candidates'] * 100:.2f}%)")
-        print(f"Randomized Gald: "
-              f"{stats['gald_amount']} ({stats['gald_amount'] / stats['candidates'] * 100:.2f}%)\n")
+        if not targets or 'chests' in targets:
+            data: dict = {
+                'chest_data': json.load(open(os.path.join(Paths.STATIC_DIR, "chests.json")), object_hook=keys_to_int),
+                'item_to_category': self.item_to_category,
+                'item_by_category': self.item_by_category,
+                'common_items': self.common_items,
+            }
 
-        return new_input
+            self.chest_randomizer = ChestRandomizer(self.random, data, {})
+            self.chest_randomizer.randomize()
+            patch_data['chests'] = self.chest_randomizer.fetch()
 
-    def randomize_search_points(self):
-        def _randomize_item() -> int:
-            if self.random.random() <= 0.7:
-                return random.choice(self.item_by_category[9])
-            else:
-                return random.choice(self.common_items)
+        if not targets or 'search' in targets:
+            data: dict = {
+                'item_to_category': self.item_to_category,
+                'item_by_category': self.item_by_category,
+                'common_items': self.common_items,
+            }
 
-        print("> Randomizing Search Points Items...")
-        new_input: dict = {
-            'guarantee': True,
-            'definitions': [],
-            'contents': [],
-            'items': []
-        }
+            self.search_point_randomizer = SearchPointRandomizer(self.random, data, {})
+            self.search_point_randomizer.randomize()
+            patch_data['search'] = self.search_point_randomizer.fetch()
 
-        r_def_conts: list[int] = []
-        r_cont_itms: list[int] = []
+        with open(output, 'w') as f:
+            json.dump(patch_data, f)
 
-        for _ in range(88):
-            content_range: int = self.random_from_triangular(1, 5)
-            new_input['definitions'].append({
-                "type": self.random.randint(0, 3),
-                "content_range": content_range,
-                "max_use": self.random_from_triangular(1, 5)
-            })
+        if spoil:
+            patch_data: dict = dict(item for item in [*patch_data.items()][4:])
 
-            item_ranges: list[int] = [self.random.randint(1, 5) for _ in range(content_range)]
-            for r in item_ranges:
-                new_input['contents'].append({
-                    "item_range": r,
-                    "chance": self.random_from_triangular(1, 10, "max") * 10
-                })
-
-            for _ in range(sum(item_ranges)):
-                new_input['items'].append({
-                    'id': _randomize_item(),
-                    'count': self.random_from_triangular(1, 15)
-                })
-
-            r_def_conts.append(content_range)
-            r_cont_itms.extend(item_ranges)
-
-        print("--- Search Point Results -------------------")
-        print(f"Total Item Pools: {len(new_input['contents'])}")
-        print(f"Total Items: {len(new_input['items'])}")
-        print(f"Average Item Pools per Search Point: {sum(r_def_conts) / len(r_def_conts):.2f}")
-        print(f"Average Items per Item Pool: {sum(r_cont_itms) / len(r_cont_itms):.2f}\n")
-
-        return new_input
+            spoiler = PatchSpoiler()
+            spoiler.write_spreadsheet(patch_data, self.report_output)
 
 
 if __name__ == "__main__":
+    VALID_TARGETS: list[str] = [
+        'artes',
+        'skills',
+        'items',
+        'shops',
+        'chests',
+        'search'
+    ]
+
     target_list: list[str] = []
     create_spoiler: bool = False
 
@@ -1026,7 +794,7 @@ if __name__ == "__main__":
 
     start: float = time.time()
 
-    template = InputTemplate(target_list)
+    template = BasicRandomizerProcedure(target_list)
     template.generate(target_list, create_spoiler)
 
     total: float = time.time() - start

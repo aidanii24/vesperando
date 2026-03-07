@@ -1,19 +1,9 @@
-import enum
 import json
 import csv
 import os
 
+from vesperando_core.res.enums import Characters
 
-class Characters(enum.Enum):
-    YURI = 1
-    ESTELLE = 2
-    KAROL = 4
-    RITA = 8
-    RAVEN = 16
-    JUDITH = 32
-    REPEDE = 64
-    FLYNN = 128
-    PATTY = 256
 
 def strip_formatting(string: str) -> str:
     return string.replace("\n", "").replace("\t", "").replace("\r", "")
@@ -223,7 +213,7 @@ def generate_character_equips_table():
         characters: list[str] = []
         skills: set[str] = {item[f'skill{_}'] for _ in range(1, 4)}
         for i, index in enumerate(Characters):
-            if item['character_usable'] & index.value > 0:
+            if item['character_usable'] & index.bitflag() > 0:
                 characters.append(index.value)
 
                 skills_by_char.setdefault(i + 1, set()).update(skills)
@@ -499,6 +489,93 @@ def generate_shops_similarities():
     with open(output, "w+") as f:
         json.dump(data, f, indent=4)
 
+def generate_game_data_tables():
+    input_path = os.path.join("artifacts", "old")
+    artes_data = json.load(open(os.path.join(input_path, "artes.json")))
+    skills_data = json.load(open(os.path.join(input_path, "skills.json")))
+    items_data = json.load(open(os.path.join(input_path, "item.json")))
+    chests_data = json.load(open(os.path.join(input_path, "chests.json")))
+    search_data = json.load(open(os.path.join(input_path, "search_points.json")))
+    shop_data = json.load(open(os.path.join(input_path, "shop_items.json")))
+
+    chara_by_skills: dict = {}
+    for item in items_data['items']:
+
+        users_flags: int = item.get('character_usable', 0)
+        if not users_flags: continue
+        for i, c in enumerate(Characters):
+            if not users_flags & c.bitflag(): continue
+
+            for n in range(1, 4):
+                skill_id: int = item.get(f'skill{n}', 0)
+                if not skill_id: continue
+
+                chara_by_skills.setdefault(skill_id, set()).add(c.value)
+
+    skills: dict = {}
+    for skill in skills_data['skills']:
+        skills[skill['id']] = {
+            'users': [*chara_by_skills.get(skill['id'], [])],
+            'properties': skill
+        }
+
+    skills_data['skills'] = skills
+
+    game_data: dict = {
+        'artes': {
+            'entries': artes_data['artes'],
+            'strings': artes_data['strings'],
+        },
+        'skills': {
+            'entries': skills_data['skills'],
+            'strings': skills_data['strings'],
+        },
+        'items': items_data['items'],
+        'chests': chests_data,
+        'search': search_data,
+        'shops': shop_data,
+    }
+
+    output_path = os.path.join("artifacts", "static")
+    for k, v in game_data.items():
+        with open(os.path.join(output_path, f"{k}.json"), "w+") as f:
+            json.dump(v, f)
+            f.flush()
+            f.close()
+
+def generate_metadata_tables():
+    input_path = os.path.join("artifacts", "old")
+    strings_data = json.load(open(os.path.join(input_path, "strings.json")), object_hook=keys_to_int)
+    artes_data = json.load(open(os.path.join(input_path, "artes.json")))
+    skills_data = json.load(open(os.path.join(input_path, "skills.json")))
+    items_data = json.load(open(os.path.join(input_path, "item.json")))
+    map_names = json.load(open(os.path.join(input_path, "named_npc_maps.json")))
+    search_names = json.load(open(os.path.join(input_path, "named_search_points.json")))
+    shop_data = json.load(open(os.path.join(input_path, "named_shops.json")))
+
+    artes = {arte['id']: strings_data.get(arte['name_string_key']) for arte in artes_data['artes']
+             if arte['name_string_key'] in strings_data}
+
+    skills = {skill['id']: strings_data.get(skill['name_string_key']) for skill in skills_data['skills']
+             if skill['name_string_key'] in strings_data}
+    items = {item['id']: strings_data.get(item['name_string_key']) for item in items_data['items']
+             if item['name_string_key'] in strings_data}
+
+    metadata: dict = {
+        'artes': artes,
+        'skills': skills,
+        'items': items,
+        'maps': map_names,
+        'search': search_names,
+        'shops': shop_data,
+    }
+
+    metadata_path: str = os.path.join("artifacts", "static", "metadata.json")
+    with open(metadata_path, "w+") as f:
+        json.dump(metadata, f)
+        f.flush()
+        f.close()
+
 class DataTableGenerator:
     strings: dict = {}
 
@@ -513,4 +590,5 @@ class DataTableGenerator:
 
 
 if __name__ == "__main__":
-    generate_artes_table()
+    generate_game_data_tables()
+    generate_metadata_tables()

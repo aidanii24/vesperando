@@ -16,7 +16,7 @@ def cli():
 @click.argument("targets", nargs=-1,
                 type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
 def generate(options, name, seed, spoiler, targets):
-    template = randomizer.InputTemplate(targets, seed=seed)
+    template = randomizer.BasicRandomizerProcedure(targets, seed=seed)
 
 @cli.command(help="Patch the game with a randomizer patch file")
 @click.option("--threads", "-t", type=int, default=8, help="Maximum number of threads to use")

@@ -26,7 +26,7 @@ class GamePatchProcedure:
 
     def __init__(self, patch_data: str, max_threads: int = 4, apply_immediately: bool = False,
                  clean_build: bool = False):
-        self.config = configs.get_config()
+        self.config = configs.Settings.get()
         self.patch_data = json.load(open(patch_data), object_hook=utils.keys_to_int)
 
         self.identifier = f"{self.patch_data['player']}-{self.patch_data['created']}"
@@ -219,7 +219,7 @@ if __name__ == '__main__':
         app.patch()
         sys.exit(0)
 
-    game_dir: str = configs.get_config().get('paths', {}).get('game', '')
+    game_dir: str = configs.Settings.get().get('paths', {}).get('game', '')
     if mode == Mode.RESTORE:
         packer.restore_backup(game_dir)
     elif mode == Mode.SET:

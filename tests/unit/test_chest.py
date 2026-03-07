@@ -129,9 +129,9 @@ def generate_chest_table(game_maps: list[str]):
             writer.writerow([game_map])
             for chest, items in contents.items():
                 item_list: list = items["items"]
-                writer.writerow([chest, item_list[0]['amount'], item_list[0]['item_id']])
+                writer.writerow([chest, items['chest_type']])
                 if len(items) > 1:
-                    writer.writerows([["", item['amount'], item['item_id']] for item in item_list[1:]])
+                    writer.writerows([["", item['amount'], item['item_id']] for item in item_list])
 
     # output: str = os.path.join("..", "helper", "artifacts", "chests.txt")
     # with open(output, "w+") as f:
@@ -165,8 +165,8 @@ def get_chests(target) -> dict:
         for found_chest in chests:
             chest_data: dict = {
                 'chest_type': found_chest.chest_type,
-                'scenario_begin': found_chest.scenario_begin,
-                'scenario_end': found_chest.scenario_end,
+                # 'scenario_begin': found_chest.scenario_begin,
+                # 'scenario_end': found_chest.scenario_end,
                 'items': []
             }
 
