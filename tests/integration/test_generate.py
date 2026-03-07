@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-import shutil
 import os
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
@@ -8,7 +7,16 @@ from vesperando_core import randomizer
 
 
 if __name__ == "__main__":
-    shutil.rmtree(os.path.join(".", "patches"), ignore_errors=True)
+    ptd = os.path.join(os.getenv('EXEC_DIR', os.getcwd()), "patches")
+    for content in os.listdir(ptd):
+        path = os.path.join(ptd, content)
+        if os.path.isfile(path):
+            os.remove(path)
 
-    template = randomizer.BasicRandomizerProcedure([])
-    template.generate([], True)
+    targets: list[str] = ['artes']
+
+    print("[INTEGRATION TEST] Generating Patches...")
+    print("\t-| Targets: ", targets if targets else "ALL")
+    template = randomizer.BasicRandomizerProcedure(targets)
+    template.generate(targets, True)
+    print("[TEST] Done.")

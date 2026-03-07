@@ -155,7 +155,7 @@ class ArteRandomizer(BaseRandomizer):
                     cap_level: int = self.random_from_triangular(5, 100)
                     parameter = self.random.randint(1, cap_level)
                 elif condition == 2:
-                    parameter: int = self.random.choice(self.artes_by_char[user])
+                    parameter: int = self.random.choice(self.artes_by_char[user] - arte['id'])
                     ranges = sorted([int(self.random_from_triangular(50, 100)),
                                     int(self.random_from_triangular(50, 200))])
                     meta = max(self.random_from_triangular(*ranges) // 5 * 5, 5)
@@ -250,8 +250,9 @@ class ItemRandomizer(BaseRandomizer):
             'Skills': 0,
         }
 
+        candidates = {iid: item for iid, item in self.items_data.items() if iid > 0}
         self.candidates = {
-            'base': schema.Items.extract(self.items_data)
+            'base': schema.Items.extract(candidates)
         }
 
     def randomize(self):

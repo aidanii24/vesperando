@@ -22,8 +22,7 @@ class GamePatcher:
         original_data_file: str = os.path.join(self.data_dir, "artes.json")
         assert os.path.isfile(original_data_file), f"Expected file {original_data_file}, but it does not exist."
 
-        patches = {int(key): value for key, value in arte_patches.items()}
-        if not patches:
+        if not arte_patches:
             print("Expected Patch data for target 'artes`, but none were found! Abandoning patching for the target.")
             return
 
@@ -33,13 +32,16 @@ class GamePatcher:
         total_patched: int = 0
         patched_data: dict = {}
 
+        candidates: set[int] = set()
         for arte in original_data:
-            if arte['entry'] in patches:
-                patched_data[arte['entry']] = {**arte, **patches[arte['entry']]}
+            if arte['id'] in arte_patches:
+                patched_data[arte['entry']] = {**arte, **arte_patches[arte['id']]}
                 total_patched += 1
 
+                candidates.add(arte['entry'])
+
             total_searched += 1
-            if total_patched >= len(patches):
+            if total_patched >= len(arte_patches):
                 break
 
         header_size: int = ctypes.sizeof(gtypes.ArtesHeader)
@@ -57,7 +59,7 @@ class GamePatcher:
                 next_entry: int = int.from_bytes(mm.read(4), byteorder="little")
                 arte_entry: int = int.from_bytes(mm.read(4), byteorder="little")
 
-                if arte_entry in patched_data:
+                if arte_entry in candidates:
                     mm.seek(-8, 1)
 
                     arte_data: gtypes.ArtesEntry = gtypes.ArtesEntry(*patched_data[arte_entry].values())
@@ -126,14 +128,14 @@ class GamePatcher:
         original_data_file: str = os.path.join(self.data_dir, "items.json")
         assert os.path.isfile(original_data_file), f"Expected file {original_data_file}, but it does not exist."
 
-        original_data: dict = json.load(open(original_data_file))
+        original_data: dict = json.load(open(original_data_file), object_hook=keys_to_int)
 
         patched_data: dict = {}
-        for entry, patch in sorted(patches.items()):
-            assert entry == original_data[entry]['entry'], \
-                f"There was an error resolving patch data for Item Entry {entry}"
+        for iid, patch in sorted(patches.items()):
+            assert iid == original_data[iid]['id'], \
+                f"There was an error resolving patch data for Item Entry {iid}"
 
-            patched_data[entry] = {**original_data[entry], **patch}
+            patched_data[iid] = {**original_data[iid], **patch}
 
         entry_size: int = ctypes.sizeof(gtypes.ItemEntry)
 
@@ -141,8 +143,8 @@ class GamePatcher:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
             mm.seek(0)
 
-            for entry, patch in patched_data.items():
-                mm.seek(entry * entry_size)
+            for iid, patch in patched_data.items():
+                mm.seek(patch['entry'] * entry_size)
 
                 items_data = gtypes.ItemEntry(**patch)
                 mm.write(bytearray(items_data))
@@ -167,7 +169,7 @@ class GamePatcher:
             self.patch_shops_precise(target, patches)
 
     def patch_shops_precise(self, target_file: str, patches: dict):
-        original_data_file: str = os.path.join(self.data_dir, "shop_items.json")
+        original_data_file: str = os.path.join(self.data_dir, "shop.json")
         assert os.path.isfile(original_data_file), f"Expected file {original_data_file}, but it does not exist."
 
         original_data: dict = json.load(open(original_data_file), object_hook=utils.keys_to_int)
