@@ -5,6 +5,7 @@ import os
 
 from vesperando_core import utils, game_types as gtypes
 from vesperando_core.conf.settings import Paths
+from vesperando_core.utils import keys_to_int
 
 
 class GamePatcher:
@@ -26,7 +27,7 @@ class GamePatcher:
             print("Expected Patch data for target 'artes`, but none were found! Abandoning patching for the target.")
             return
 
-        original_data: dict = json.load(open(original_data_file))['artes']
+        original_data: dict = json.load(open(original_data_file))['entries']
 
         total_searched: int = 0
         total_patched: int = 0
@@ -84,15 +85,14 @@ class GamePatcher:
             print("Expected Patch data for target 'skills`, but none were found! Abandoning patching for the target.")
             return
 
-        original_data: dict = json.load(open(original_data_file))['skills']
+        original_data: dict = json.load(open(original_data_file), object_hook=keys_to_int)['entries']
 
         patched_data: dict = {}
-        for entry, patch in sorted(patches.items()):
-            assert entry < len(original_data), f"Skil Entry {entry} is not a recognized skill"
-            assert entry == original_data[entry]['entry'], \
-                f"There was an error resolving the patch for Skill Entry {entry}"
+        for sid, patch in sorted(patches.items()):
+            assert sid == original_data[sid]['properties']['id'], \
+                f"There was an error resolving the patch for Skill Entry {sid}"
 
-            patched_data[entry] = {**original_data[entry], **patch}
+            patched_data[sid] = {**original_data[sid]['properties'], **patch}
 
         header_size: int = ctypes.sizeof(gtypes.SkillsHeader)
         entry_size: int = ctypes.sizeof(gtypes.SkillsEntry)
@@ -123,14 +123,13 @@ class GamePatcher:
     def patch_items_base(self, target_file: str, item_patches: dict):
         patches: dict[int, dict] = {int(key): value for key, value in item_patches.items()}
 
-        original_data_file: str = os.path.join(self.data_dir, "item.json")
+        original_data_file: str = os.path.join(self.data_dir, "items.json")
         assert os.path.isfile(original_data_file), f"Expected file {original_data_file}, but it does not exist."
 
-        original_data: dict = json.load(open(original_data_file))["items"]
+        original_data: dict = json.load(open(original_data_file))
 
         patched_data: dict = {}
         for entry, patch in sorted(patches.items()):
-            assert entry < len(original_data), f"Item Entry {entry} is not a recognized item"
             assert entry == original_data[entry]['entry'], \
                 f"There was an error resolving patch data for Item Entry {entry}"
 

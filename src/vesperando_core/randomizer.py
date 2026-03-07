@@ -112,14 +112,14 @@ class ArteRandomizer(BaseRandomizer):
     def randomize_evolutions(self, arte, user):
         self.statistics['Evolutions'] += 1
 
-        arte['evolve_base'] = self.random.choice(self.artes_by_char[user])
+        arte['evolve_base'] = self.random.choice(self.artes_by_char[user] - arte['id'])
 
         continue_iter: bool = True
         iterations: int = 1
         while iterations < len(Weights.ARTE_EVOLVE_OPPORTUNITIES):
             if continue_iter:
                 arte[f'evolve_condition{iterations}'] = 3
-                arte[f'evolve_parameter{iterations}'] = self.random.choice(self.skills_by_char[user])
+                arte[f'evolve_parameter{iterations}'] = self.random.choice(self.skills_by_char[user] - arte['id'])
             else:
                 arte[f'evolve_condition{iterations}'] = 0
                 arte[f'evolve_parameter{iterations}'] = 0
@@ -240,10 +240,9 @@ class SkillRandomizer(BaseRandomizer):
 class ItemRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
         self.random = random_obj
-        self.items_list = data['items_list']
+        self.items_data = data['items_data']
         self.skills_lp_table = data['skills_lp_table']
         self.skills_by_char = data['skills_by_char']
-        self.items_data_table: dict = {item['id'] : item for item in self.items_list}
 
         self.statistics: dict = {
             'Items': 0,
@@ -252,7 +251,7 @@ class ItemRandomizer(BaseRandomizer):
         }
 
         self.candidates = {
-            'base': schema.Items.extract(self.items_data_table)
+            'base': schema.Items.extract(self.items_data)
         }
 
     def randomize(self):
@@ -263,7 +262,7 @@ class ItemRandomizer(BaseRandomizer):
                 continue
 
             self.statistics['Items'] += 1
-            data: dict = self.items_data_table[iid]
+            data: dict = self.items_data[iid]
 
             # Get Characters that equip this item
             users: list[int] = []
@@ -467,7 +466,7 @@ class ChestRandomizer(BaseRandomizer):
             else:
                 self.statistics['Full Shuffle'] += 1
                 new_item = random.choice(self.eligible_items)
-                new_category = self.item_to_category[new_item]
+                new_category = self.item_to_category.get(new_item, -1)
 
         is_new_item_abundant: bool = enums.ItemCategory.is_abundant(new_category)
 
@@ -572,7 +571,7 @@ class BasicRandomizerProcedure:
     artes_by_char: dict[int, list[int]]
     skills_by_char: dict[int, list[int]]
 
-    items_list: dict
+    items_data_table: dict
     item_to_category: dict
     item_by_category: dict
     common_items: tuple # Any valid non-key and non-DLC item
@@ -653,13 +652,13 @@ class BasicRandomizerProcedure:
         self.skills_by_char = skills_by_char
 
     def load_items_data(self, map_categories: bool = False):
-        self.items_list = json.load(open(os.path.join(Paths.STATIC_DIR, "items.json")))
+        self.items_data_table = json.load(open(os.path.join(Paths.STATIC_DIR, "items.json")), object_hook=keys_to_int)
 
         self.item_by_category = {}
         self.item_to_category = {}
         self.common_items = tuple()
 
-        for item in self.items_list:
+        for iid, item in self.items_data_table.items():
             self.item_by_category.setdefault(item['category'], []).append(item['id'])
 
             if not map_categories: continue
@@ -708,7 +707,7 @@ class BasicRandomizerProcedure:
                 skills_lp_table = {sid: v['lp_cost'] for sid,v in patch_data['skills'].items()}
 
             data: dict = {
-                'items_list': self.items_list,
+                'items_data': self.items_data_table,
                 'skills_lp_table': skills_lp_table,
                 'skills_by_char': self.skills_by_char,
             }

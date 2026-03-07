@@ -498,8 +498,10 @@ def generate_game_data_tables():
     search_data = json.load(open(os.path.join(input_path, "search_points.json")))
     shop_data = json.load(open(os.path.join(input_path, "shop_items.json")))
 
+    items_table: dict = {}
     chara_by_skills: dict = {}
     for item in items_data['items']:
+        items_table[item['id']] = item
 
         users_flags: int = item.get('character_usable', 0)
         if not users_flags: continue
@@ -530,7 +532,7 @@ def generate_game_data_tables():
             'entries': skills_data['skills'],
             'strings': skills_data['strings'],
         },
-        'items': items_data['items'],
+        'items': items_table,
         'chests': chests_data,
         'search': search_data,
         'shops': shop_data,

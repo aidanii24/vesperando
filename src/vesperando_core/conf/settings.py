@@ -2,12 +2,12 @@ from dataclasses import dataclass
 import os
 import sys
 
-
 IS_EXEC: bool = hasattr(sys, '_MEIPASS')
+
 
 @dataclass(frozen=True)
 class Paths:
-    EXEC_DIR = os.getcwd() if not IS_EXEC else sys._MEIPASS
+    EXEC_DIR = sys._MEIPASS if IS_EXEC else os.getenv('EXEC_DIR', os.getcwd())
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) if not IS_EXEC else sys._MEIPASS
     STATIC_DIR = os.path.join(BASE_DIR, 'static')
 

@@ -1,5 +1,8 @@
+from dotenv import load_dotenv
 import shutil
 import os
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
 from vesperando_core import randomizer
 
