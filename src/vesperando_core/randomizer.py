@@ -303,11 +303,14 @@ class ItemRandomizer(BaseRandomizer):
                         item[f'skill{i + 1}'] = skill
 
                         if skill in self.skills_lp_table:
-                            item[f'skill{i + 1}_lp'] = self.skills_lp_table[skill]
+                            base = self.skills_lp_table[skill]
+                            mod = self.random_from_triangular(self.random_from_triangular(25, 500),
+                                                              self.random_from_triangular(25, 150))
+                            item[f'skill{i + 1}_lp'] = max(min(base * mod * 0.01 // 5 * 5, 1600), 25)
                         else:
-                            item[f'skill{i + 1}_lp'] = int(self.random_from_distribution(Weights.SKILL_LP_MU,
-                                                                                         Weights.SKILL_LP_SIGMA,
-                                                                                         100, 1600))
+                            base = int(self.random_from_distribution(Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,
+                                                                     1, 16))
+                            item[f'skill{i + 1}_lp'] = base * 10
 
                         skills_candidates.discard(skill)
                         for u in users:
@@ -336,7 +339,15 @@ class ShopRandomizer(BaseRandomizer):
             'Same Category': 0
         }
 
-        self.candidates = deepcopy(self.shop_data['items'])
+        blacklisted: set[int] = {27, 28, 29, 34, 36, 39}
+        candidates = deepcopy(self.shop_data['items'])
+        candidates['commons'] = [group for group in candidates['commons']
+                                 if not (blacklisted.intersection(group.get("shops", [])))]
+
+        candidates['uniques'] = {shop: items for shop, items in candidates['uniques'].items()
+                                 if shop not in blacklisted}
+
+        self.candidates = deepcopy(candidates)
 
     def randomize(self):
         items_cache: dict[int, set[int]] = {}
@@ -346,13 +357,14 @@ class ShopRandomizer(BaseRandomizer):
             new_items: set[int] = set()
             for item in shop_group['items']:
                 # Do not randomize dummy items, Key Items and DLC
-                if not enums.ItemCategory.is_common(self.item_to_category[item]):
-                    new_items.add(item)
-                    continue
 
-                new_items.add(self.randomize_item(item, set.union(placed, new_items)))
+                # if not enums.ItemCategory.is_common(self.item_to_category[item]):
+                new_items.add(item)
+                continue
 
-            shop_group['items'] = [*new_items]
+                # new_items.add(self.randomize_item(item, set.union(placed, new_items)))
+
+            shop_group['items'] = sorted(new_items)
             for evolution in shop_group['shops']:
                 items_cache.setdefault(evolution, set()).update(new_items)
 
@@ -368,7 +380,7 @@ class ShopRandomizer(BaseRandomizer):
 
                 new_items.add(self.randomize_item(item, set.union(placed, new_items)))
 
-            self.candidates['uniques'][shop] = [*new_items]
+            self.candidates['uniques'][shop] = sorted(new_items)
 
     def randomize_item(self, item: int, blacklist: set[int]):
         self.statistics['Items'] += 1
@@ -753,7 +765,7 @@ class BasicRandomizerProcedure:
             patch_data['search'] = self.search_point_randomizer.fetch()
 
         with open(output, 'w') as f:
-            json.dump(patch_data, f)
+            json.dump(patch_data, f, indent=4)
 
         if spoil:
             patch_data: dict = dict(item for item in [*patch_data.items()][4:])

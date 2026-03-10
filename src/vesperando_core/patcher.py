@@ -93,8 +93,8 @@ class GamePatcher:
         for sid, patch in sorted(patches.items()):
             assert sid == original_data[sid]['properties']['id'], \
                 f"There was an error resolving the patch for Skill Entry {sid}"
-
-            patched_data[sid] = {**original_data[sid]['properties'], **patch}
+            original_properties: dict = original_data[sid]['properties']
+            patched_data[original_properties['entry']] = {**original_properties, **patch}
 
         header_size: int = ctypes.sizeof(gtypes.SkillsHeader)
         entry_size: int = ctypes.sizeof(gtypes.SkillsEntry)
@@ -131,11 +131,11 @@ class GamePatcher:
         original_data: dict = json.load(open(original_data_file), object_hook=keys_to_int)
 
         patched_data: dict = {}
-        for iid, patch in sorted(patches.items()):
-            assert iid == original_data[iid]['id'], \
-                f"There was an error resolving patch data for Item Entry {iid}"
+        for entry, patch in sorted(patches.items()):
+            assert entry == original_data[entry]['id'], \
+                f"There was an error resolving patch data for Item ID {entry}"
 
-            patched_data[iid] = {**original_data[iid], **patch}
+            patched_data[original_data[entry]['entry']] = {**original_data[entry], **patch}
 
         entry_size: int = ctypes.sizeof(gtypes.ItemEntry)
 
@@ -143,8 +143,8 @@ class GamePatcher:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
             mm.seek(0)
 
-            for iid, patch in patched_data.items():
-                mm.seek(patch['entry'] * entry_size)
+            for entry, patch in patched_data.items():
+                mm.seek(entry * entry_size)
 
                 items_data = gtypes.ItemEntry(**patch)
                 mm.write(bytearray(items_data))

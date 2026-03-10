@@ -13,7 +13,7 @@ if __name__ == "__main__":
         if os.path.isfile(path):
             os.remove(path)
 
-    targets: list[str] = ['artes']
+    targets: list[str] = ['shops']
 
     print("[INTEGRATION TEST] Generating Patches...")
     print("\t-| Targets: ", targets if targets else "ALL")
