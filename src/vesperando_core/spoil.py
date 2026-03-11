@@ -199,8 +199,7 @@ class PatchSpoiler:
         for area, chests in sorted(patch.items()):
             report_list.append([self.map_name_table.get(area, area)])
             for chest, details in chests.items():
-                report_list.append([(self.map_name_table.get(chest, chest)),
-                                    enums.ChestType(details['chest_type']).name])
+                report_list.append([(self.map_name_table.get(chest, chest))])
                 for content in details['items']:
                     report_list.append(["", self.resolve_chest_item_name(content['item_id']), content['amount']])
 

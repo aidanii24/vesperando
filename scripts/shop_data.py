@@ -101,6 +101,8 @@ def to_json():
 
         mm.close()
 
+    if not os.path.isdir(os.path.dirname(manifest)):
+        os.makedirs(os.path.dirname(manifest))
     with open(manifest, "w+") as f:
         json.dump(item_entries, f, cls=VesperiaStructureEncoder, indent=4)
 

@@ -11,6 +11,7 @@
 /output/
 config.json
 config.y[a]ml
+.env
 
 # Binaries
 *.so

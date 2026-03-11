@@ -8,10 +8,11 @@ from vesperando_core import randomizer
 
 if __name__ == "__main__":
     ptd = os.path.join(os.getenv('EXEC_DIR', os.getcwd()), "patches")
-    for content in os.listdir(ptd):
-        path = os.path.join(ptd, content)
-        if os.path.isfile(path):
-            os.remove(path)
+    if os.path.isdir(ptd):
+        for content in os.listdir(ptd):
+            path = os.path.join(ptd, content)
+            if os.path.isfile(path):
+                os.remove(path)
 
     targets: list[str] = ['chests']
 

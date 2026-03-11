@@ -438,7 +438,7 @@ class ChestRandomizer(BaseRandomizer):
         candidates = deepcopy(self.chest_data)
         for area, data in candidates.items():
             for chest, properties in data.items():
-                candidates[area] = {'items': properties['items']}
+                candidates[area][chest] = {'items': properties['items']}
 
         self.candidates = deepcopy(candidates)
 
