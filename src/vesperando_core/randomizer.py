@@ -339,7 +339,7 @@ class ShopRandomizer(BaseRandomizer):
             'Same Category': 0
         }
 
-        blacklisted: set[int] = {27, 28, 29, 34, 36, 39}
+        blacklisted: set[int] = set(self.shop_data['missables'])
         candidates = deepcopy(self.shop_data['items'])
         candidates['commons'] = [group for group in candidates['commons']
                                  if not (blacklisted.intersection(group.get("shops", [])))]
@@ -357,12 +357,11 @@ class ShopRandomizer(BaseRandomizer):
             new_items: set[int] = set()
             for item in shop_group['items']:
                 # Do not randomize dummy items, Key Items and DLC
+                if not enums.ItemCategory.is_common(self.item_to_category[item]):
+                    new_items.add(item)
+                    continue
 
-                # if not enums.ItemCategory.is_common(self.item_to_category[item]):
-                new_items.add(item)
-                continue
-
-                # new_items.add(self.randomize_item(item, set.union(placed, new_items)))
+                new_items.add(self.randomize_item(item, set.union(placed, new_items)))
 
             shop_group['items'] = sorted(new_items)
             for evolution in shop_group['shops']:
@@ -765,7 +764,7 @@ class BasicRandomizerProcedure:
             patch_data['search'] = self.search_point_randomizer.fetch()
 
         with open(output, 'w') as f:
-            json.dump(patch_data, f, indent=4)
+            json.dump(patch_data, f)
 
         if spoil:
             patch_data: dict = dict(item for item in [*patch_data.items()][4:])
