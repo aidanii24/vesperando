@@ -435,17 +435,16 @@ class ChestRandomizer(BaseRandomizer):
             'Gald Amount': 0,
         }
 
-        self.candidates = deepcopy(self.chest_data)
+        candidates = deepcopy(self.chest_data)
+        for area, data in candidates.items():
+            for chest, properties in data.items():
+                candidates[area] = {'items': properties['items']}
+
+        self.candidates = deepcopy(candidates)
 
     def randomize(self):
-        chest_types: list[int] = [c.value for c in enums.ChestType]
-
         for area, chests in self.candidates.items():
             for chest, details in chests.items():
-                # Type
-                if self.random.random() <= Weights.CHEST_TYPE:
-                    self.candidates[area][chest]['chest_type'] = self.random.choice(chest_types)
-
                 # Items
                 new_items: list[dict] = []
                 for item in details['items']:

@@ -219,7 +219,7 @@ class GamePatcher:
             mm.close()
 
     def patch_chests(self, target_file: str, patches: dict):
-        path: str = os.path.join(self.build_dir, "maps", target_file, "0004.tlzc")
+        path: str = os.path.join(self.build_dir, "maps", target_file, "0004.dec")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
         header_size: int = ctypes.sizeof(gtypes.ChestHeader)
@@ -248,7 +248,7 @@ class GamePatcher:
             for chest in chest_entries:
                 if chest['chest_id'] in patches:
                     mm.seek(position)
-                    for i, item in enumerate(patches[chest['chest_id']]):
+                    for i, item in enumerate(patches[chest['chest_id']]['items']):
                         item = gtypes.ChestItemEntry(*item.values())
                         mm.write(bytearray(item))
 
