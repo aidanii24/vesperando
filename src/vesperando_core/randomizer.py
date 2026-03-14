@@ -112,14 +112,14 @@ class ArteRandomizer(BaseRandomizer):
     def randomize_evolutions(self, arte, user):
         self.statistics['Evolutions'] += 1
 
-        arte['evolve_base'] = self.random.choice(self.artes_by_char[user] - arte['id'])
+        arte['evolve_base'] = self.random.choice([a for a in self.artes_by_char[user] if a != arte['id']])
 
         continue_iter: bool = True
         iterations: int = 1
         while iterations < len(Weights.ARTE_EVOLVE_OPPORTUNITIES):
             if continue_iter:
                 arte[f'evolve_condition{iterations}'] = 3
-                arte[f'evolve_parameter{iterations}'] = self.random.choice(self.skills_by_char[user] - arte['id'])
+                arte[f'evolve_parameter{iterations}'] = self.random.choice(self.skills_by_char[user])
             else:
                 arte[f'evolve_condition{iterations}'] = 0
                 arte[f'evolve_parameter{iterations}'] = 0
@@ -155,7 +155,7 @@ class ArteRandomizer(BaseRandomizer):
                     cap_level: int = self.random_from_triangular(5, 100)
                     parameter = self.random.randint(1, cap_level)
                 elif condition == 2:
-                    parameter: int = self.random.choice(self.artes_by_char[user] - arte['id'])
+                    parameter: int = self.random.choice([a for a in self.artes_by_char[user] if a != arte['id']])
                     ranges = sorted([int(self.random_from_triangular(50, 100)),
                                     int(self.random_from_triangular(50, 200))])
                     meta = max(self.random_from_triangular(*ranges) // 5 * 5, 5)
@@ -304,8 +304,9 @@ class ItemRandomizer(BaseRandomizer):
 
                         if skill in self.skills_lp_table:
                             base = self.skills_lp_table[skill]
-                            mod = self.random_from_triangular(self.random_from_triangular(25, 500),
-                                                              self.random_from_triangular(25, 150))
+                            mod_range = sorted([self.random_from_triangular(25, 500),
+                                               self.random_from_triangular(25, 150)])
+                            mod = self.random_from_triangular(*mod_range)
                             item[f'skill{i + 1}_lp'] = max(min(base * mod * 0.01 // 5 * 5, 1600), 25)
                         else:
                             base = int(self.random_from_distribution(Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,

@@ -15,7 +15,7 @@ if __name__ == "__main__":
             if os.path.isfile(path):
                 os.remove(path)
 
-    targets: list[str] = ['search']
+    targets: list[str] = []
 
     print("[INTEGRATION TEST] Generating Patches...")
     print("\t-| Targets: ", targets if targets else "ALL")
