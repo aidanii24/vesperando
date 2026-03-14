@@ -616,9 +616,8 @@ class BasicRandomizerProcedure:
             self.load_skills_data()
 
         item_dependents: set[str] = set(targets).intersection({'items', 'shops', 'chests', 'search'})
-        is_search_only: bool = len(item_dependents) == 1 and 'search' in item_dependents
         if not targets or item_dependents:
-            self.load_items_data(not is_search_only)
+            self.load_items_data()
 
         if not os.path.isdir(Paths.PATCHES):
             os.makedirs(Paths.PATCHES)
@@ -662,7 +661,7 @@ class BasicRandomizerProcedure:
 
         self.skills_by_char = skills_by_char
 
-    def load_items_data(self, map_categories: bool = False):
+    def load_items_data(self):
         self.items_data_table = json.load(open(os.path.join(Paths.STATIC_DIR, "items.json")), object_hook=keys_to_int)
 
         self.item_by_category = {}
@@ -671,14 +670,11 @@ class BasicRandomizerProcedure:
 
         for iid, item in self.items_data_table.items():
             self.item_by_category.setdefault(item['category'], []).append(item['id'])
-
-            if not map_categories: continue
             self.item_to_category[item['id']] = item['category']
 
-        if map_categories:
-            self.common_items = tuple([item for category, items in self.item_by_category.items()
-                                       for item in items
-                                       if enums.ItemCategory.is_common(category)])
+        self.common_items = tuple([item for category, items in self.item_by_category.items()
+                                   for item in items
+                                   if enums.ItemCategory.is_common(category)])
 
     def generate(self, targets: list, spoil: bool = False):
         output: str = self.patch_output
