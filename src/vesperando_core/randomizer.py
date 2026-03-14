@@ -275,7 +275,10 @@ class ItemRandomizer(BaseRandomizer):
             if item['buy_price'] and self.random.random() <= 0.95:
                 self.statistics['Prices'] += 1
                 base = int(item['buy_price'] * self.random_from_triangular(25, 200) / 100)
-                item['buy_price'] = base // 10 * 10
+                item['buy_price'] = base // 5 * 5
+            else:
+                base = self.random_from_triangular(25, 1000000)
+                item['buy_price'] = base // 5 * 5
 
             # Weapon Properties
             if enums.ItemCategory.is_weapon(data['category']):
@@ -307,11 +310,11 @@ class ItemRandomizer(BaseRandomizer):
                             mod_range = sorted([self.random_from_triangular(25, 500),
                                                self.random_from_triangular(25, 150)])
                             mod = self.random_from_triangular(*mod_range)
-                            item[f'skill{i + 1}_lp'] = max(min(base * mod * 0.01 // 5 * 5, 1600), 25)
+                            item[f'skill{i + 1}_lp'] = int(max(min(base * mod * 0.01 // 5 * 5, 1600), 25))
                         else:
                             base = int(self.random_from_distribution(Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,
                                                                      1, 16))
-                            item[f'skill{i + 1}_lp'] = base * 10
+                            item[f'skill{i + 1}_lp'] = int(base * 10)
 
                         skills_candidates.discard(skill)
                         for u in users:
