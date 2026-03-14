@@ -515,6 +515,7 @@ class SearchPointRandomizer(BaseRandomizer):
         self.item_to_category = data['item_to_category']
         self.item_by_category = data['item_by_category']
         self.common_items = data['common_items']
+        self.abundant_items = set(item for c in {2, 8, 9} for item in self.item_by_category[c])
 
         self.statistics: dict = {
             'Contents': [],
@@ -557,11 +558,16 @@ class SearchPointRandomizer(BaseRandomizer):
             for count in item_ranges:
                 placed: set[int] = set()
                 for _ in range(count):
-                    iid: int = self.random.choice([*set(self.common_items).difference(placed)])
+                    if random.random() <= Weights.SEARCH_ABUNDANTS:
+                        iid: int = self.random.choice([*self.abundant_items.difference(placed)])
+                    else:
+                        iid: int = self.random.choice([*set(self.common_items).difference(placed)])
+
                     count: int = 1
                     if enums.ItemCategory.is_abundant(self.item_to_category[iid]):
                         count = self.random_from_triangular(1, 15)
 
+                    placed.add(iid)
                     self.candidates['items'].append({
                         'id': iid,
                         'count': count
