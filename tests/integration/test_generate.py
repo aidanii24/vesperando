@@ -7,6 +7,8 @@ from vesperando_core import randomizer
 
 
 if __name__ == "__main__":
+    if os.getenv("ENV") == "DEBUG": os.environ["EXEC_DIR"] = os.path.dirname(os.path.abspath(__file__))
+
     ptd = os.path.join(os.getenv('EXEC_DIR', os.getcwd()), "patches")
     if os.path.isdir(ptd):
         for content in os.listdir(ptd):

@@ -8,6 +8,8 @@ from vesperando_core import procedure, conf
 
 
 if __name__ == "__main__":
+    if os.getenv("ENV") == "DEBUG": os.environ["EXEC_DIR"] = os.path.dirname(os.path.abspath(__file__))
+
     base_dir = os.getenv('EXEC_DIR', os.getcwd())
     shutil.rmtree(os.path.join(base_dir, "build"), ignore_errors=True)
     shutil.rmtree(os.path.join(base_dir, os.getenv('EXEC_DIR', os.getcwd()), "output"), ignore_errors=True)

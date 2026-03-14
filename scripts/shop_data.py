@@ -200,6 +200,8 @@ def generate_data():
 
 
 if __name__ == "__main__":
+    if os.getenv("ENV") == "DEBUG": os.environ["EXEC_DIR"] = os.path.dirname(os.path.abspath(__file__))
+
     args = sys.argv[1:]
 
     if "extract" in args:
