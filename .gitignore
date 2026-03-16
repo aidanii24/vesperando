@@ -13,16 +13,19 @@ config.json
 config.y[a]ml
 .env
 
-# Binaries
-*.so
-*.dll
-*.dynlib
+# Logs
+*.log
 
 # Build
 /dist/
 *egg-info
 *spec
 !ToVRandomizerTools.spec
+
+# Binaries
+*.so
+*.dll
+*.dynlib
 
 # Cache
 *.pyc

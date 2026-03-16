@@ -1,6 +1,7 @@
 from typing import Literal
 from copy import deepcopy
 import datetime
+import logging
 import random
 import math
 import uuid
@@ -14,6 +15,8 @@ from vesperando_core.res import enums, schema
 from vesperando_core.utils import keys_to_int
 from vesperando_core.spoil import PatchSpoiler
 
+
+logger = logging.getLogger(__name__)
 
 class BaseRandomizer:
     candidates: dict
@@ -611,11 +614,11 @@ class BasicRandomizerProcedure:
     patch_output: str = os.path.join(Paths.PATCHES, f"randomizer.{Extensions.BASIC_PATCH}")
     report_output: str = os.path.join(Paths.PATCHES, "tovde-spoiler.ods")
 
-    def __init__(self, targets: list[str], seed = random.randint(1, 0xFFFFFFFF)):
+    def __init__(self, targets: list[str], identifier: str = "", seed = random.randint(1, 0xFFFFFFFF)):
         self.seed = uuid.uuid1().int
         self.random = random.Random(seed)
 
-        self.identifier = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
+        self.identifier = identifier if identifier else datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
         self.patch_output = os.path.join(Paths.PATCHES, f"{self.identifier}{Extensions.BASIC_PATCH}")
         self.report_output = os.path.join(Paths.PATCHES, f"tovde-spoiler-{self.identifier}.ods")
 
@@ -686,7 +689,7 @@ class BasicRandomizerProcedure:
                                    for item in items
                                    if enums.ItemCategory.is_common(category)])
 
-    def generate(self, targets: list, spoil: bool = False):
+    def generate(self, targets: list, options: dict = None, spoil: bool = False):
         output: str = self.patch_output
 
         patch_data: dict = {
@@ -811,12 +814,9 @@ if __name__ == "__main__":
     start: float = time.time()
 
     template = BasicRandomizerProcedure(target_list)
-    template.generate(target_list, create_spoiler)
+    template.generate(target_list, {}, create_spoiler)
 
     total: float = time.time() - start
-
-    print(f"\n[-/-] Patch Generation Finished\t\tTime: {total:.2f} seconds")
-    print(f"Patch File: {os.path.abspath(template.patch_output)}")
 
     if create_spoiler:
         print(f"Spoiler File: {os.path.abspath(template.report_output)}")

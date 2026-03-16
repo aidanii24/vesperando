@@ -8,6 +8,7 @@ IS_EXEC: bool = hasattr(sys, '_MEIPASS')
 @dataclass(frozen=True)
 class Paths:
     EXEC_DIR = sys._MEIPASS if IS_EXEC else os.getenv('EXEC_DIR', os.getcwd())
+    LOG_DIR = os.path.join(EXEC_DIR, 'logs')
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) if not IS_EXEC else sys._MEIPASS
     STATIC_DIR = os.path.join(BASE_DIR, 'static')
 

@@ -11,4 +11,5 @@ pyinstaller-hooks-contrib==2025.10
 python-dotenv==1.2.2
 PyYAML==6.0.3
 setuptools==80.9.0
+colorlog~=6.10.1
 -e git+ssh://main.github.com/aidanii24/vesperando.git@badbe05494f2ab1650ce82f7d3aa0833351b3ae1#egg=vesperando_core
