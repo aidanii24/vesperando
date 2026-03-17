@@ -30,6 +30,11 @@ def cli():
 @click.argument("targets", nargs=-1,
                 type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
 def generate(options, name, seed, spoiler, targets):
+    log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-generate_{datetime_id}.log")
+    logger.addHandler(logging.FileHandler(log_file))
+
+    logger.info("vesperando: Basic Randomizer")
+
     options_data = {}
 
     if options:
@@ -49,7 +54,6 @@ def generate(options, name, seed, spoiler, targets):
 
     app_randomizer = randomizer.BasicRandomizerProcedure(targets, identifier=name, seed=seed)
 
-    logger.info("vesperando: Basic Randomizer")
     logger.info(f"Patch {app_randomizer.identifier}")
     logger.info(f"  \u2713 Using Targets: {targets if targets and not options_data else 'ALL'}")
     if options_data:
@@ -64,8 +68,8 @@ def generate(options, name, seed, spoiler, targets):
 @click.option("--apply-immediately", "-a", is_flag=True, help="Apply the patch immediately after patching")
 @click.argument('patch_file', type=click.Path(exists=True))
 def patch(threads, clean, apply_immediately, patch_file):
-    log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-patch.log_{datetime_id}.log")
-    logging.basicConfig(filename=log_file)
+    log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-patch_{datetime_id}.log")
+    logger.addHandler(logging.FileHandler(log_file))
 
     # Check if provided patch file is a valid patch file
     # Only check if it is a directory as click already handles path existence automatically

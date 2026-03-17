@@ -1,6 +1,9 @@
+import datetime
 import logging
-
+import os
 from rich.logging import RichHandler
+
+from vesperando_core.conf.settings import Paths
 
 
 class VesperandoLogFormatter(logging.Formatter):
@@ -22,9 +25,10 @@ class VesperandoLogFormatter(logging.Formatter):
         return formatter.format(record)
 
 def setup_logging(name: str = __name__):
-    handler = RichHandler(show_time=False, show_level=False, show_path=False, markup=True)
-    handler.setFormatter(VesperandoLogFormatter())
+    # Create Console Output Handling
+    out = RichHandler(show_time=False, show_level=False, show_path=False, markup=True)
+    out.setFormatter(VesperandoLogFormatter())
 
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+    logger.addHandler(out)
