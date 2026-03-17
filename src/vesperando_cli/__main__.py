@@ -30,12 +30,22 @@ def cli():
 @click.argument("targets", nargs=-1,
                 type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
 def generate(options, name, seed, spoiler, targets):
-    log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-generate_{datetime_id}.log")
-    logger.addHandler(logging.FileHandler(log_file))
+    options_data = {}
+
+    # Initialize Randomizer
+    app_randomizer = randomizer.BasicRandomizerProcedure(targets, identifier=name, seed=seed)
+
+    # Setup Log File Handling
+    ## This is performed after initializing the randomizer to allow the log filename to match the patch id
+    log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-generate_{app_randomizer.identifier}.log")
+    cli_logging.set_file_handler(log_file, logger)
 
     logger.info("vesperando: Basic Randomizer")
-
-    options_data = {}
+    logger.info(f"Patch {app_randomizer.identifier}")
+    logger.info(f"  \u2713 Using Targets: {targets if targets and not options_data else '[ALL]'}")
+    if options_data:
+        logger.info(f"  \u2713 Using Options: {options}")
+    logger.info("")
 
     if options:
         try:
@@ -52,14 +62,6 @@ def generate(options, name, seed, spoiler, targets):
         logger.warning("An options file has been provided. "
                        "Targets argument will be ignored in favor of the options file.")
 
-    app_randomizer = randomizer.BasicRandomizerProcedure(targets, identifier=name, seed=seed)
-
-    logger.info(f"Patch {app_randomizer.identifier}")
-    logger.info(f"  \u2713 Using Targets: {targets if targets and not options_data else 'ALL'}")
-    if options_data:
-        logger.info(f"  \u2713 Using Options: {options_data}")
-    logger.info("\n")
-
     app_randomizer.generate(targets, options_data, spoiler)
 
 @cli.command(help="Patch the game with a randomizer patch file")
@@ -69,7 +71,7 @@ def generate(options, name, seed, spoiler, targets):
 @click.argument('patch_file', type=click.Path(exists=True))
 def patch(threads, clean, apply_immediately, patch_file):
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-patch_{datetime_id}.log")
-    logger.addHandler(logging.FileHandler(log_file))
+    cli_logging.set_file_handler(log_file, logger)
 
     # Check if provided patch file is a valid patch file
     # Only check if it is a directory as click already handles path existence automatically
