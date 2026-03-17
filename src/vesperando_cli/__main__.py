@@ -1,5 +1,4 @@
 import datetime
-import colorlog
 import logging
 import json
 import sys
@@ -9,44 +8,11 @@ from vesperando_core import procedure, randomizer, packer, configs
 from vesperando_core.conf.settings import Paths
 import click
 
-# Prepare Logger
-## Set Color Handler
-class CustomLogFormatter(colorlog.ColoredFormatter):
+import cli_logging
 
-    def __init__(self, fmts: dict[int, str], **kwargs):
-        super().__init__()
 
-        if "fmt" in kwargs:
-            raise ValueError("[ERROR] Use the \"fmts\" argument for defining formats instead of \"fmt\"")
-
-        self.formats = {level: colorlog.ColoredFormatter(fmt, **kwargs) for level, fmt in fmts.items()}
-
-    def format(self, record):
-        formatter = self.formats.get(record.levelno, self.formats[0])
-        return formatter.format(record)
-
-log_formatter = CustomLogFormatter({
-                                       logging.NOTSET: "%(log_color)s[%(levelname)s]\t%(name)s:%(message)s",
-                                       logging.INFO: "%(log_color)s%(message)s"
-                                   },
-                                   log_colors={
-                                       'DEBUG': 'cyan',
-                                       'WARNING': 'yellow',
-                                       'ERROR': 'red',
-                                       'CRITICAL': 'red, bg_yellow',
-                                   })
-
-log_handler = colorlog.StreamHandler()
-log_handler.setFormatter(log_formatter)
-
-## Initialize Logger
+cli_logging.setup_logging(__name__)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-logger.addHandler(log_handler)
-
-## Ensure logging directory exists
-if not os.path.isdir(Paths.LOG_DIR):
-    os.makedirs(Paths.LOG_DIR)
 
 datetime_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 
@@ -95,9 +61,9 @@ def generate(options, name, seed, spoiler, targets):
 @cli.command(help="Patch the game with a randomizer patch file")
 @click.option("--threads", "-t", type=int, default=8, help="Maximum number of threads to use")
 @click.option("--clean", "-c", is_flag=True, help="Remove residue files generated during patching")
-@click.option("--apply", "-a", is_flag=True, help="Apply the patch immediately after patching")
+@click.option("--apply-immediately", "-a", is_flag=True, help="Apply the patch immediately after patching")
 @click.argument('patch_file', type=click.Path(exists=True))
-def patch(threads, clean, apply, patch_file):
+def patch(threads, clean, apply_immediately, patch_file):
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-patch.log_{datetime_id}.log")
     logging.basicConfig(filename=log_file)
 
@@ -107,7 +73,7 @@ def patch(threads, clean, apply, patch_file):
         logger.error(f"\"{patch_file}\" is a directory. Please provide a .vbrp patch file.")
         sys.exit(1)
 
-    app = procedure.GamePatchProcedure(patch_file, threads, apply, clean)
+    app = procedure.GamePatchProcedure(patch_file, threads, apply_immediately, clean)
     app.patch()
 
     sys.exit(0)
