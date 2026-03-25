@@ -7,6 +7,12 @@ def keys_to_int(x):
 def strip_formatting(string: str) -> str:
     return string.replace("\n", "").replace("\t", "").replace("\r", "")
 
+def safe_divide(a, b, floor: bool = False):
+    try:
+        return a / b if not floor else a // b
+    except ZeroDivisionError:
+        return 0
+
 def read_null_terminated_string(mm: mmap.mmap, encoding: str = 'utf-8', start: int = -1,
                                 reset_position: bool = True) -> str:
     cur: int = mm.tell()

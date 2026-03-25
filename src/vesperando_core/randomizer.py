@@ -12,11 +12,11 @@ import os
 
 from vesperando_core.conf.settings import Paths, Extensions, Weights
 from vesperando_core.res import enums, schema
-from vesperando_core.utils import keys_to_int
+from vesperando_core.utils import keys_to_int, safe_divide
 from vesperando_core.spoil import PatchSpoiler
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("__main__")
 
 class BaseRandomizer:
     candidates: dict
@@ -30,6 +30,9 @@ class BaseRandomizer:
 
     def fetch(self):
         return self.candidates
+
+    def report(self):
+        pass
 
     def random_from_distribution(self, mu: float, sigma: float, range_min: float = -math.inf,
                                  range_max: float = math.inf):
@@ -185,6 +188,31 @@ class ArteRandomizer(BaseRandomizer):
                 arte[f'evolve_condition{_}'] = 0
                 arte[f'evolve_parameter{_}'] = 0
 
+    def report(self):
+        logger.info(f"{"\u2748 ARTES":>4}")
+
+        artes_ratio: str = f"{self.statistics['Artes']:<4}/{len(self.candidates)}"
+        tp_ratio: str = f"{self.statistics['TP Cost']:<4}/{self.statistics['Artes']}"
+        cast_time_ratio: str = f"{self.statistics['Cast Time']:<4}/{self.statistics['Artes']}"
+        fatal_strike_ratio: str = f"{self.statistics['Fatal Strikes']:<4}/{self.statistics['Artes']}"
+        evolution_ratio: str = f"{self.statistics['Evolutions']:<4}/{self.statistics['Artes']}"
+        learn_condition_ratio: str = f"{self.statistics['Learn Conditions']:<4}/{self.statistics['Artes']}"
+
+        artes_percentage: float = safe_divide(self.statistics['Artes'], len(self.candidates))
+        tp_percentage: float = safe_divide(self.statistics['TP Cost'], self.statistics['Artes'])
+        cast_time_percentage: float = safe_divide(self.statistics['Cast Time'], self.statistics['Artes'])
+        fatal_strike_percentage: float = safe_divide(self.statistics['Fatal Strikes'], self.statistics['Artes'])
+        evolution_percentage: float = safe_divide(self.statistics['Evolutions'], self.statistics['Artes'])
+        learn_condition_percentage: float = safe_divide(self.statistics['Learn Conditions'], self.statistics['Artes'])
+
+        logger.info(f"{"":>4}{"> Candidates:":<21}{artes_ratio:<12}{artes_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> TP Cost:":<21}{tp_ratio:<12}{tp_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Cast Time:":<21}{cast_time_ratio:<12}{cast_time_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Fatal Strikes:":<21}{fatal_strike_ratio:<12}{fatal_strike_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Evolutions:":<21}{evolution_ratio:<12}{evolution_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Learn Conditions:":<21}{learn_condition_ratio:<12}{learn_condition_percentage:.2f}%")
+        logger.info("")
+
 
 class SkillRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
@@ -238,6 +266,28 @@ class SkillRandomizer(BaseRandomizer):
                 skill['symbol_weight'] = self.random_from_distribution(Weights.SKILL_SYMBOL_WEIGHT_MU,
                                                                        Weights.SKILL_SYMBOL_WEIGHT_SIGMA,
                                                                        1, 30)
+
+    def report(self):
+        logger.info("& SKILLS")
+
+        skills_ratio: str = f"{self.statistics['Skills']:<4}/{len(self.candidates)}"
+        sp_cost_ratio: str = f"{self.statistics['SP Cost']:<4}/{self.statistics['Skills']}"
+        lp_ratio: str = f"{self.statistics['LP']:<4}/{self.statistics['Skills']}"
+        symbols_ratio: str = f"{self.statistics['Symbols']:<4}/{self.statistics['Skills']}"
+        symbol_weights_ratio: str = f"{self.statistics['Symbol Weights']:<4}/{self.statistics['Skills']}"
+
+        skills_percentage: float = safe_divide(self.statistics['Skills'], len(self.candidates))
+        sp_cost_percentage: float = safe_divide(self.statistics['SP Cost'], self.statistics['Skills'])
+        lp_percentage: float = safe_divide(self.statistics['LP'], self.statistics['Skills'])
+        symbols_percentage: float = safe_divide(self.statistics['Symbols'], self.statistics['Skills'])
+        symbol_weights_percentage: float = safe_divide(self.statistics['Symbol Weights'], self.statistics['Skills'])
+
+        logger.info(f"{"":>4}{"> Candidates:":<21}{skills_ratio:<12}{skills_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> SP Cost:":<21}{sp_cost_ratio:<12}{sp_cost_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> LP:":<21}{lp_ratio:<12}{lp_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Symbols:":<21}{symbols_ratio:<12}{symbols_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Symbol Weights:":<21}{symbol_weights_ratio:<12}{symbol_weights_percentage:.2f}%")
+        logger.info("")
 
 
 class ItemRandomizer(BaseRandomizer):
@@ -331,6 +381,24 @@ class ItemRandomizer(BaseRandomizer):
 
                         continue_iter = False
 
+    def report(self):
+        logger.info("\u2B2C ITEMS")
+
+        base_total: int = len(self.candidates['base'])
+
+        items_ratio: str = f"{self.statistics['Items']:<4}/{base_total}"
+        prices_ratio: str = f"{self.statistics['Prices']:<4}/{self.statistics['Items']}"
+        skills_ratio: str = f"{self.statistics['Skills']:<4}/{self.statistics['Items']}"
+
+        items_percentage: float = safe_divide(self.statistics['Items'], base_total)
+        prices_percentage: float = safe_divide(self.statistics['Prices'], self.statistics['Items'])
+        skills_percentage: float = safe_divide(self.statistics['Skills'], self.statistics['Items'])
+
+        logger.info(f"{"":>4}{"> Candidates:":<21}{items_ratio:<12}{items_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Prices:":<21}{prices_ratio:<12}{prices_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Skills:":<21}{skills_ratio:<12}{skills_percentage:.2f}%")
+        logger.info("")
+
 
 class ShopRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
@@ -422,6 +490,21 @@ class ShopRandomizer(BaseRandomizer):
                 new_item: int = self.random.choice(self.common_items)
 
         return new_item
+
+    def report(self):
+        logger.info("\u20B2 SHOPS")
+
+        items_ratio: str = f"{self.statistics['Items']:<4}"
+        full_shuffle_ratio: str = f"{self.statistics['Full Shuffle']:<4}/{self.statistics['Items']}"
+        same_category_ratio: str = f"{self.statistics['Same Category']:<4}/{self.statistics['Items']}"
+
+        full_shuffle_percentage: float = safe_divide(self.statistics['Full Shuffle'], self.statistics['Items'])
+        same_category_percentage: float = safe_divide(self.statistics['Same Category'], self.statistics['Items'])
+
+        logger.info(f"{"":>4}{"> Candidates:":<21}{items_ratio}")
+        logger.info(f"{"":>4}{"> Full Shuffle:":<21}{full_shuffle_ratio:<12}{full_shuffle_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Same Category:":<21}{same_category_ratio:<12}{same_category_percentage:.2f}%")
+        logger.info("")
 
 
 class ChestRandomizer(BaseRandomizer):
@@ -515,6 +598,27 @@ class ChestRandomizer(BaseRandomizer):
 
         return amount_basis
 
+    def report(self):
+        logger.info("\u225B CHESTS")
+
+        chests_ratio: str = f"{self.statistics['Chests']:<4}"
+        full_shuffle_ratio: str = f"{self.statistics['Full Shuffle']:<4}/{self.statistics['Chests']}"
+        same_category_ratio: str = f"{self.statistics['Same Category']:<4}/{self.statistics['Chests']}"
+        item_amount_ratio: str = f"{self.statistics['Item Amount']:<4}/{self.statistics['Chests']}"
+        gald_amount_ratio: str = f"{self.statistics['Gald Amount']:<4}/{self.statistics['Chests']}"
+
+        full_shuffle_percentage: float = safe_divide(self.statistics['Full Shuffle'], self.statistics['Chests'])
+        same_category_percentage: float = safe_divide(self.statistics['Same Category'], self.statistics['Chests'])
+        item_amount_percentage: float = safe_divide(self.statistics['Item Amount'], self.statistics['Chests'])
+        gald_amount_percentage: float = safe_divide(self.statistics['Gald Amount'], self.statistics['Chests'])
+
+        logger.info(f"{"":>4}{"> Candidates:":<21}{chests_ratio}")
+        logger.info(f"{"":>4}{"> Full Shuffle:":<21}{full_shuffle_ratio:<12}{full_shuffle_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Same Category:":<21}{same_category_ratio:<12}{same_category_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Item Amount:":<21}{item_amount_ratio:<12}{item_amount_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Gald Amount:":<21}{gald_amount_ratio:<12}{gald_amount_percentage:.2f}%")
+        logger.info("")
+
 
 class SearchPointRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
@@ -582,6 +686,23 @@ class SearchPointRandomizer(BaseRandomizer):
 
             self.statistics['Contents'].append(content_range)
             self.statistics['Items'].extend(item_ranges)
+
+    def report(self):
+        logger.info("\u219F SEARCH POINTS")
+
+        avg_con: int = sum(self.statistics['Contents']) / 88
+        avg_itm: int = safe_divide(sum(self.statistics['Items']), sum(self.statistics['Contents']))
+
+        contents_count: str = f"{sum(self.statistics['Contents'])}"
+        items_count: str = f"{sum(self.statistics['Items'])}"
+        average_contents: str = f"{avg_con:.2f}"
+        average_items: str = f"{avg_itm:.2f}"
+
+        logger.info(f"{"":>4}{"> Contents:":<40}{contents_count}")
+        logger.info(f"{"":>4}{"> Items:":<40}{items_count}")
+        logger.info(f"{"":>4}{"> Average Contents per Search Point:":<40}{average_contents}")
+        logger.info(f"{"":>4}{"> Average Items per Content:":<40}{average_items}")
+        logger.info("")
 
 
 class BasicRandomizerProcedure:
@@ -702,30 +823,40 @@ class BasicRandomizerProcedure:
         if os.path.isfile(self.report_output):
             os.remove(self.report_output)
 
+        start_time: float = time.time()
+
         if not targets or 'artes' in targets:
             data: dict = {
                 'artes_data': self.artes_data_table,
                 'artes_by_char': self.artes_by_char,
                 'skills_by_char': self.skills_by_char,
             }
+
+            logger.info("> Randomizing Artes")
             self.arte_randomizer = ArteRandomizer(self.random, data, {})
             self.arte_randomizer.randomize()
+
             patch_data['artes'] = self.arte_randomizer.fetch()
+            self.arte_randomizer.report()
 
         if not targets or 'skills' in targets:
             data: dict = {
                 'skills_data': self.skills_data_table,
             }
 
+            logger.info("> Randomizing Skills")
             self.skill_randomizer = SkillRandomizer(self.random, data, {})
             self.skill_randomizer.randomize()
+
             patch_data['skills'] = self.skill_randomizer.fetch()
+            self.skill_randomizer.report()
 
         if not targets or 'items' in targets:
             skills_lp_table: dict = {}
             if 'skills' in patch_data:
                 skills_lp_table = {sid: v['lp_cost'] for sid,v in patch_data['skills'].items()}
 
+            logger.info("> Randomizing Items")
             data: dict = {
                 'items_data': self.items_data_table,
                 'skills_lp_table': skills_lp_table,
@@ -734,7 +865,9 @@ class BasicRandomizerProcedure:
 
             self.item_randomizer = ItemRandomizer(self.random, data, {})
             self.item_randomizer.randomize()
+
             patch_data['items'] = self.item_randomizer.fetch()
+            self.item_randomizer.report()
 
         if not targets or 'shops' in targets:
             data: dict = {
@@ -744,9 +877,12 @@ class BasicRandomizerProcedure:
                 'common_items': self.common_items,
             }
 
+            logger.info("> Randomizing Shops")
             self.shop_randomizer = ShopRandomizer(self.random, data, {})
             self.shop_randomizer.randomize()
+
             patch_data['shops'] = self.shop_randomizer.fetch()
+            self.shop_randomizer.report()
 
         if not targets or 'chests' in targets:
             data: dict = {
@@ -756,9 +892,12 @@ class BasicRandomizerProcedure:
                 'common_items': self.common_items,
             }
 
+            logger.info("> Randomizing Chests")
             self.chest_randomizer = ChestRandomizer(self.random, data, {})
             self.chest_randomizer.randomize()
+
             patch_data['chests'] = self.chest_randomizer.fetch()
+            self.chest_randomizer.report()
 
         if not targets or 'search' in targets:
             data: dict = {
@@ -767,18 +906,33 @@ class BasicRandomizerProcedure:
                 'common_items': self.common_items,
             }
 
+            logger.info("> Randomizing Search Points")
             self.search_point_randomizer = SearchPointRandomizer(self.random, data, {})
             self.search_point_randomizer.randomize()
-            patch_data['search'] = self.search_point_randomizer.fetch()
 
+            patch_data['search'] = self.search_point_randomizer.fetch()
+            self.search_point_randomizer.report()
+
+        end_time: float = time.time()
+
+        logger.info(f"\nRandomization Complete. Finished in {end_time - start_time:.2f} seconds.")
         with open(output, 'w') as f:
             json.dump(patch_data, f)
+
+            logger.info(f"Patch File: {os.path.abspath(output)}")
 
         if spoil:
             patch_data: dict = dict(item for item in [*patch_data.items()][4:])
 
+            start_time = time.time()
+            logger.info(f"\n> Generating Spoiler Sheet")
+
             spoiler = PatchSpoiler()
             spoiler.write_spreadsheet(patch_data, self.report_output)
+
+            end_time = time.time()
+            logger.info(f"\nSpoiler Sheet Generated. Finished in {end_time - start_time:.2f} seconds.")
+            logger.info(f"Spoiler Sheet: {os.path.abspath(self.report_output)}")
 
 
 if __name__ == "__main__":

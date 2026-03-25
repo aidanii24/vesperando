@@ -42,9 +42,9 @@ def generate(options, name, seed, spoiler, targets):
 
     logger.info("vesperando: Basic Randomizer")
     logger.info(f"Patch {app_randomizer.identifier}")
-    logger.info(f"  \u2713 Using Targets: {targets if targets and not options_data else '[ALL]'}")
+    logger.info(f"{"\u2713":<4} Using Targets: {targets if targets and not options_data else '[ALL]'}")
     if options_data:
-        logger.info(f"  \u2713 Using Options: {options}")
+        logger.info(f"{"\u2713":<4} Using Options: {options}")
     logger.info("")
 
     if options:
