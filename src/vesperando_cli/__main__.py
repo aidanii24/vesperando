@@ -1,10 +1,11 @@
 import datetime
 import logging
 import json
+import time
 import sys
 import os
 
-from vesperando_core import procedure, randomizer, packer, configs
+from vesperando_core import procedure, randomizer, packer, spoil as spoiling, configs, utils
 from vesperando_core.conf.settings import Paths
 import click
 
@@ -87,7 +88,31 @@ def patch(threads, clean, apply_immediately, patch_file):
 @cli.command(help="Generate a spoiler log from a randomizer patch file")
 @click.argument("patch_file", type=click.Path(exists=True))
 def spoil(patch_file):
-    pass
+    logger.info("vesperando: Spoil")
+    logger.info(f"Spoil {os.path.basename(patch_file)}")
+
+    log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-spoil_{datetime_id}.log")
+    cli_logging.set_file_handler(log_file, logger)
+
+    # Check if provided patch file is a valid patch file
+    # Only check if it is a directory as click already handles path existence automatically
+    if os.path.isdir(patch_file):
+        logger.critical(f"\"{patch_file}\" is a directory. Please provide a .vbrp patch file.")
+        sys.exit(1)
+
+    file_data: dict = json.load(open(patch_file), object_hook=utils.keys_to_int)
+    patch_data: dict = dict(item for item in [*file_data.items()][4:])
+    report_output: str = os.path.join(os.path.dirname(patch_file), f"tovde-spoiler-{datetime_id}.ods")
+
+    start_time = time.time()
+    logger.info(f"\n> Generating Spoiler Sheet")
+
+    spoiler = spoiling.PatchSpoiler()
+    spoiler.write_spreadsheet(patch_data, report_output)
+
+    end_time = time.time()
+    logger.info(f"\nSpoiler Sheet Generated. Finished in {end_time - start_time:.2f} seconds.")
+    logger.info(f"Spoiler Sheet: {os.path.abspath(report_output)}")
 
 @cli.command(help="Apply a generated patched output")
 @click.argument("patch", type=click.Path(exists=True))
