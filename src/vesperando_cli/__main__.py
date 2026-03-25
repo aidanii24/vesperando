@@ -5,6 +5,7 @@ import time
 import sys
 import os
 
+from vesperando_cli import LOGGER_NAME
 from vesperando_core import procedure, randomizer, packer, spoil as spoiling, configs, utils
 from vesperando_core.conf.settings import Paths
 import click
@@ -12,8 +13,8 @@ import click
 import cli_logging
 
 
-cli_logging.setup_logging(__name__)
-logger = logging.getLogger(__name__)
+cli_logging.setup_logging(LOGGER_NAME)
+logger = logging.getLogger(LOGGER_NAME)
 
 datetime_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 

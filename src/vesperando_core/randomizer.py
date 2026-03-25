@@ -16,7 +16,7 @@ from vesperando_core.utils import keys_to_int, safe_divide
 from vesperando_core.spoil import PatchSpoiler
 
 
-logger = logging.getLogger("__main__")
+logger = logging.getLogger(os.environ.get('LOGGER_NAME', "vesperando"))
 
 class BaseRandomizer:
     candidates: dict
