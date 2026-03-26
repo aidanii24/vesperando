@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from enum import IntEnum
+import logging
 import time
 import json
 import sys
@@ -9,6 +10,8 @@ from vesperando_core.conf.settings import Paths, Extensions
 from vesperando_core.patcher import GamePatcher
 from vesperando_core import packer, configs, utils
 
+
+logger = logging.getLogger(os.environ.get('LOGGER_NAME', "vesperando"))
 
 class GamePatchProcedure:
     packer: packer.GamePatchPacker
@@ -39,11 +42,13 @@ class GamePatchProcedure:
     def patch(self):
         start: float = time.time()
 
-        print("--- Vesperando Patcher -------------\n"
-              f"\tPlayer: {self.patch_data['player']}\n"
-              f"\tGeneration Date: {self.patch_data['created']}\n"
-              f"\tSeed: {self.patch_data['seed']}\n"
-              f"\n\t[-/-] Threads: {self.threads}\n")
+        logger.info("vesperando: Patcher")
+        logger.info(f"Patch {self.identifier}")
+        logger.info(f"{">":>4} {"Player:":<16} {self.patch_data.get('player', 'vesperando-player')}")
+        logger.info(f"{">":>4} {"Seed:":<16}: {self.patch_data.get('seed', 'unknown')}")
+        logger.info(f"{">":>4} {"Generation Date:":<16} {self.patch_data.get('created', 'unknown')}")
+        logger.info(f"\n{"\u2609":>4} Threads: {self.threads}")
+        logger.info("")
 
         if 'artes' in self.patch_data or 'skills' in self.patch_data:
             self.patch_btl()
@@ -65,23 +70,23 @@ class GamePatchProcedure:
         if self.clean:
             self.packer.clean()
 
-        print(f"\n[-/-] Patch Finished\tTime: {end - start:.2f} seconds")
+        logger.info(f"\nPatch Applied. Finished in {end - start:.2f} seconds.")
         if self.apply_immediately:
-            print("Automatically applied patch to the game directory.")
+            logger.info("\u2713 Automatically applied patch to the game directory.")
         else:
-            print(f"Patch Output: {self.packer.output_dir}")
+            logger.info(f"Patch Output: {self.packer.output_dir}")
 
     def patch_btl(self):
         self.packer.unpack_btl()
 
         if 'artes' in self.patch_data:
-            print("> Patching Artes...")
+            logger.info("> Patching Artes")
             self.packer.extract_artes()
             self.patcher.patch_artes(self.patch_data['artes'])
             self.packer.pack_artes()
 
         if 'skills' in self.patch_data:
-            print("> Patching Skills...")
+            logger.info("> Patching Skills")
             self.packer.extract_skills()
             self.patcher.patch_skills(self.patch_data['skills'])
             self.packer.pack_skills()
@@ -89,7 +94,7 @@ class GamePatchProcedure:
         self.packer.pack_btl()
 
     def patch_items(self):
-        print("> Patching Items...")
+        logger.info("> Patching Items")
         self.packer.unpack_item()
         self.patcher.patch_items(self.patch_data['items'])
         self.packer.copy_to_output('item')
@@ -98,7 +103,7 @@ class GamePatchProcedure:
         self.packer.extract_scenario()
 
         if 'shops' in self.patch_data:
-            print("> Patching Shops...")
+            logger.info("> Patching Shops")
             self.packer.decompress_scenario('0')
             self.patcher.patch_shops(self.patch_data['shops'])
 
@@ -109,7 +114,7 @@ class GamePatchProcedure:
 
         base_dir: str = os.path.join(self.packer.build_dir, "maps")
         if 'chests' in self.patch_data:
-            print("> Patching Chests...")
+            logger.info("> Patching Chests")
 
             def _extract_job(room: str, chest_path: str, dec_path: str):
                 self.packer.extract_map(room)
@@ -140,7 +145,7 @@ class GamePatchProcedure:
                     executor.submit(_pack_job, area, chest_data, dec_data)
 
         if 'search' in self.patch_data:
-            print("> Patching Search Points...")
+            logger.info("> Patching Search Points")
             search_room: str = "FIELD"
             work_dir: str = os.path.join(base_dir, search_room)
             search_path: str = os.path.join(work_dir, f"{search_room}.dec.ext", "0005")

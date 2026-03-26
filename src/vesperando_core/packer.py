@@ -1,3 +1,4 @@
+import logging
 import hashlib
 import shutil
 import json
@@ -8,6 +9,8 @@ from vesperando_core.conf.settings import Paths
 from vesperando_core.lib import complib
 from libvespy import fps4, scenario, tlzc
 
+
+logger = logging.getLogger(os.environ.get('LOGGER_NAME', "vesperando"))
 
 class GamePatchPacker:
     """Handler Instance for Extraction, Packing, Compressing and Decompressing files from the game."""
@@ -49,9 +52,9 @@ class GamePatchPacker:
         self.apply_immediately = apply_immediately
 
         if os.path.isdir(self.output_dir) and apply_immediately:
-            print("> The patched game files for this patch file has already been generated.")
+            logger.warning("The patched game files for this patch file has already been generated.")
             apply_patch(self.output_dir, self.game_dir)
-            print("> Applied patch to game directory.")
+            logger.info("Applied patch to game directory.")
             sys.exit(0)
 
     def check_dependencies(self):
@@ -62,12 +65,10 @@ class GamePatchPacker:
                 as_bytes = file.read()
                 exec_hash = hashlib.sha256(as_bytes).hexdigest()
 
-                assert exec_hash == self.checksums["TOV_DE.exe"]
+                if not exec_hash == self.checksums["TOV_DE.exe"]:
+                    raise PackerError("Wrong Dependency: The provided game executable did not meet the expected "
+                                      "supported version. Please update the game then try again.")
                 file.close()
-        except AssertionError:
-            error_occurred = True
-            print("Wrong Dependency: The provided game executable did not meet the expected supported version."
-                  "Please update the game then try again.")
         except FileNotFoundError:
             error_occurred = True
             print("Missing Dependency: The game was not found in the provided path.")
@@ -82,11 +83,12 @@ class GamePatchPacker:
                 as_bytes = file.read()
                 file_hash = hashlib.sha256(as_bytes).hexdigest()
 
-                assert file_hash == self.checksums[basename]
+                if not file_hash == self.checksums[basename]:
+                    raise PackerError(f"Invalid File: {basename} may have already been patched, "
+                                      f"modified, or may be corrupted.")
 
                 file.close()
-        except AssertionError:
-            print(f"Invalid File: {basename} may have already been patched, modified, or may be corrupted.")
+        except PackerError:
             return False
 
         return True
@@ -102,8 +104,9 @@ class GamePatchPacker:
 
             return backup_path
         elif os.path.isfile(original_path):
-            assert self.verify_vesperia_file(original_path), \
-                f"Invalid File: {basename} may have already been patched, modified, or may be corrupted."
+            if self.verify_vesperia_file(original_path):
+                raise PackerError(f"Invalid File: {basename} may have already been patched, "
+                                  f"modified, or may be corrupted.")
 
             if not os.path.isdir(self.backup_dir):
                 os.makedirs(self.backup_dir)
@@ -326,8 +329,6 @@ class GamePatchPacker:
         apply_patch(self.output_dir, self.game_dir)
 
 def apply_patch(patched_path, game_dir):
-    print("> Applying Patch...")
-
     prepare_game(game_dir)
     shutil.copytree(patched_path, game_dir, dirs_exist_ok=True)
 
@@ -363,20 +364,18 @@ def clean_game(game_dir: str, quiet: bool = True):
         detected_patches.append(npc)
 
     if detected_patches:
-        if not quiet: print("> Removing active patches...")
         for patches in detected_patches:
             shutil.rmtree(patches)
 
 def restore_backup(game_dir: str, quiet: bool = False):
     backup_dir: str = os.path.join(game_dir, Paths.BACKUP)
-    print(backup_dir)
     if not os.path.isdir(backup_dir):
-        if not quiet: print("> There is no backup to restore.")
         return
 
     clean_game(game_dir)
 
-    if not quiet: print("> Restoring Backup...")
     shutil.copytree(backup_dir, os.path.join(game_dir, "Data64"), dirs_exist_ok=True)
 
-    if not quiet: print("[-/-] Backup Restored")
+
+class PackerError(Exception):
+    """"""

@@ -43,7 +43,7 @@ def generate(options, name, seed, spoiler, targets):
     cli_logging.set_file_handler(log_file, logger)
 
     logger.info("vesperando: Basic Randomizer")
-    logger.info(f"Patch {app_randomizer.identifier}")
+    logger.info(f"Randomizer {app_randomizer.identifier}")
     logger.info(f"{"\u2713":<4} Using Targets: {targets if targets and not options_data else '[ALL]'}")
     if options_data:
         logger.info(f"{"\u2713":<4} Using Options: {options}")
