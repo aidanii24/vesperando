@@ -11,6 +11,7 @@ from vesperando_core.conf.settings import Paths, Extensions
 import click
 
 import cli_logging
+import prompt
 
 
 cli_logging.setup_logging(LOGGER_NAME)
@@ -70,25 +71,58 @@ def generate(options, name, seed, spoiler, targets):
 @click.option("--threads", "-t", type=int, default=8, help="Maximum number of threads to use")
 @click.option("--clean", "-c", is_flag=True, help="Remove residue files generated during patching")
 @click.option("--apply-immediately", "-a", is_flag=True, help="Apply the patch immediately after patching")
-@click.argument('patch_file', type=click.Path())
-def patch(threads, clean, apply_immediately, patch_file):
+@click.argument('patch_file', required=False, type=click.Path())
+def patch(threads, clean, apply_immediately, patch_file=None):
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-patch_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
 
+    logger.info("vesperando: Patcher")
+
     file_path: str = patch_file
-
-    # Check if provided patch file is a valid patch file
-    # The patch has to be a file
-    if os.path.isdir(file_path):
-        logger.error(f"\"{file_path}\" is a directory. Please provide a .vbrp patch file.")
-        sys.exit(1)
-    # Assume provided directory might be in the PATCHES directory before aborting the patch generation
-    elif not os.path.isfile(file_path):
-        file_path = os.path.join(Paths.PATCHES, file_path)
-
-        if not os.path.isfile(file_path):
-            logger.error(f"\"{patch_file}\" does not exist. Please provide a valid patch file.")
+    if patch_file:
+        # Check if provided patch file is a valid patch file
+        # The patch has to be a file
+        if os.path.isdir(file_path):
+            logger.error(f"\"{file_path}\" is a directory. Please provide a .vbrp patch file.")
             sys.exit(1)
+        # Assume provided directory might be in the PATCHES directory before aborting the patch generation
+        elif not os.path.isfile(file_path):
+            file_path = os.path.join(Paths.PATCHES, file_path)
+
+            if not os.path.isfile(file_path):
+                logger.error(f"\"{patch_file}\" does not exist. Please provide a valid patch file.")
+                sys.exit(1)
+    else:
+        logger.info("")
+
+        patches: list[str] = []
+        for f in os.listdir(Paths.PATCHES):
+            if os.path.isfile(os.path.join(Paths.PATCHES, f)) and Extensions.is_valid_patch(f):
+                patches.append(f)
+
+        if not patches:
+            logger.error("Please provide a valid patch file.")
+            sys.exit(1)
+
+        logger.info("Select a patch file to be used for patching.")
+        logger.info("Answer with the corresponding number, or 0 to abort the patch.")
+
+        choices: list[int] = [_ for _ in range(len(patches))]
+        for i, p in enumerate(patches):
+            logger.info(f"[{i + 1}] {p}")
+
+        logger.info("")
+        logger.info("[0] Cancel")
+        logger.info("")
+
+        res: int = prompt.choice(choices, f"Patch: (0 - {len(patches)})")
+        logger.info("")
+
+        if res == 0:
+            logger.info("Patch aborted.")
+            sys.exit(0)
+
+        file_path = os.path.join(Paths.PATCHES, (patches[res - 1]))
 
     app = procedure.GamePatchProcedure(file_path, threads, apply_immediately, clean)
     app.patch()
