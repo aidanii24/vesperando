@@ -89,11 +89,11 @@ def patch(threads, clean, apply_immediately, patch_file):
 @cli.command(help="Generate a spoiler log from a randomizer patch file")
 @click.argument("patch_file", type=click.Path(exists=True))
 def spoil(patch_file):
-    logger.info("vesperando: Spoil")
-    logger.info(f"Spoil {os.path.basename(patch_file)}")
-
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-spoil_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
+
+    logger.info("vesperando: Spoil")
+    logger.info(f"Spoil {os.path.basename(patch_file)}")
 
     # Check if provided patch file is a valid patch file
     # Only check if it is a directory as click already handles path existence automatically
@@ -122,8 +122,17 @@ def apply(patched_output):
 
 @cli.command(help="Restore the original game files")
 def restore():
-    game_dir: str = configs.Settings.get().get('paths', {}).get('game', '')
-    packer.restore_backup(game_dir)
+    log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-restore_{datetime_id}.log")
+    cli_logging.set_file_handler(log_file, logger)
+
+    logger.info("vesperando: Restore")
+
+    try:
+        game_dir: str = configs.Settings.get().get('paths', {}).get('game', '')
+        packer.restore_backup(game_dir)
+    except Exception as e:
+        logger.critical(f"Failed to restore game files.\n{e}")
+
 
 if __name__ == "__main__":
     cli()

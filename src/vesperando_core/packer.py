@@ -370,7 +370,10 @@ def clean_game(game_dir: str, quiet: bool = True):
 def restore_backup(game_dir: str, quiet: bool = False):
     backup_dir: str = os.path.join(game_dir, Paths.BACKUP)
     if not os.path.isdir(backup_dir):
-        return
+        raise PackerError("Could not find backups of original game file."
+                          "Please check the settings.yaml if the correct game directory is provided, "
+                          "or reinstall the game.\n"
+                          f"Backup Directory: {backup_dir}")
 
     clean_game(game_dir)
 
