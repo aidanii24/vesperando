@@ -45,7 +45,7 @@ class GamePatchProcedure:
         logger.info("vesperando: Patcher")
         logger.info(f"Patch {self.identifier}")
         logger.info(f"{">":>4} {"Player:":<16} {self.patch_data.get('player', 'vesperando-player')}")
-        logger.info(f"{">":>4} {"Seed:":<16}: {self.patch_data.get('seed', 'unknown')}")
+        logger.info(f"{">":>4} {"Seed:":<16} {self.patch_data.get('seed', 'unknown')}")
         logger.info(f"{">":>4} {"Generation Date:":<16} {self.patch_data.get('created', 'unknown')}")
         logger.info(f"\n{"\u2609":>4} Threads: {self.threads}")
         logger.info("")

@@ -7,7 +7,7 @@ import os
 
 from vesperando_cli import LOGGER_NAME
 from vesperando_core import procedure, randomizer, packer, spoil as spoiling, configs, utils
-from vesperando_core.conf.settings import Paths
+from vesperando_core.conf.settings import Paths, Extensions
 import click
 
 import cli_logging
@@ -116,9 +116,52 @@ def spoil(patch_file):
     logger.info(f"Spoiler Sheet: {os.path.abspath(report_output)}")
 
 @cli.command(help="Apply a generated patched output")
-@click.argument("patch", type=click.Path(exists=True))
-def apply(patched_output):
-    pass
+@click.argument("patch_name", type=click.Path(file_okay=True))
+def apply(patch_name):
+    log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-apply_{datetime_id}.log")
+    cli_logging.set_file_handler(log_file, logger)
+
+    logger.info("vesperando: Apply")
+
+    is_patch_file: bool = False
+    patched_path: str = patch_name
+    try:
+        if os.path.isfile(patch_name) and Extensions.is_valid_patch(patched_path):
+            is_patch_file = True
+
+            data = json.load(open(patch_name), object_hook=utils.keys_to_int)
+            identifier = f"{data['player']}-{data['created']}"
+
+            patched_path = os.path.join(Paths.OUTPUT, identifier)
+    except json.JSONDecodeError as e:
+        logger.info("")
+        logger.error(f"{patch_name} contains a valid vesperando patch file extension, "
+                     f"but could not be parsed as such.\n{e}")
+        logger.warning("Discarding attempt to use patch name with a valid vesperando file extension "
+                       "as a vesperando patch file.")
+
+    # Assume provided directory might be in the OUTPUT directory before aborting the patch application
+    if not os.path.isdir(patched_path):
+        patched_path = os.path.join(Paths.OUTPUT, patched_path)
+
+    if not os.path.isdir(patched_path):
+        logger.info("")
+        logger.error("No ready patch output matches the provided patch name.")
+        if is_patch_file:
+            logger.warning("Please generate the patch for this patch file first before applying it.")
+        sys.exit(1)
+
+    logger.info(f"Apply {os.path.basename(patched_path)}")
+    logger.info("")
+
+    try:
+        game_dir: str = configs.Settings.get().get('paths', {}).get('game', '')
+        packer.apply_patch(patched_path, game_dir)
+    except Exception as e:
+        logger.error(f"Failed to apply patched files.\n{e}")
+        sys.exit(1)
+
+    logger.info(f"Successfully applied patch {os.path.basename(patched_path)}.")
 
 @cli.command(help="Restore the original game files")
 def restore():
@@ -126,12 +169,17 @@ def restore():
     cli_logging.set_file_handler(log_file, logger)
 
     logger.info("vesperando: Restore")
+    logger.info("")
 
     try:
         game_dir: str = configs.Settings.get().get('paths', {}).get('game', '')
+
         packer.restore_backup(game_dir)
     except Exception as e:
-        logger.critical(f"Failed to restore game files.\n{e}")
+        logger.error(f"Failed to restore game files.\n{e}")
+        sys.exit(1)
+
+    logger.info("Successfully restored original game files.")
 
 
 if __name__ == "__main__":
