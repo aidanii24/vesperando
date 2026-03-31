@@ -70,18 +70,27 @@ def generate(options, name, seed, spoiler, targets):
 @click.option("--threads", "-t", type=int, default=8, help="Maximum number of threads to use")
 @click.option("--clean", "-c", is_flag=True, help="Remove residue files generated during patching")
 @click.option("--apply-immediately", "-a", is_flag=True, help="Apply the patch immediately after patching")
-@click.argument('patch_file', type=click.Path(exists=True))
+@click.argument('patch_file', type=click.Path())
 def patch(threads, clean, apply_immediately, patch_file):
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-patch_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
 
-    # Check if provided patch file is a valid patch file
-    # Only check if it is a directory as click already handles path existence automatically
-    if os.path.isdir(patch_file):
-        logger.error(f"\"{patch_file}\" is a directory. Please provide a .vbrp patch file.")
-        sys.exit(1)
+    file_path: str = patch_file
 
-    app = procedure.GamePatchProcedure(patch_file, threads, apply_immediately, clean)
+    # Check if provided patch file is a valid patch file
+    # The patch has to be a file
+    if os.path.isdir(file_path):
+        logger.error(f"\"{file_path}\" is a directory. Please provide a .vbrp patch file.")
+        sys.exit(1)
+    # Assume provided directory might be in the PATCHES directory before aborting the patch generation
+    elif not os.path.isfile(file_path):
+        file_path = os.path.join(Paths.PATCHES, file_path)
+
+        if not os.path.isfile(file_path):
+            logger.error(f"\"{patch_file}\" does not exist. Please provide a valid patch file.")
+            sys.exit(1)
+
+    app = procedure.GamePatchProcedure(file_path, threads, apply_immediately, clean)
     app.patch()
 
     sys.exit(0)
