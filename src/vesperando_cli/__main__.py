@@ -201,7 +201,7 @@ def spoil(patch_file):
     logger.info(f"Spoiler Sheet: {os.path.abspath(report_output)}")
 
 @cli.command(help="Apply a generated patched output")
-@click.argument("patch_name", type=click.Path(file_okay=True))
+@click.argument("patch_name", required=False, type=click.Path(file_okay=True))
 def apply(patch_name):
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-apply_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
@@ -210,20 +210,52 @@ def apply(patch_name):
 
     is_patch_file: bool = False
     patched_path: str = patch_name
-    try:
-        if os.path.isfile(patch_name) and Extensions.is_valid_patch(patched_path):
-            is_patch_file = True
+    if patch_name:
+        try:
+            if os.path.isfile(patch_name) and Extensions.is_valid_patch(patched_path):
+                is_patch_file = True
 
-            data = json.load(open(patch_name), object_hook=utils.keys_to_int)
-            identifier = f"{data['player']}-{data['created']}"
+                data = json.load(open(patch_name), object_hook=utils.keys_to_int)
+                identifier = f"{data['player']}-{data['created']}"
 
-            patched_path = os.path.join(Paths.OUTPUT, identifier)
-    except json.JSONDecodeError as e:
+                patched_path = os.path.join(Paths.OUTPUT, identifier)
+        except json.JSONDecodeError as e:
+            logger.info("")
+            logger.error(f"{patch_name} contains a valid vesperando patch file extension, "
+                         f"but could not be parsed as such.\n{e}")
+            logger.warning("Discarding attempt to use patch name with a valid vesperando file extension "
+                           "as a vesperando patch file.")
+    else:
         logger.info("")
-        logger.error(f"{patch_name} contains a valid vesperando patch file extension, "
-                     f"but could not be parsed as such.\n{e}")
-        logger.warning("Discarding attempt to use patch name with a valid vesperando file extension "
-                       "as a vesperando patch file.")
+
+        outputs: list[str] = []
+        for d in os.listdir(Paths.OUTPUT):
+            if os.path.isdir(os.path.join(Paths.OUTPUT, d)):
+                outputs.append(d)
+
+        if not outputs:
+            logger.error("Please provide a valid output name or patch file.")
+            sys.exit(1)
+
+        logger.info("Select a patch output to apply to the game.")
+        logger.info("Answer with the corresponding number, or 0 to abort the patch application.")
+
+        choices: list[int] = [_ for _ in range(len(outputs) + 1)]
+        for i, p in enumerate(outputs):
+            logger.info(f"[{i + 1}] {p}")
+
+        logger.info("")
+        logger.info("[0] Cancel")
+        logger.info("")
+
+        res: int = prompt.choice(choices, f"Output: (0 - {len(outputs)})")
+        logger.info("")
+
+        if res == 0:
+            logger.info("Patch Application aborted.")
+            sys.exit(0)
+
+        patched_path = os.path.join(Paths.OUTPUT, (outputs[res - 1]))
 
     # Assume provided directory might be in the OUTPUT directory before aborting the patch application
     if not os.path.isdir(patched_path):
