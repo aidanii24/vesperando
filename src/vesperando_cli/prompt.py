@@ -10,5 +10,5 @@ def choice(choices: list, text: str = "") -> int:
     if ans.isdigit() and int(ans) in choices:
         return int(ans)
     else:
-        logger.error(f"Please choose a number between 0 and {len(choices)}.")
+        logger.error(f"Please choose a number between 0 and {len(choices) - 1}.")
         return choice(choices, text)

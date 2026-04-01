@@ -83,7 +83,7 @@ def patch(threads, clean, apply_immediately, patch_file=None):
         # Check if provided patch file is a valid patch file
         # The patch has to be a file
         if os.path.isdir(file_path):
-            logger.error(f"\"{file_path}\" is a directory. Please provide a .vbrp patch file.")
+            logger.error(f"\"{file_path}\" is a directory. Please provide a valid patch file.")
             sys.exit(1)
         # Assume provided directory might be in the PATCHES directory before aborting the patch generation
         elif not os.path.isfile(file_path):
@@ -107,7 +107,7 @@ def patch(threads, clean, apply_immediately, patch_file=None):
         logger.info("Select a patch file to be used for patching.")
         logger.info("Answer with the corresponding number, or 0 to abort the patch.")
 
-        choices: list[int] = [_ for _ in range(len(patches))]
+        choices: list[int] = [_ for _ in range(len(patches) + 1)]
         for i, p in enumerate(patches):
             logger.info(f"[{i + 1}] {p}")
 
@@ -130,23 +130,65 @@ def patch(threads, clean, apply_immediately, patch_file=None):
     sys.exit(0)
 
 @cli.command(help="Generate a spoiler log from a randomizer patch file")
-@click.argument("patch_file", type=click.Path(exists=True))
+@click.argument("patch_file", required=False, type=click.Path(exists=True))
 def spoil(patch_file):
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-spoil_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
 
     logger.info("vesperando: Spoil")
-    logger.info(f"Spoil {os.path.basename(patch_file)}")
 
-    # Check if provided patch file is a valid patch file
-    # Only check if it is a directory as click already handles path existence automatically
-    if os.path.isdir(patch_file):
-        logger.critical(f"\"{patch_file}\" is a directory. Please provide a .vbrp patch file.")
-        sys.exit(1)
+    file_path: str = patch_file
 
-    file_data: dict = json.load(open(patch_file), object_hook=utils.keys_to_int)
+    if patch_file:
+        # Check if provided patch file is a valid patch file
+        # The patch has to be a file
+        if os.path.isdir(file_path):
+            logger.error(f"\"{file_path}\" is a directory. Please provide a valid patch file.")
+            sys.exit(1)
+        # Assume provided directory might be in the PATCHES directory before aborting the patch generation
+        elif not os.path.isfile(file_path):
+            file_path = os.path.join(Paths.PATCHES, file_path)
+
+            if not os.path.isfile(file_path):
+                logger.error(f"\"{patch_file}\" does not exist. Please provide a valid patch file.")
+                sys.exit(1)
+    else:
+        logger.info("")
+
+        patches: list[str] = []
+        for f in os.listdir(Paths.PATCHES):
+            if os.path.isfile(os.path.join(Paths.PATCHES, f)) and Extensions.is_valid_patch(f):
+                patches.append(f)
+
+        if not patches:
+            logger.error("Please provide a valid patch file.")
+            sys.exit(1)
+
+        logger.info("Select a patch file to spoil.")
+        logger.info("Answer with the corresponding number, or 0 to abort the spoiling.")
+
+        choices: list[int] = [_ for _ in range(len(patches) + 1)]
+        for i, p in enumerate(patches):
+            logger.info(f"[{i + 1}] {p}")
+
+        logger.info("")
+        logger.info("[0] Cancel")
+        logger.info("")
+
+        res: int = prompt.choice(choices, f"Patch: (0 - {len(patches)})")
+        logger.info("")
+
+        if res == 0:
+            logger.info("Spoil aborted.")
+            sys.exit(0)
+
+        file_path = os.path.join(Paths.PATCHES, (patches[res - 1]))
+
+    file_data: dict = json.load(open(file_path), object_hook=utils.keys_to_int)
     patch_data: dict = dict(item for item in [*file_data.items()][4:])
-    report_output: str = os.path.join(os.path.dirname(patch_file), f"tovde-spoiler-{datetime_id}.ods")
+    report_output: str = os.path.join(os.path.dirname(file_path), f"tovde-spoiler-{datetime_id}.ods")
+
+    logger.info(f"Spoil {os.path.basename(file_path)}")
 
     start_time = time.time()
     logger.info(f"\n> Generating Spoiler Sheet")
