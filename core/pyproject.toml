@@ -14,7 +14,6 @@ dependencies = [
     "packaging==25.0",
     "pip-autoremove==0.10.0",
     "psutil==7.1.3",
-    "pyinstaller-hooks-contrib==2025.10",
     "setuptools==80.9.0",
     "libvespy~=0.1.0",
     "vesperando_core~=0.2.0",
