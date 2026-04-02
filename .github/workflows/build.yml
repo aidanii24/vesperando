@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  PKG_NAME: 'ToVRandomizerTools'
+  CLI_PKG: 'vesperando_cli'
 
 jobs:
   build:
@@ -18,7 +18,7 @@ jobs:
         os: ['windows-latest', 'ubuntu-latest']
 
     env:
-      SPEC_FILE: 'ToVRandomizerTools.spec'
+      CLI_SPEC: 'vesperando_cli.spec'
 
     steps:
       - name: Checkout Repository
@@ -29,14 +29,14 @@ jobs:
         with:
           python-version: 3.13.x
 
-      - name: Set up Dependencies
+      - name: Set up Packages
         run: |
-          pip install -r requirements.txt
+          python scripts/setup_dev.py
         working-directory: ./
 
       - name: Build Executable
         run: |
-          pyinstaller ${{ env.SPEC_FILE }}
+          pyinstaller ${{ env.CLI_SPEC }}
         working-directory: ./
 
       - name: Create Artifact (Windows)
@@ -49,7 +49,7 @@ jobs:
       - name: Archive as tarball (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          tar cvf - ${{ env.PKG_NAME }} | gzip -9 - > ${{ env.PKG_NAME }}-linux.tar.gz
+          tar cvf - ${{ env.CLI_PKG }} | gzip -9 - > ${{ env.CLI_PKG }}-linux.tar.gz
         working-directory: ./dist/
 
       - name: Create Artifact (Linux)
@@ -57,7 +57,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ToVRandomizerTools-linux
-          path: dist/${{ env.PKG_NAME }}-linux.tar.gz
+          path: dist/${{ env.CLI_PKG }}-linux.tar.gz
           compression-level: 0
 
       - name: List bundle output
@@ -84,7 +84,7 @@ jobs:
 
       - name: Zip Windows Artifact
         run: |
-          zip -r ${{ env.PKG_NAME }}-windows.zip ./ToVRandomizerTools
+          zip -r ${{ env.CLI_PKG }}-windows.zip ${{ env.CLI_PKG }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -97,5 +97,5 @@ jobs:
           prerelease: false
           overwrite_files: true
           files: |
-            ${{ env.PKG_NAME }}-linux.tar.gz
-            ${{ env.PKG_NAME }}-windows.zip
+            ${{ env.CLI_PKG }}-linux.tar.gz
+            ${{ env.CLI_PKG }}-windows.zip
