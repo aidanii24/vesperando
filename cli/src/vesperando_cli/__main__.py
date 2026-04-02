@@ -24,13 +24,13 @@ def cli():
     pass
 
 @cli.command(help="Generate a new randomizer patch file")
-@click.option("--options", "-o", type=click.Path(exists=True), help="Options file to use")
+# @click.option("--options", "-o", type=click.Path(exists=True), help="Options file to use")
 @click.option("--seed", type=click.INT, help="Seed to use")
 @click.option("--name", "-n", type=click.STRING, help="Name to identify the patch")
 @click.option("--spoiler", "-s", is_flag=True, help="Generate Spoiler Log")
 @click.argument("targets", nargs=-1,
                 type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
-def generate(options, name, seed, spoiler, targets):
+def generate(name, seed, spoiler, targets):
     options_data = {}
 
     # Initialize Randomizer
@@ -44,20 +44,20 @@ def generate(options, name, seed, spoiler, targets):
     logger.info("vesperando: Basic Randomizer")
     logger.info(f"Randomizer {app_randomizer.identifier}")
     logger.info(f"{"\u2713":<4} Using Targets: {targets if targets and not options_data else '[ALL]'}")
-    if options_data:
-        logger.info(f"{"\u2713":<4} Using Options: {options}")
-    logger.info("")
-
-    if options:
-        try:
-            options_data = json.load(open(options))
-        except Exception as e:
-            if e == IsADirectoryError:
-                logger.error(f"\"{options}\" is a directory.")
-            else:
-                logger.error("Failed to load options file: {}".format(e))
-
-            logger.warning("Ignoring options file.")
+    # if options_data:
+    #     logger.info(f"{"\u2713":<4} Using Options: {options}")
+    # logger.info("")
+    #
+    # if options:
+    #     try:
+    #         options_data = json.load(open(options))
+    #     except Exception as e:
+    #         if e == IsADirectoryError:
+    #             logger.error(f"\"{options}\" is a directory.")
+    #         else:
+    #             logger.error("Failed to load options file: {}".format(e))
+    #
+    #         logger.warning("Ignoring options file.")
 
     if options_data and targets:
         logger.warning("An options file has been provided. "
