@@ -1,8 +1,7 @@
 from setuptools import setup
 from setuptools.command.install import install
-from setuptools.command.develop import develop
-from setuptools.command.egg_info import egg_info
 from setuptools.command.build_py import build_py
+from setuptools.command.build import build
 import subprocess
 import platform
 import shutil
@@ -19,14 +18,10 @@ if platform.system() == "Windows":
 elif platform.system() == "Darwin":
     ext = ".dylib"
 
-class BuildSharedLibrary(build_py):
+class BuildPySharedLibrary(build_py):
     @classmethod
     def build_library(cls):
-        if not os.path.isdir(ltp):
-            os.mkdir(ltp)
-        else:
-            shutil.rmtree(ltp)
-            os.mkdir(ltp)
+        os.makedirs(ltp)
 
         cls._clean_library()
         cls._compile_library()
@@ -58,23 +53,9 @@ class InstallSharedLibrary(install):
         super().run()
 
 
-class DevelopSharedLibrary(develop):
-    def run(self):
-        shutil.copytree(ltp, lbd, dirs_exist_ok=True)
-        super().run()
-
-
-class EggInfoSharedLibrary(egg_info):
-    def run(self):
-        shutil.copytree(ltp, lbd, dirs_exist_ok=True)
-        super().run()
-
-
 setup(
     cmdclass={
-        'build_py': BuildSharedLibrary,
+        'build_py': BuildPySharedLibrary,
         'install': InstallSharedLibrary,
-        'develop': DevelopSharedLibrary,
-        'egg_info': EggInfoSharedLibrary,
     }
 )

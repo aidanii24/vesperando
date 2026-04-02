@@ -41,7 +41,7 @@ jobs:
 
       - name: Set up Packages
         run: |
-          python scripts/setup_dev.py
+          python scripts/setup_build.py
         working-directory: ./
 
       - name: Build Executable
