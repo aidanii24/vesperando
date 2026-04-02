@@ -19,7 +19,9 @@ class PatchSpoiler:
     spoiler: dict
 
     def __init__(self):
-        data: dict = json.load(open(os.path.join(Paths.STATIC_DIR, "metadata.json")), object_hook=keys_to_int)
+        with open(Paths.STATIC_PATH.joinpath("metadata.json")) as f:
+            data = json.load(f, object_hook=keys_to_int)
+
         self.arte_name_table = data['artes']
         self.skill_name_table = data['skills']
         self.item_name_table = data['items']

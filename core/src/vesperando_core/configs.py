@@ -8,12 +8,12 @@ from vesperando_core.conf.settings import Paths
 class Settings:
     @staticmethod
     def generate():
-        base_path: str = Paths.GAME
+        base_path: str = Paths.GAME_DIR
         system: str = platform.system()
         if system == "Linux":
-            base_path = os.path.join(os.path.expanduser("~"), ".steam", Paths.GAME)
+            base_path = os.path.join(os.path.expanduser("~"), ".steam", Paths.GAME_DIR)
         elif system == "Windows":
-            base_path = os.path.join("C:\\Program Files (x86)", Paths.GAME)
+            base_path = os.path.join("C:\\Program Files (x86)", Paths.GAME_DIR)
 
         config: dict = {
             'paths': {

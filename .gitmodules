@@ -1,0 +1,3 @@
+[submodule "core/src/comptoe"]
+	path = core/src/comptoe
+	url = main.github.com:aidanii24/comptoe.git

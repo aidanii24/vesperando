@@ -14,27 +14,28 @@ dependencies = [
     "packaging==25.0",
     "pip-autoremove==0.10.0",
     "psutil==7.1.3",
-    "pyinstaller==6.17.0",
     "pyinstaller-hooks-contrib==2025.10",
     "setuptools==80.9.0",
     "libvespy~=0.1.0",
-    "click~=8.3.1",
     "vesperando_core~=0.2.0",
     "PyYAML~=6.0.3",
 ]
 
 [project.optional-dependencies]
-dev = [
+test = [
     "python-dotenv~=1.2.2"
 ]
 
 [project.urls]
-Homepage = "https://github.com/aidanii24/tov-ap-patcher"
+Homepage = "https://github.com/aidanii24/vesperando"
 
 [build-system]
 requires = ["setuptools >= 80.9.0"]
 build-backend = "setuptools.build_meta"
 
-[tools.setuptools.packages.find]
-where = ["src/vesperando_core"]
+[tool.setuptools.packages.find]
+where = ["src/"]
 exclude = ["/tests*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "_*.so", "_*.dll"]

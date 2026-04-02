@@ -1,25 +1,30 @@
+from importlib import resources
 from dataclasses import dataclass
 import os
 import sys
 
-IS_EXEC: bool = hasattr(sys, '_MEIPASS')
+from vesperando_core import static, lib
 
+
+IS_EXEC: bool = hasattr(sys, '_MEIPASS')
 
 @dataclass(frozen=True)
 class Paths:
-    EXEC_DIR = sys._MEIPASS if IS_EXEC else os.getenv('EXEC_DIR', os.getcwd())
+    EXEC_DIR = os.path.dirname(sys._MEIPASS) if IS_EXEC else os.getenv('EXEC_DIR', os.getcwd())
     LOG_DIR = os.path.join(EXEC_DIR, 'logs')
-    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) if not IS_EXEC else sys._MEIPASS
-    STATIC_DIR = os.path.join(BASE_DIR, 'static')
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) if not IS_EXEC \
+        else os.path.join(sys._MEIPASS, 'vesperando_core')
+    STATIC_PATH = resources.files(static)
+    LIB_PATH = resources.files(lib)
 
     CONFIG = os.path.join(EXEC_DIR, "config", "config.yaml")
-    PATCHES = os.path.join(EXEC_DIR, "patches")
-    BUILD = os.path.join(EXEC_DIR, "build")
-    MANIFESTS = os.path.join(BUILD, ".manifests")
-    OUTPUT = os.path.join(EXEC_DIR, "output")
+    PATCHES_DIR = os.path.join(EXEC_DIR, "patches")
+    BUILD_DIR = os.path.join(EXEC_DIR, "build")
+    MANIFESTS_DIR = os.path.join(BUILD_DIR, ".manifests")
+    OUTPUT_dir = os.path.join(EXEC_DIR, "output")
 
-    GAME = os.path.join("steam", "steamapps", "common", "Tales of Vesperia Definitive Edition")
-    BACKUP = os.path.join("Data64", ".backup")
+    GAME_DIR = os.path.join("steam", "steamapps", "common", "Tales of Vesperia Definitive Edition")
+    BACKUP_DIR = os.path.join("Data64", ".backup")
     BTL =os.path.join("Data64", "btl.svo")
     ITEM = os.path.join("Data64", "item.svo")
     NPC = os.path.join("Data64", "npc.svo")

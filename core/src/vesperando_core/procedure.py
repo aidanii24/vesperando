@@ -232,7 +232,7 @@ if __name__ == '__main__':
             data = json.load(open(patch_file), object_hook=utils.keys_to_int)
             identifier = f"{data['player']}-{data['created']}"
 
-            patched_path = os.path.join(Paths.OUTPUT, identifier)
+            patched_path = os.path.join(Paths.OUTPUT_dir, identifier)
 
         if not os.path.isdir(patched_path):
             raise NotADirectoryError("[ERROR]\tPatch does not exist")

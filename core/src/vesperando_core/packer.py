@@ -14,22 +14,23 @@ logger = logging.getLogger(os.environ.get('LOGGER_NAME', "vesperando"))
 
 class GamePatchPacker:
     """Handler Instance for Extraction, Packing, Compressing and Decompressing files from the game."""
-    game_dir: str = Paths.GAME
-    backup_dir: str = Paths.BACKUP
+    game_dir: str = Paths.GAME_DIR
+    backup_dir: str = Paths.BACKUP_DIR
 
-    build_dir: str = Paths.BUILD
-    manifest_dir: str = Paths.MANIFESTS
-    output_dir: str = Paths.OUTPUT
+    build_dir: str = Paths.BUILD_DIR
+    manifest_dir: str = Paths.MANIFESTS_DIR
+    output_dir: str = Paths.OUTPUT_dir
 
     checksums: dict[str, str] = {}
 
     apply_immediately: bool = False
 
     def __init__(self, config: dict, patch_id: str, apply_immediately: bool = False):
-        self.checksums: dict[str, str] = json.load(open(os.path.join(Paths.STATIC_DIR, "checksums.json")))
+        with open(Paths.STATIC_PATH.joinpath("checksums.json")) as f:
+            self.checksums: dict[str, str] = json.load(f)
 
         self.game_dir = config.get('paths', {}).get('game')
-        self.backup_dir = os.path.join(self.game_dir, Paths.BACKUP)
+        self.backup_dir = os.path.join(self.game_dir, Paths.BACKUP_DIR)
 
         if not os.path.isdir(self.build_dir):
             os.makedirs(self.build_dir)
@@ -368,7 +369,7 @@ def clean_game(game_dir: str, quiet: bool = True):
             shutil.rmtree(patches)
 
 def restore_backup(game_dir: str, quiet: bool = False):
-    backup_dir: str = os.path.join(game_dir, Paths.BACKUP)
+    backup_dir: str = os.path.join(game_dir, Paths.BACKUP_DIR)
     if not os.path.isdir(backup_dir):
         raise PackerError("Could not find backups of original game file."
                           "Please check the settings.yaml if the correct game directory is provided, "

@@ -732,16 +732,16 @@ class BasicRandomizerProcedure:
     search_point_randomizer: SearchPointRandomizer
 
     identifier: str = "randomizer"
-    patch_output: str = os.path.join(Paths.PATCHES, f"randomizer.{Extensions.BASIC_PATCH}")
-    report_output: str = os.path.join(Paths.PATCHES, "tovde-spoiler.ods")
+    patch_output: str = os.path.join(Paths.PATCHES_DIR, f"randomizer.{Extensions.BASIC_PATCH}")
+    report_output: str = os.path.join(Paths.PATCHES_DIR, "tovde-spoiler.ods")
 
     def __init__(self, targets: list[str], identifier: str = "", seed = random.randint(1, 0xFFFFFFFF)):
         self.seed = uuid.uuid1().int
         self.random = random.Random(seed)
 
         self.identifier = identifier if identifier else datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
-        self.patch_output = os.path.join(Paths.PATCHES, f"{self.identifier}{Extensions.BASIC_PATCH}")
-        self.report_output = os.path.join(Paths.PATCHES, f"tovde-spoiler-{self.identifier}.ods")
+        self.patch_output = os.path.join(Paths.PATCHES_DIR, f"{self.identifier}{Extensions.BASIC_PATCH}")
+        self.report_output = os.path.join(Paths.PATCHES_DIR, f"tovde-spoiler-{self.identifier}.ods")
 
         if not targets or 'artes' in targets:
             self.load_artes_data()
@@ -753,11 +753,12 @@ class BasicRandomizerProcedure:
         if not targets or item_dependents:
             self.load_items_data()
 
-        if not os.path.isdir(Paths.PATCHES):
-            os.makedirs(Paths.PATCHES)
+        if not os.path.isdir(Paths.PATCHES_DIR):
+            os.makedirs(Paths.PATCHES_DIR)
 
     def load_artes_data(self):
-        artes_data_table = json.load(open(os.path.join(Paths.STATIC_DIR, "artes.json")), object_hook=keys_to_int)
+        with open(Paths.STATIC_PATH.joinpath("artes.json")) as f:
+            artes_data_table = json.load(f, object_hook=keys_to_int)
 
         properties_table = {}
         artes_by_char = {}
@@ -782,8 +783,9 @@ class BasicRandomizerProcedure:
         self.artes_by_char = artes_by_char
 
     def load_skills_data(self):
-        skills_data_table: dict = json.load(open(os.path.join(Paths.STATIC_DIR, 'skills.json')),
-                                            object_hook=keys_to_int)
+        with open(Paths.STATIC_PATH.joinpath("skills.json")) as f:
+            skills_data_table = json.load(f, object_hook=keys_to_int)
+
         self.skills_data_table = {int(sid): skill['properties']
                                   for sid, skill in skills_data_table['entries'].items()}
 
@@ -796,7 +798,8 @@ class BasicRandomizerProcedure:
         self.skills_by_char = skills_by_char
 
     def load_items_data(self):
-        self.items_data_table = json.load(open(os.path.join(Paths.STATIC_DIR, "items.json")), object_hook=keys_to_int)
+        with open(Paths.STATIC_PATH.joinpath("items.json")) as f:
+            self.items_data_table = json.load(f, object_hook=keys_to_int)
 
         self.item_by_category = {}
         self.item_to_category = {}
@@ -870,8 +873,11 @@ class BasicRandomizerProcedure:
             self.item_randomizer.report()
 
         if not targets or 'shops' in targets:
+            with open(Paths.STATIC_PATH.joinpath("shop.json")) as f:
+                shop_data: dict = json.load(f, object_hook=keys_to_int)
+
             data: dict = {
-                'shop_data': json.load(open(os.path.join(Paths.STATIC_DIR, "shop.json")), object_hook=keys_to_int),
+                'shop_data': shop_data,
                 'item_to_category': self.item_to_category,
                 'item_by_category': self.item_by_category,
                 'common_items': self.common_items,
@@ -885,8 +891,11 @@ class BasicRandomizerProcedure:
             self.shop_randomizer.report()
 
         if not targets or 'chests' in targets:
+            with open(Paths.STATIC_PATH.joinpath("chests.json")) as f:
+                chest_data: dict = json.load(f, object_hook=keys_to_int)
+
             data: dict = {
-                'chest_data': json.load(open(os.path.join(Paths.STATIC_DIR, "chests.json")), object_hook=keys_to_int),
+                'chest_data': chest_data,
                 'item_to_category': self.item_to_category,
                 'item_by_category': self.item_by_category,
                 'common_items': self.common_items,

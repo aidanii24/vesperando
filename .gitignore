@@ -6,9 +6,10 @@
 **/build/*
 **/output/*
 **/artifacts/*
+*/builds/
+*/output/
+*/dist/
 /references/
-/builds/
-/output/
 config.json
 config.y[a]ml
 .env
@@ -19,8 +20,6 @@ config.y[a]ml
 # Build
 /dist/
 *egg-info
-*spec
-!ToVRandomizerTools.spec
 
 # Binaries
 *.so

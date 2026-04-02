@@ -3,30 +3,22 @@ import mmap
 import json
 import os
 
-from vesperando_core import utils, game_types as gtypes
-from vesperando_core.conf.settings import Paths
 from vesperando_core.utils import keys_to_int
+from vesperando_core import game_types as gtypes
+from vesperando_core.conf.settings import Paths
 
 
 class GamePatcher:
-    build_dir: str = Paths.BUILD
-    data_dir: str = Paths.STATIC_DIR
+    build_dir: str = Paths.BUILD_DIR
 
     def __init__(self, patcher_id: str):
         self.build_dir = os.path.join(self.build_dir, patcher_id)
 
     def patch_artes(self, arte_patches: dict):
         target: str = os.path.join(self.build_dir, "BTL_PACK", "0004.ext", "ALL.0000")
-        assert os.path.isfile(target), f"Expected file {target}, but it does not exist."
 
-        original_data_file: str = os.path.join(self.data_dir, "artes.json")
-        assert os.path.isfile(original_data_file), f"Expected file {original_data_file}, but it does not exist."
-
-        if not arte_patches:
-            print("Expected Patch data for target 'artes`, but none were found! Abandoning patching for the target.")
-            return
-
-        original_data: dict = json.load(open(original_data_file))['entries']
+        with open(Paths.STATIC_PATH.joinpath("artes.json")) as f:
+            original_data = json.load(f, object_hook=keys_to_int)['entries']
 
         total_searched: int = 0
         total_patched: int = 0
@@ -77,22 +69,18 @@ class GamePatcher:
 
     def patch_skills(self, skill_patches: dict):
         target: str = os.path.join(self.build_dir, "BTL_PACK", "0010.ext", "ALL.0000")
-        assert os.path.isfile(target), f"Expected file {target}, but it does not exist."
-
-        original_data_file: str = os.path.join(self.data_dir, "skills.json")
-        assert os.path.isfile(original_data_file), f"Expected file {original_data_file}, but it does not exist."
 
         patches = {int(key): value for key, value in skill_patches.items()}
         if not patches:
-            print("Expected Patch data for target 'skills`, but none were found! Abandoning patching for the target.")
             return
 
-        original_data: dict = json.load(open(original_data_file), object_hook=keys_to_int)['entries']
+        with open(Paths.STATIC_PATH.joinpath("skills.json")) as f:
+            original_data = json.load(f, object_hook=keys_to_int)['entries']
 
         patched_data: dict = {}
         for sid, patch in sorted(patches.items()):
-            assert sid == original_data[sid]['properties']['id'], \
-                f"There was an error resolving the patch for Skill Entry {sid}"
+            if not sid == original_data[sid]['properties']['id']:
+                raise PatchValidationError(f"There was an error resolving the patch for Skill Entry {sid}")
             original_properties: dict = original_data[sid]['properties']
             patched_data[original_properties['entry']] = {**original_properties, **patch}
 
@@ -122,18 +110,17 @@ class GamePatcher:
         if 'custom' in item_patches:
             self.patch_items_custom(target, item_patches['custom'])
 
-    def patch_items_base(self, target_file: str, item_patches: dict):
+    @staticmethod
+    def patch_items_base(target_file: str, item_patches: dict):
         patches: dict[int, dict] = {int(key): value for key, value in item_patches.items()}
 
-        original_data_file: str = os.path.join(self.data_dir, "items.json")
-        assert os.path.isfile(original_data_file), f"Expected file {original_data_file}, but it does not exist."
-
-        original_data: dict = json.load(open(original_data_file), object_hook=keys_to_int)
+        with open(Paths.STATIC_PATH.joinpath("items.json")) as f:
+            original_data = json.load(f, object_hook=keys_to_int)
 
         patched_data: dict = {}
         for entry, patch in sorted(patches.items()):
-            assert entry == original_data[entry]['id'], \
-                f"There was an error resolving patch data for Item ID {entry}"
+            if entry != original_data[entry]['id']:
+                raise PatchValidationError(f"There was an error resolving patch data for Item ID {entry}")
 
             patched_data[original_data[entry]['entry']] = {**original_data[entry], **patch}
 
@@ -168,11 +155,10 @@ class GamePatcher:
 
             self.patch_shops_precise(target, patches)
 
-    def patch_shops_precise(self, target_file: str, patches: dict):
-        original_data_file: str = os.path.join(self.data_dir, "shop.json")
-        assert os.path.isfile(original_data_file), f"Expected file {original_data_file}, but it does not exist."
-
-        original_data: dict = json.load(open(original_data_file), object_hook=utils.keys_to_int)
+    @staticmethod
+    def patch_shops_precise(target_file: str, patches: dict):
+        with open(Paths.STATIC_PATH.joinpath("shop.json")) as f:
+            original_data = json.load(f, object_hook=keys_to_int)
 
         shop_items: dict = {}
         if 'commons' in patches:
@@ -360,3 +346,10 @@ class GamePatcher:
             mm.seek(0)
             header.file_size = mm.size()
             mm.write(bytearray(header))
+
+
+class PatchError(Exception):
+    pass
+
+class PatchValidationError(PatchError):
+    pass

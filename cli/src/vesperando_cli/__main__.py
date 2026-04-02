@@ -5,13 +5,11 @@ import time
 import sys
 import os
 
-from vesperando_cli import LOGGER_NAME
 from vesperando_core import procedure, randomizer, packer, spoil as spoiling, configs, utils
 from vesperando_core.conf.settings import Paths, Extensions
 import click
 
-import cli_logging
-import prompt
+from vesperando_cli import LOGGER_NAME, cli_logging, prompt
 
 
 cli_logging.setup_logging(LOGGER_NAME)
@@ -87,7 +85,7 @@ def patch(threads, clean, apply_immediately, patch_file=None):
             sys.exit(1)
         # Assume provided directory might be in the PATCHES directory before aborting the patch generation
         elif not os.path.isfile(file_path):
-            file_path = os.path.join(Paths.PATCHES, file_path)
+            file_path = os.path.join(Paths.PATCHES_DIR, file_path)
 
             if not os.path.isfile(file_path):
                 logger.error(f"\"{patch_file}\" does not exist. Please provide a valid patch file.")
@@ -96,8 +94,8 @@ def patch(threads, clean, apply_immediately, patch_file=None):
         logger.info("")
 
         patches: list[str] = []
-        for f in os.listdir(Paths.PATCHES):
-            if os.path.isfile(os.path.join(Paths.PATCHES, f)) and Extensions.is_valid_patch(f):
+        for f in os.listdir(Paths.PATCHES_DIR):
+            if os.path.isfile(os.path.join(Paths.PATCHES_DIR, f)) and Extensions.is_valid_patch(f):
                 patches.append(f)
 
         if not patches:
@@ -122,7 +120,7 @@ def patch(threads, clean, apply_immediately, patch_file=None):
             logger.info("Patch aborted.")
             sys.exit(0)
 
-        file_path = os.path.join(Paths.PATCHES, (patches[res - 1]))
+        file_path = os.path.join(Paths.PATCHES_DIR, (patches[res - 1]))
 
     app = procedure.GamePatchProcedure(file_path, threads, apply_immediately, clean)
     app.patch()
@@ -147,7 +145,7 @@ def spoil(patch_file):
             sys.exit(1)
         # Assume provided directory might be in the PATCHES directory before aborting the patch generation
         elif not os.path.isfile(file_path):
-            file_path = os.path.join(Paths.PATCHES, file_path)
+            file_path = os.path.join(Paths.PATCHES_DIR, file_path)
 
             if not os.path.isfile(file_path):
                 logger.error(f"\"{patch_file}\" does not exist. Please provide a valid patch file.")
@@ -156,8 +154,8 @@ def spoil(patch_file):
         logger.info("")
 
         patches: list[str] = []
-        for f in os.listdir(Paths.PATCHES):
-            if os.path.isfile(os.path.join(Paths.PATCHES, f)) and Extensions.is_valid_patch(f):
+        for f in os.listdir(Paths.PATCHES_DIR):
+            if os.path.isfile(os.path.join(Paths.PATCHES_DIR, f)) and Extensions.is_valid_patch(f):
                 patches.append(f)
 
         if not patches:
@@ -182,7 +180,7 @@ def spoil(patch_file):
             logger.info("Spoil aborted.")
             sys.exit(0)
 
-        file_path = os.path.join(Paths.PATCHES, (patches[res - 1]))
+        file_path = os.path.join(Paths.PATCHES_DIR, (patches[res - 1]))
 
     file_data: dict = json.load(open(file_path), object_hook=utils.keys_to_int)
     patch_data: dict = dict(item for item in [*file_data.items()][4:])
@@ -218,7 +216,7 @@ def apply(patch_name):
                 data = json.load(open(patch_name), object_hook=utils.keys_to_int)
                 identifier = f"{data['player']}-{data['created']}"
 
-                patched_path = os.path.join(Paths.OUTPUT, identifier)
+                patched_path = os.path.join(Paths.OUTPUT_dir, identifier)
         except json.JSONDecodeError as e:
             logger.info("")
             logger.error(f"{patch_name} contains a valid vesperando patch file extension, "
@@ -229,8 +227,8 @@ def apply(patch_name):
         logger.info("")
 
         outputs: list[str] = []
-        for d in os.listdir(Paths.OUTPUT):
-            if os.path.isdir(os.path.join(Paths.OUTPUT, d)):
+        for d in os.listdir(Paths.OUTPUT_dir):
+            if os.path.isdir(os.path.join(Paths.OUTPUT_dir, d)):
                 outputs.append(d)
 
         if not outputs:
@@ -255,11 +253,11 @@ def apply(patch_name):
             logger.info("Patch Application aborted.")
             sys.exit(0)
 
-        patched_path = os.path.join(Paths.OUTPUT, (outputs[res - 1]))
+        patched_path = os.path.join(Paths.OUTPUT_dir, (outputs[res - 1]))
 
     # Assume provided directory might be in the OUTPUT directory before aborting the patch application
     if not os.path.isdir(patched_path):
-        patched_path = os.path.join(Paths.OUTPUT, patched_path)
+        patched_path = os.path.join(Paths.OUTPUT_dir, patched_path)
 
     if not os.path.isdir(patched_path):
         logger.info("")
