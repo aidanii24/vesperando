@@ -37,6 +37,9 @@ class BuildSharedLibrary(build_py):
         else:
             subprocess.call(["gcc", "-fPIC", "-shared", "-o", f"_complib{ext}", "complib.c"], cwd=mwd)
 
+        print(os.path.abspath(mwd))
+        print(os.listdir(mwd))
+
     @staticmethod
     def _clean_library():
         extensions: tuple = ("_*.so", "_*.dll", "_*.dylib")
