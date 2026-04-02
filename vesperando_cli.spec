@@ -14,7 +14,7 @@ hiddenimports += collect_submodules('rich')
 a = Analysis(
     ['cli/src/vesperando_cli/__main__.py'],
     pathex=[],
-    binaries=[('core/src/vesperando_core/lib/', 'vesperando_core/lib/')],
+    binaries=[('core/src/vesperando_core/lib/_*', 'vesperando_core/lib/')],
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
