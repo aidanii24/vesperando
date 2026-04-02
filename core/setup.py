@@ -29,7 +29,7 @@ class BuildPySharedLibrary(build_py):
     @staticmethod
     def _compile_library():
         if platform.system() == "Windows":
-            subprocess.call(["gcc", "-shared", "-o", "_complib.dll", "complib.c", "-Wl", "--export-all-symbols"],
+            subprocess.call(["gcc", "-shared", "-o", "_complib.dll", "complib.c", "-Wl,--export-all-symbols"],
                             cwd=mwd)
         else:
             subprocess.call(["gcc", "-fPIC", "-shared", "-o", f"_complib{ext}", "complib.c"], cwd=mwd)
