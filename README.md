@@ -1,5 +1,5 @@
 # Vesperando
-A pair of tools for randomizing and patching aspects of Tales of Vesperia: Definitive Edition.
+Utilities for randomizing and patching aspects of Tales of Vesperia: Definitive Edition.
 
 These tools were created in part for an eventual integration of the game into the 
 [Archipelago](https://github.com/ArchipelagoMW/Archipelago) Randomizer framework, but can work
