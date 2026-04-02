@@ -1,5 +1,7 @@
 from setuptools import setup
 from setuptools.command.install import install
+from setuptools.command.develop import develop
+from setuptools.command.egg_info import egg_info
 from setuptools.command.build_py import build_py
 import subprocess
 import platform
@@ -37,9 +39,6 @@ class BuildSharedLibrary(build_py):
         else:
             subprocess.call(["gcc", "-fPIC", "-shared", "-o", f"_complib{ext}", "complib.c"], cwd=mwd)
 
-        print(os.path.abspath(mwd))
-        print(os.listdir(mwd))
-
     @staticmethod
     def _clean_library():
         extensions: tuple = ("_*.so", "_*.dll", "_*.dylib")
@@ -59,9 +58,23 @@ class InstallSharedLibrary(install):
         super().run()
 
 
+class DevelopSharedLibrary(develop):
+    def run(self):
+        shutil.copytree(ltp, lbd, dirs_exist_ok=True)
+        super().run()
+
+
+class EggInfoSharedLibrary(egg_info):
+    def run(self):
+        shutil.copytree(ltp, lbd, dirs_exist_ok=True)
+        super().run()
+
+
 setup(
     cmdclass={
         'build_py': BuildSharedLibrary,
         'install': InstallSharedLibrary,
+        'develop': DevelopSharedLibrary,
+        'egg_info': EggInfoSharedLibrary,
     }
 )
