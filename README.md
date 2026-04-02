@@ -1,4 +1,4 @@
-# ToV Randomizer Tools
+# Vesperando
 A pair of tools for randomizing and patching aspects of Tales of Vesperia: Definitive Edition.
 
 These tools were created in part for an eventual integration of the game into the 
