@@ -1,7 +1,7 @@
 from setuptools import setup
 from setuptools.command.install import install
 from setuptools.command.build_py import build_py
-from setuptools.command.build import build
+from setuptools.command.egg_info import egg_info
 import subprocess
 import platform
 import shutil
@@ -53,9 +53,16 @@ class InstallSharedLibrary(install):
         super().run()
 
 
+class EggInfoSharedLibrary(egg_info):
+    def run(self):
+        shutil.copytree(ltp, lbd, dirs_exist_ok=True)
+        super().run()
+
+
 setup(
     cmdclass={
         'build_py': BuildPySharedLibrary,
         'install': InstallSharedLibrary,
+        'egg_info': EggInfoSharedLibrary,
     }
 )
