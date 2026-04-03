@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 from enum import IntEnum
+import datetime
 import logging
 import time
 import json
@@ -32,7 +33,9 @@ class GamePatchProcedure:
         self.config = configs.Settings.get()
         self.patch_data = json.load(open(patch_data), object_hook=utils.keys_to_int)
 
-        self.identifier = f"{self.patch_data['player']}-{self.patch_data['created']}"
+        self.identifier = f"{self.patch_data.get('player', "sicily")}-{self.patch_data.get(
+            'created', datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
+        )}"
         self.packer = packer.GamePatchPacker(self.config, self.identifier, apply_immediately)
         self.patcher = GamePatcher(self.identifier)
         self.threads = max_threads

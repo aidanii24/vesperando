@@ -836,7 +836,7 @@ class BasicRandomizerProcedure:
         self.seed = uuid.uuid1().int
         self.random = random.Random(seed)
 
-        self.identifier = identifier if identifier else datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
+        self.identifier = identifier if identifier else "sicily"
         self.patch_output = os.path.join(Paths.PATCHES_DIR, f"{self.identifier}{Extensions.BASIC_PATCH}")
         self.report_output = os.path.join(Paths.PATCHES_DIR, f"tovde-spoiler-{self.identifier}.ods")
 
@@ -915,9 +915,9 @@ class BasicRandomizerProcedure:
 
         patch_data: dict = {
             'version': '0.2',
-            'created': self.identifier,
+            'created': datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f"),
             'seed': self.seed,
-            'player': "test",
+            'player': self.identifier,
         }
 
         if os.path.isfile(self.report_output):
