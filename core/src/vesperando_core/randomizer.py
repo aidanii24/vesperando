@@ -10,7 +10,7 @@ import time
 import sys
 import os
 
-from vesperando_core.res.models.options import MainOptions, SkillsOptions
+from vesperando_core.res.models.options import MainOptions
 from vesperando_core.conf.settings import Paths, Extensions, Weights
 from vesperando_core.res import enums, schema
 from vesperando_core.utils import keys_to_int, safe_divide
@@ -341,12 +341,23 @@ class SkillRandomizer(BaseRandomizer):
         logger.info("")
 
 
+class ItemOptions:
+    def __init__(self, options: dict):
+        self.price_mod: float = options.get('price_mod', 1.0)
+        self.weapon_skills_min: int = options.get('weapon_skills_min', 1)
+        self.weapon_skills_max: int = options.get('weapon_skills_max', 3)
+        self.weapon_skill_lp_mod: float = options.get('weapon_skill_lp_mod', 1.0)
+        self.weapon_skill_lp_min: int = options.get('weapon_skill_lp_min', 100)
+        self.weapon_skill_lp_max: int = options.get('weapon_skill_lp_max', 1600)
+
+
 class ItemRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
         self.random = random_obj
         self.items_data = data['items_data']
         self.skills_lp_table = data['skills_lp_table']
         self.skills_by_char = data['skills_by_char']
+        self.options = ItemOptions(options)
 
         self.statistics: dict = {
             'Items': 0,
@@ -363,10 +374,11 @@ class ItemRandomizer(BaseRandomizer):
         set_skills_per_char: dict[int, set] = {c.value: set() for c in enums.Characters}
         for iid, item in self.candidates['base'].items():
             # Candidacy
-            if self.random.random() <= Weights.ITEM_CANDIDACY:
-                continue
+            is_candidate: bool = self.random.random() > Weights.ITEM_CANDIDACY
 
-            self.statistics['Items'] += 1
+            if is_candidate:
+                self.statistics['Items'] += 1
+
             data: dict = self.items_data[iid]
 
             # Get Characters that equip this item
@@ -376,21 +388,25 @@ class ItemRandomizer(BaseRandomizer):
                     users.append(character.value)
 
             # Buy Price
-            if item['buy_price'] and self.random.random() <= 0.95:
-                self.statistics['Prices'] += 1
-                base = int(item['buy_price'] * self.random_from_triangular(25, 200) / 100)
-                item['buy_price'] = base // 5 * 5
+            buy_price: int = item.get('buy_price', 0)
+            if buy_price:
+                if is_candidate and self.random.random() <= 0.95:
+                    self.statistics['Prices'] += 1
+                    base = int(item['buy_price'] * self.random_from_triangular(25, 200) / 100)
+                    buy_price = base // 5 * 5
             else:
                 base = self.random_from_triangular(25, 1000000)
-                item['buy_price'] = base // 5 * 5
+                buy_price = base // 5 * 5
+
+            item['buy_price'] = int(buy_price * self.options.price_mod)
 
             # Weapon Properties
             if enums.ItemCategory.is_weapon(data['category']):
                 skills_candidates: set[int] = set(skill for char in users
-                                                 for skill in self.skills_by_char[char]
-                                                 if char in self.skills_by_char)
+                                                  for skill in self.skills_by_char[char]
+                                                  if char in self.skills_by_char)
 
-                skills_set: set[int] =  skills_candidates.difference(*[set_skills_per_char[s] for s in users])
+                skills_set: set[int] = skills_candidates.difference(*[set_skills_per_char[s] for s in users])
 
                 ## Get all valid skill candidates that are not already set
                 if abs(len(skills_candidates) - len(skills_set)) > 3:
@@ -403,28 +419,41 @@ class ItemRandomizer(BaseRandomizer):
                 # Skills
                 continue_iter: bool = True
                 for i, opp in enumerate(Weights.ITEM_SKILL_OPPORTUNITIES):
-                    if continue_iter and self.random.random() <= opp:
+                    roll: float = self.random.random() if i + 1 < self.options.weapon_skills_min else -1
+                    if continue_iter and roll <= opp:
                         self.statistics['Skills'] += 1
-                        skill: int = self.random.choice([*skills_candidates])
 
-                        item[f'skill{i + 1}'] = skill
+                        skill: int = item.get(f'skill{i + 1}', 0)
+                        lp: int = item.get(f'skill{i + 1}_lp', 0)
 
-                        if skill in self.skills_lp_table:
-                            base = self.skills_lp_table[skill]
-                            mod_range = sorted([self.random_from_triangular(25, 500),
-                                               self.random_from_triangular(25, 150)])
-                            mod = self.random_from_triangular(*mod_range)
-                            item[f'skill{i + 1}_lp'] = int(max(min(base * mod * 0.01 // 5 * 5, 1600), 25))
-                        else:
-                            base = int(self.random_from_distribution(Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,
-                                                                     1, 16))
-                            item[f'skill{i + 1}_lp'] = int(base * 10)
+                        if is_candidate or (not is_candidate and not skill):
+                            skill = self.random.choice([*skills_candidates])
+                            item[f'skill{i + 1}'] = skill
 
-                        skills_candidates.discard(skill)
-                        for u in users:
-                            set_skills_per_char[u].discard(skill)
+                            if skill in self.skills_lp_table:
+                                base = self.skills_lp_table[skill]
+                                mod_range = sorted([self.random_from_triangular(25, 500),
+                                                    self.random_from_triangular(25, 150)])
+                                mod = self.random_from_triangular(*mod_range)
+                                lp = int(max(min(base * mod * 0.01 // 5 * 5, 1600), 25))
+                            else:
+                                base = int(self.random_from_distribution(Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,
+                                                                         100, 1600))
+                                lp = base // 100 * 100
 
-                        if not len(skills_candidates):
+                            skills_candidates.discard(skill)
+                            for u in users:
+                                set_skills_per_char[u].discard(skill)
+
+                            if not len(skills_candidates):
+                                continue_iter = False
+
+                        item[f'skill{i + 1}_lp'] = max(
+                            min(int(lp * self.options.weapon_skill_lp_mod), self.options.weapon_skill_lp_max),
+                            self.options.weapon_skill_lp_min
+                        )
+
+                        if i + 1 >= self.options.weapon_skills_max:
                             continue_iter = False
                     else:
                         item[f'skill{i + 1}'] = 0
