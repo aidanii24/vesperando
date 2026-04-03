@@ -1,7 +1,9 @@
+import pydantic
 import platform
 import yaml
 import os
 
+from vesperando_core.res.models.settings import MainSettings
 from vesperando_core.conf.settings import Paths
 
 
@@ -40,8 +42,12 @@ class Settings:
                 with open(Paths.CONFIG, "r") as f:
                     config = yaml.safe_load(f)
                     f.close()
+
+                MainSettings.model_validate(config)
             except yaml.YAMLError as exc:
-                raise ConfigError("[ERROR]\tCould not load config file") from exc
+                raise ConfigError("[ERROR]\tThere was a loading the configuration file") from exc
+            except pydantic.ValidationError as exc:
+                raise ConfigError(f"[ERROR]\tThe configuration file is invalid.\n{exc}") from exc
 
         return config
 
