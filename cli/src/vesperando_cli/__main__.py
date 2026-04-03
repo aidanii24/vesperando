@@ -5,7 +5,6 @@ import time
 import sys
 import os
 
-from vesperando_core import procedure, randomizer, packer, spoil as spoiling, configs, utils
 from vesperando_core.conf.settings import Paths, Extensions
 import click
 
@@ -31,6 +30,8 @@ def cli():
 @click.argument("targets", nargs=-1,
                 type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
 def generate(name, seed, spoiler, targets):
+    from vesperando_core import randomizer
+
     options_data = {}
 
     # Initialize Randomizer
@@ -71,6 +72,8 @@ def generate(name, seed, spoiler, targets):
 @click.option("--apply-immediately", "-a", is_flag=True, help="Apply the patch immediately after patching")
 @click.argument('patch_file', required=False, type=click.Path())
 def patch(threads, clean, apply_immediately, patch_file=None):
+    from vesperando_core import procedure
+
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-patch_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
 
@@ -130,6 +133,8 @@ def patch(threads, clean, apply_immediately, patch_file=None):
 @cli.command(help="Generate a spoiler log from a randomizer patch file")
 @click.argument("patch_file", required=False, type=click.Path(exists=True))
 def spoil(patch_file):
+    from vesperando_core import spoil as spoiling, utils
+
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-spoil_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
 
@@ -201,6 +206,8 @@ def spoil(patch_file):
 @cli.command(help="Apply a generated patched output")
 @click.argument("patch_name", required=False, type=click.Path(file_okay=True))
 def apply(patch_name):
+    from vesperando_core import packer, configs, utils
+
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-apply_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
 
@@ -280,6 +287,8 @@ def apply(patch_name):
 
 @cli.command(help="Restore the original game files")
 def restore():
+    from vesperando_core import packer, configs
+
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-restore_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
 
