@@ -10,7 +10,7 @@ import time
 import sys
 import os
 
-from vesperando_core.res.models.options import MainOptions
+from vesperando_core.res.models.options import MainOptions, SkillsOptions
 from vesperando_core.conf.settings import Paths, Extensions, Weights
 from vesperando_core.res import enums, schema
 from vesperando_core.utils import keys_to_int, safe_divide
@@ -90,11 +90,11 @@ class ArteRandomizer(BaseRandomizer):
             user: int = data['character_ids'][0]
 
             # TP Cost
+            tp: int = arte.get('tp_cost', 0)
             if is_candidate and self.random.random() <= Weights.ARTE_TP_COST:
-                self.randomize_tp_cost(arte)
-            else:
-                tp: int = arte['tp_cost']
-                arte['tp_cost'] = max(min(int(tp * self.options.tp_mod), self.options.tp_max), self.options.tp_min)
+                tp = self.randomize_tp_cost(arte)
+
+            arte['tp_cost'] = max(min(int(tp * self.options.tp_mod), self.options.tp_max), self.options.tp_min)
 
             # Cast Time
             if is_candidate and arte['cast_time'] > 0 and self.random.random() <= Weights.ARTE_CAST_TIME:
@@ -138,8 +138,8 @@ class ArteRandomizer(BaseRandomizer):
 
     def randomize_tp_cost(self, arte):
         self.statistics['TP Cost'] += 1
-        new_tp: int = math.ceil(int(arte['tp_cost']) * self.random_from_triangular(10, 200) * 0.01)
-        arte['tp_cost'] = max(min(int(new_tp * self.options.tp_mod), self.options.tp_max), self.options.tp_min)
+        return math.ceil(int(arte['tp_cost']) * self.random_from_triangular(10, 200) * 0.01)
+
 
     def randomize_cast_time(self, arte):
         self.statistics['Cast Time'] += 1
@@ -252,10 +252,18 @@ class ArteRandomizer(BaseRandomizer):
         logger.info("")
 
 
+class SkillOptions:
+    def __init__(self, options: dict):
+        self.sp_mod: float = options.get('sp_mod', 1.0)
+        self.sp_min: int = options.get('sp_min', 1)
+        self.sp_max: int = options.get('sp_max', 30)
+
+
 class SkillRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
         self.random = random_obj
         self.skills_data = data['skills_data']
+        self.options = SkillOptions(options)
 
         self.statistics: dict = {
             'Skills': 0,
@@ -273,19 +281,24 @@ class SkillRandomizer(BaseRandomizer):
     def randomize(self):
         for skill in self.candidates.values():
             # Candidacy
-            if self.random.random() <= Weights.SKILL_CANDIDACY:
-                continue
+            is_candidate: bool = self.random.random() > Weights.SKILL_CANDIDACY
 
-            self.statistics['Skills'] += 1
+            if is_candidate:
+                self.statistics['Skills'] += 1
 
             # SP Cost
-            if skill['sp_cost'] and self.random.random() <= 0.95:
+            sp: int = skill.get('sp_cost', 0)
+            if is_candidate and sp and self.random.random() <= 0.95:
                 self.statistics['SP Cost'] += 1
-                skill['sp_cost'] = self.random_from_distribution(Weights.SKILL_SP_MU, Weights.SKILL_SP_SIGMA,
-                                                                 1, 30)
+                sp = self.random_from_distribution(Weights.SKILL_SP_MU, Weights.SKILL_SP_SIGMA,
+                                                   self.options.sp_min, self.options.sp_max)
+
+            print(sp)
+            skill['sp_cost'] = max(min(int(sp * self.options.sp_mod), self.options.sp_max),
+                                   self.options.sp_min)
 
             # LP
-            if skill['lp_cost']:
+            if is_candidate and skill['lp_cost']:
                 self.statistics['LP'] += 1
                 ranges = sorted([int(self.random_from_triangular(100, 1600)),
                                  int(self.random_from_triangular(100, 600))])
@@ -293,13 +306,13 @@ class SkillRandomizer(BaseRandomizer):
                 skill['lp_cost'] = base
 
             # Symbol Type
-            if self.random.random() <= Weights.SKILL_SYMBOL:
+            if is_candidate and self.random.random() <= Weights.SKILL_SYMBOL:
                 self.statistics['Symbols'] += 1
                 skill['symbol'] = self.random.choices([c.value for c in enums.SkillSymbols],
                                                       Weights.SKILL_SYMBOL_DISTRIBUTION)[0]
 
             # Symbol Weight
-            if self.random.random() <= Weights.SKILL_SYMBOL_WEIGHT:
+            if is_candidate and self.random.random() <= Weights.SKILL_SYMBOL_WEIGHT:
                 self.statistics['Symbol Weights'] += 1
                 skill['symbol_weight'] = self.random_from_distribution(Weights.SKILL_SYMBOL_WEIGHT_MU,
                                                                        Weights.SKILL_SYMBOL_WEIGHT_SIGMA,

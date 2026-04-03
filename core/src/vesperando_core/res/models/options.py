@@ -16,11 +16,13 @@ class ArtesOptions(BaseModel):
 class SkillsOptions(BaseModel):
     sp_mod: float = 1.0
     sp_min: int = 1
-    sp_max: int = 99
+    sp_max: int = 30
 
 
 class ItemsOptions(BaseModel):
     price_mod: float = 1.0
+    weapon_skill_lp_min: int = 100
+    weapon_skill_lp_max: int = 1600
     weapon_skills_min: int = 0
     weapon_skills_max: int = 3
 
