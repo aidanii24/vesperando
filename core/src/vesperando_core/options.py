@@ -31,7 +31,8 @@ class Options:
                     options = yaml.safe_load(f)
                     f.close()
 
-                MainOptions.model_validate(options)
+                validation = MainOptions.model_validate(options)
+                options = validation.model_dump(exclude_none=True)
             except yaml.YAMLError as exc:
                 raise OptionsError("[ERROR]\tThere was a problem loading the options file.") from exc
             except pydantic.ValidationError as exc:

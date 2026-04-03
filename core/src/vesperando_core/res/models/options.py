@@ -1,4 +1,4 @@
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, field_validator
 from typing import Optional, Self
 
 from vesperando_core.res.models.annotations import (MaxTenThousand, MaxThousand, MaxHundred, MaxTen, Mod, TP,
@@ -96,7 +96,25 @@ class SearchOptions(BaseModel):
 
 
 class MainOptions(BaseModel):
-    artes: Optional[ArtesOptions] = ArtesOptions()
-    skills: SkillsOptions = SkillsOptions()
-    items: ItemsOptions = ItemsOptions()
-    search: SearchOptions = SearchOptions()
+    artes: Optional[ArtesOptions] = None
+    skills: Optional[SkillsOptions] = None
+    items: Optional[ItemsOptions] = None
+    shops: Optional[dict] = None
+    chests: Optional[dict] = None
+    search: Optional[SearchOptions] = None
+
+    # Handle Key-only entries and partial entries
+    # Targets (Root Entries) that are not present in the options yaml are not processed here,
+    # but after validation will be populated with the specified default of "None"
+    # After validation, model_dump with exclude_none will return only target entries present
+    # in the original options yaml
+    @field_validator("*", mode='before')
+    @classmethod
+    def check_targets(cls, value):
+        # For key-only entries, return an empty dictionary, which during validation will be
+        # populated with the default values of that model
+        if value is None:
+            return dict()
+
+        # Partial target entries will be given the default values
+        return value

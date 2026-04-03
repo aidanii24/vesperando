@@ -50,15 +50,15 @@ def check_mod(value: int | float) -> int | float:
 
 def check_tp(value: int | float) -> int | float:
     check_positive_strict(value)
-    check_max(value, 100)
+    check_max(value, 200)
     return value
 
 
-IntPositiveStrict = Annotated[int, check_positive_strict]
-MaxTenThousand = Annotated[int, check_max_ten_thousand]
-MaxThousand = Annotated[int, check_max_thousand]
-MaxHundred = Annotated[int, check_max_hundred]
-MaxTen = Annotated[int, check_max_ten]
+IntPositiveStrict = Annotated[int, AfterValidator(check_positive_strict)]
+MaxTenThousand = Annotated[int, AfterValidator(check_max_ten_thousand)]
+MaxThousand = Annotated[int, AfterValidator(check_max_thousand)]
+MaxHundred = Annotated[int, AfterValidator(check_max_hundred)]
+MaxTen = Annotated[int, AfterValidator(check_max_ten)]
 Mod = Annotated[float, AfterValidator(check_mod)]
 TP = Annotated[int, AfterValidator(check_tp)]
-WeaponSkillCount = Annotated[int, check_weapon_skill_count]
+WeaponSkillCount = Annotated[int, AfterValidator(check_weapon_skill_count)]

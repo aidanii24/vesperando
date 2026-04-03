@@ -94,7 +94,7 @@ class ArteRandomizer(BaseRandomizer):
             if is_candidate and self.random.random() <= Weights.ARTE_TP_COST:
                 tp = self.randomize_tp_cost(arte)
 
-            arte['tp_cost'] = max(min(int(tp * self.options.tp_mod), self.options.tp_max), self.options.tp_min)
+            arte['tp_cost'] = min(max(int(tp * self.options.tp_mod), self.options.tp_min), self.options.tp_max)
 
             # Cast Time
             if is_candidate and arte['cast_time'] > 0 and self.random.random() <= Weights.ARTE_CAST_TIME:
@@ -130,9 +130,9 @@ class ArteRandomizer(BaseRandomizer):
                 for i in range(1, 4):
                     usage: int = arte.get(f'unknown{i + 2}', 0)
                     if arte.get(f'learn_condition{i}', 0) == 2 and usage:
-                        arte[f'unknown{i + 2}'] = max(
-                            min(int(usage * self.options.learn_arte_usage_mod), self.options.learn_arte_usage_max),
-                            self.options.learn_arte_usage_min
+                        arte[f'unknown{i + 2}'] = min(
+                            max(int(usage * self.options.learn_arte_usage_mod), self.options.learn_arte_usage_min),
+                            self.options.learn_arte_usage_max
                         )
 
     def randomize_tp_cost(self, arte):
@@ -197,8 +197,10 @@ class ArteRandomizer(BaseRandomizer):
                     parameter = self.random.randint(1, cap_level)
                 elif condition == 2:
                     parameter: int = self.random.choice([a for a in self.artes_by_char[user] if a != arte['id']])
-                    ranges = sorted([int(self.random_from_triangular(50, 100)),
-                                    int(self.random_from_triangular(50, 200))])
+                    ranges = sorted([int(self.random_from_triangular(self.options.learn_arte_usage_min,
+                                                                     self.options.learn_arte_usage_max // 2)),
+                                    int(self.random_from_triangular(self.options.learn_arte_usage_min,
+                                                                    self.options.learn_arte_usage_max))])
                     meta = max(self.random_from_triangular(*ranges) // 5 * 5, 5)
                     meta = max(min(int(meta * self.options.learn_arte_usage_mod), self.options.learn_arte_usage_max),
                                self.options.learn_arte_usage_min)
@@ -433,11 +435,16 @@ class ItemRandomizer(BaseRandomizer):
                                 mod_range = sorted([self.random_from_triangular(25, 500),
                                                     self.random_from_triangular(25, 150)])
                                 mod = self.random_from_triangular(*mod_range)
-                                lp = int(max(min(base * mod * 0.01 // 5 * 5, 1600), 25))
+                                lp = int(max(
+                                    min(base * mod * 0.01 // 5 * 5, self.options.weapon_skill_lp_max),
+                                    self.options.weapon_skill_lp_min
+                                ))
                             else:
-                                base = int(self.random_from_distribution(Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,
-                                                                         100, 1600))
-                                lp = base // 100 * 100
+                                lp = int(self.random_from_distribution(
+                                    Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,
+                                    self.options.weapon_skill_lp_min,
+                                    self.options.weapon_skill_lp_max
+                                ))
 
                             skills_candidates.discard(skill)
                             for u in users:
