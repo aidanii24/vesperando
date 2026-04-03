@@ -23,16 +23,44 @@ def cli():
     pass
 
 @cli.command(help="Generate a new randomizer patch file")
-# @click.option("--options", "-o", type=click.Path(exists=True), help="Options file to use")
+@click.option("--options", "-o", type=click.Path(exists=True), help="Options file to use")
 @click.option("--seed", type=click.INT, help="Seed to use")
 @click.option("--name", "-n", type=click.STRING, help="Name to identify the patch")
 @click.option("--spoiler", "-s", is_flag=True, help="Generate Spoiler Log")
 @click.argument("targets", nargs=-1,
                 type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
-def generate(name, seed, spoiler, targets):
-    from vesperando_core import randomizer
+def generate(options, name, seed, spoiler, targets):
+    import yaml
+    from vesperando_core import randomizer, options as options_handler
 
-    options_data = {}
+    # Get Options
+    options_data: dict = {}
+    has_targets_argument = len(targets) > 0
+    is_options_available = False
+    print(options)
+    if options:
+        try:
+            with open(options, "r") as f:
+                f.close()
+
+            options_data = options_handler.Options.get(options)
+
+            option_targets: list = []
+            for t in ["artes", "skills", "items", "shops", "chests", "search"]:
+                if t in options_data:
+                    option_targets.append(t)
+
+            if option_targets:
+                targets = option_targets
+                is_options_available = True
+        except Exception as e:
+            logger.info("")
+            if e == IsADirectoryError:
+                logger.error(f"\"{options}\" is a directory.")
+            else:
+                logger.error("Failed to load options file: {}".format(e))
+
+            logger.warning("Ignoring options file.")
 
     # Initialize Randomizer
     app_randomizer = randomizer.BasicRandomizerProcedure(targets, identifier=name, seed=seed)
@@ -44,26 +72,18 @@ def generate(name, seed, spoiler, targets):
 
     logger.info("vesperando: Basic Randomizer")
     logger.info(f"Randomizer {app_randomizer.identifier}")
-    logger.info(f"{"\u2713":<4} Using Targets: {targets if targets and not options_data else '[ALL]'}")
-    # if options_data:
-    #     logger.info(f"{"\u2713":<4} Using Options: {options}")
-    # logger.info("")
-    #
-    # if options:
-    #     try:
-    #         options_data = json.load(open(options))
-    #     except Exception as e:
-    #         if e == IsADirectoryError:
-    #             logger.error(f"\"{options}\" is a directory.")
-    #         else:
-    #             logger.error("Failed to load options file: {}".format(e))
-    #
-    #         logger.warning("Ignoring options file.")
 
-    if options_data and targets:
+    if is_options_available:
+        logger.info(f"{"\u2713":<4} Using Options: {options}")
+
+    logger.info(f"{"\u2713":<4} Using Targets: {targets if targets else '[ALL]'}")
+
+    if is_options_available and has_targets_argument:
+        logger.info("")
         logger.warning("An options file has been provided. "
                        "Targets argument will be ignored in favor of the options file.")
 
+    logger.info("")
     app_randomizer.generate(targets, options_data, spoiler)
 
 @cli.command(help="Patch the game with a randomizer patch file")

@@ -84,7 +84,7 @@ class PatchSpoiler:
             # Parse Evolve Conditions
             evolve_conditions: list = [self.arte_name_table[arte['evolve_base']] if arte['evolve_base'] != 0
                                        else ""]
-            for _ in range(1, 4):
+            for _ in range(1, 5):
                 condition_id = arte[f'evolve_condition{_}']
                 parameter_id = arte[f'evolve_parameter{_}']
 

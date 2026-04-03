@@ -51,6 +51,7 @@ class Weights:
     ARTE_CAST_TIME = 0.7
     ARTE_FS = 0.75
     ARTE_EVOLVE = 0.6   # 0.258 for actual ration of character artes with evolves in Vanilla
+    ARTE_NON_ALTERED_EVOLVE = 0.1
     ARTE_EVOLVE_REQUIREMENT = 0.4
     ARTE_EVOLVE_OPPORTUNITIES: tuple = (
         0,

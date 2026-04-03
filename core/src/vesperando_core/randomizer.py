@@ -10,6 +10,7 @@ import time
 import sys
 import os
 
+from vesperando_core.res.models.options import MainOptions
 from vesperando_core.conf.settings import Paths, Extensions, Weights
 from vesperando_core.res import enums, schema
 from vesperando_core.utils import keys_to_int, safe_divide
@@ -45,13 +46,24 @@ class BaseRandomizer:
             return min(self.random.randint(minimum, maximum), self.random.randint(minimum, maximum))
 
 
+class ArteOptions:
+    def __init__(self, options: dict):
+        self.tp_mod: float = options.get("tp_mod", 1.0)
+        self.tp_min: int = options.get("tp_min", 1)
+        self.tp_max: int = options.get("tp_max", 99)
+        self.learn_arte_usage_mod: float = options.get("learn_arte_usage_min", 1.0)
+        self.learn_arte_usage_min: int = options.get("learn_arte_usage_min", 5)
+        self.learn_arte_usage_max: int = options.get("learn_arte_usage_max", 200)
+        self.enable_non_altered_evolve: bool = options.get("enable_non_altered_evolve", False)
+
+
 class ArteRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict) -> None:
         self.random = random_obj
         self.artes_data = data['artes_data']
         self.artes_by_char = data['artes_by_char']
         self.skills_by_char = data['skills_by_char']
-        self.options = options
+        self.options = ArteOptions(options)
         self.statistics: dict = {
             'Artes': 0,
             'TP Cost': 0,
@@ -70,42 +82,64 @@ class ArteRandomizer(BaseRandomizer):
     def randomize(self):
         for arte in self.candidates.values():
             # Candidacy
-            if self.random.random() <= Weights.ARTE_CANDIDACY:
-                continue
+            is_candidate: bool = self.random.random() > Weights.ARTE_CANDIDACY
+            if is_candidate:
+                self.statistics['Artes'] += 1
 
-            self.statistics['Artes'] += 1
             data: dict = self.artes_data[arte['id']]
             user: int = data['character_ids'][0]
 
             # TP Cost
-            if self.random.random() <= Weights.ARTE_TP_COST:
+            if is_candidate and self.random.random() <= Weights.ARTE_TP_COST:
                 self.randomize_tp_cost(arte)
+            else:
+                tp: int = arte['tp_cost']
+                arte['tp_cost'] = max(min(int(tp * self.options.tp_mod), self.options.tp_max), self.options.tp_min)
 
             # Cast Time
-            if arte['cast_time'] > 0 and self.random.random() <= Weights.ARTE_CAST_TIME:
+            if is_candidate and arte['cast_time'] > 0 and self.random.random() <= Weights.ARTE_CAST_TIME:
                 self.randomize_cast_time(arte)
 
             # Fatal Strike
-            if self.random.random() <= Weights.ARTE_FS:
+            if is_candidate and self.random.random() <= Weights.ARTE_FS:
                 self.randomize_fatal_strike(arte)
 
             # Evolutions
-            has_evolve: bool = bool(arte.get('evolve', False))
-            if has_evolve:
-                if self.random.random() <= Weights.ARTE_EVOLVE:
-                    self.randomize_evolutions(arte, user)
-                ## On failed roll, instead randomize the usage requirements for learning the evolution
-                elif self.random.random() > Weights.ARTE_EVOLVE_REQUIREMENT:
-                    self.randomize_evolution_requirement(arte)
+            has_evolve: bool = bool(arte.get('evolve_base', False))
+            randomize_evolve: bool = has_evolve or self.options.enable_non_altered_evolve
+            evolve_randomized: bool = False
+            if is_candidate and randomize_evolve:
+                chance = Weights.ARTE_EVOLVE if has_evolve else Weights.ARTE_NON_ALTERED_EVOLVE
 
+                if self.random.random() <= chance:
+                    self.randomize_evolutions(arte, user)
+
+                    if not has_evolve:
+                        self.randomize_evolution_requirement(arte)
+
+                    evolve_randomized = True
+
+                if has_evolve and self.random.random() > Weights.ARTE_EVOLVE_REQUIREMENT:
+                    self.randomize_evolution_requirement(arte)
+                    evolve_randomized = True
 
             # Learn Conditions
-            if self.random.random() < Weights.ARTE_LEARN_OPPORTUNITIES[has_evolve + 1]:
-                self.randomize_learn(arte, user, has_evolve)
+            if is_candidate and self.random.random() < Weights.ARTE_LEARN_OPPORTUNITIES[evolve_randomized + 1]:
+                if has_evolve: print("Randomizing Altered Arte. Evolve Randomized:", evolve_randomized)
+                self.randomize_learn(arte, user, evolve_randomized)
+            else:
+                for i in range(1, 4):
+                    usage: int = arte.get(f'unknown{i + 2}', 0)
+                    if arte.get(f'learn_condition{i}', 0) == 2 and usage:
+                        arte[f'unknown{i + 2}'] = max(
+                            min(int(usage * self.options.learn_arte_usage_mod), self.options.learn_arte_usage_max),
+                            self.options.learn_arte_usage_min
+                        )
 
     def randomize_tp_cost(self, arte):
         self.statistics['TP Cost'] += 1
-        arte['tp_cost'] = math.ceil(int(arte['tp_cost']) * self.random_from_triangular(10, 200) * 0.01)
+        new_tp: int = math.ceil(int(arte['tp_cost']) * self.random_from_triangular(10, 200) * 0.01)
+        arte['tp_cost'] = max(min(int(new_tp * self.options.tp_mod), self.options.tp_max), self.options.tp_min)
 
     def randomize_cast_time(self, arte):
         self.statistics['Cast Time'] += 1
@@ -141,7 +175,9 @@ class ArteRandomizer(BaseRandomizer):
         self.randomize_evolution_requirement(arte)
 
     def randomize_evolution_requirement(self, arte):
-        arte['unknown3'] = self.random.randrange(50, 200)
+        meta = self.random.randrange(50, 200) // 5
+        arte['unknown3'] = max(min(int(meta * self.options.learn_arte_usage_mod), self.options.learn_arte_usage_max),
+                               self.options.learn_arte_usage_min)
 
     def randomize_learn(self, arte, user, has_evolve: bool):
         self.statistics['Learn Conditions'] += 1
@@ -165,6 +201,8 @@ class ArteRandomizer(BaseRandomizer):
                     ranges = sorted([int(self.random_from_triangular(50, 100)),
                                     int(self.random_from_triangular(50, 200))])
                     meta = max(self.random_from_triangular(*ranges) // 5 * 5, 5)
+                    meta = max(min(int(meta * self.options.learn_arte_usage_mod), self.options.learn_arte_usage_max),
+                               self.options.learn_arte_usage_min)
                 else:
                     parameter: int = self.random.choice(self.skills_by_char[user])
 
@@ -813,7 +851,7 @@ class BasicRandomizerProcedure:
                                    for item in items
                                    if enums.ItemCategory.is_common(category)])
 
-    def generate(self, targets: list, options: dict = None, spoil: bool = False):
+    def generate(self, targets: list, options: dict = MainOptions().model_dump() , spoil: bool = False):
         output: str = self.patch_output
 
         patch_data: dict = {
@@ -836,10 +874,11 @@ class BasicRandomizerProcedure:
             }
 
             logger.info("> Randomizing Artes")
-            self.arte_randomizer = ArteRandomizer(self.random, data, {})
+            self.arte_randomizer = ArteRandomizer(self.random, data, options.get('artes', {}),)
             self.arte_randomizer.randomize()
 
             patch_data['artes'] = self.arte_randomizer.fetch()
+
             self.arte_randomizer.report()
 
         if not targets or 'skills' in targets:
@@ -848,7 +887,7 @@ class BasicRandomizerProcedure:
             }
 
             logger.info("> Randomizing Skills")
-            self.skill_randomizer = SkillRandomizer(self.random, data, {})
+            self.skill_randomizer = SkillRandomizer(self.random, data, options.get('skills', {}))
             self.skill_randomizer.randomize()
 
             patch_data['skills'] = self.skill_randomizer.fetch()
@@ -866,7 +905,7 @@ class BasicRandomizerProcedure:
                 'skills_by_char': self.skills_by_char,
             }
 
-            self.item_randomizer = ItemRandomizer(self.random, data, {})
+            self.item_randomizer = ItemRandomizer(self.random, data, options.get('items', {}))
             self.item_randomizer.randomize()
 
             patch_data['items'] = self.item_randomizer.fetch()
@@ -884,7 +923,7 @@ class BasicRandomizerProcedure:
             }
 
             logger.info("> Randomizing Shops")
-            self.shop_randomizer = ShopRandomizer(self.random, data, {})
+            self.shop_randomizer = ShopRandomizer(self.random, data, options.get('shops', {}))
             self.shop_randomizer.randomize()
 
             patch_data['shops'] = self.shop_randomizer.fetch()
@@ -902,7 +941,7 @@ class BasicRandomizerProcedure:
             }
 
             logger.info("> Randomizing Chests")
-            self.chest_randomizer = ChestRandomizer(self.random, data, {})
+            self.chest_randomizer = ChestRandomizer(self.random, data, options.get('chests', {}))
             self.chest_randomizer.randomize()
 
             patch_data['chests'] = self.chest_randomizer.fetch()
@@ -916,7 +955,7 @@ class BasicRandomizerProcedure:
             }
 
             logger.info("> Randomizing Search Points")
-            self.search_point_randomizer = SearchPointRandomizer(self.random, data, {})
+            self.search_point_randomizer = SearchPointRandomizer(self.random, data, options.get('search', {}))
             self.search_point_randomizer.randomize()
 
             patch_data['search'] = self.search_point_randomizer.fetch()

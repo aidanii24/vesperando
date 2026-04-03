@@ -12,7 +12,7 @@ class Options:
         options = MainOptions().model_dump()
 
         if not (os.path.isdir(Paths.OPTIONS_DIR)):
-            os.makedirs(os.path.dirname(Paths.OPTIONS_DIR))
+            os.makedirs(Paths.OPTIONS_DIR)
 
         with open(os.path.join(Paths.OPTIONS_DIR, "options.yaml"), "w") as f:
             yaml.safe_dump(options, f)

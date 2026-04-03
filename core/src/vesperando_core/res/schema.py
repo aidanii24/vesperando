@@ -28,6 +28,8 @@ class Artes(Patch):
         'evolve_parameter2',
         'evolve_condition3',
         'evolve_parameter3',
+        'evolve_condition4',
+        'evolve_parameter4',
     }
 
 

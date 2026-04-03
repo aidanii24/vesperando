@@ -5,18 +5,18 @@ from pydantic import BaseModel
 
 class ArtesOptions(BaseModel):
     tp_mod: float = 1.0
-    tp_min: Optional[int] = 0
-    tp_max: Optional[int] = 99
+    tp_min: int = 1
+    tp_max: int = 99
     learn_arte_usage_mod: float = 1.0
-    learn_arte_usage_min: Optional[int] = 5
-    learn_arte_usage_max: Optional[int] = None
-    enable_evolve: bool = False
+    learn_arte_usage_min: int = 5
+    learn_arte_usage_max: int = 200
+    enable_non_altered_evolve: bool = False
 
 
 class SkillsOptions(BaseModel):
     sp_mod: float = 1.0
-    sp_min: Optional[int] = 1
-    sp_max: Optional[int] = 99
+    sp_min: int = 1
+    sp_max: int = 99
 
 
 class ItemsOptions(BaseModel):
@@ -33,7 +33,7 @@ class SearchOptions(BaseModel):
 
 
 class MainOptions(BaseModel):
-    artes: ArtesOptions = ArtesOptions()
+    artes: Optional[ArtesOptions] = ArtesOptions()
     skills: SkillsOptions = SkillsOptions()
     items: ItemsOptions = ItemsOptions()
     search: SearchOptions = SearchOptions()
