@@ -18,6 +18,7 @@ class Paths:
     LIB_PATH = resources.files(lib)
 
     CONFIG = os.path.join(EXEC_DIR, "config", "config.yaml")
+    OPTIONS_DIR = os.path.join(EXEC_DIR, "options")
     PATCHES_DIR = os.path.join(EXEC_DIR, "patches")
     BUILD_DIR = os.path.join(EXEC_DIR, "build")
     MANIFESTS_DIR = os.path.join(BUILD_DIR, ".manifests")

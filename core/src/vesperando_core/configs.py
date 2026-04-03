@@ -1,5 +1,4 @@
 import pydantic
-import platform
 import yaml
 import os
 
@@ -10,18 +9,7 @@ from vesperando_core.conf.settings import Paths
 class Settings:
     @staticmethod
     def generate():
-        base_path: str = Paths.GAME_DIR
-        system: str = platform.system()
-        if system == "Linux":
-            base_path = os.path.join(os.path.expanduser("~"), ".steam", Paths.GAME_DIR)
-        elif system == "Windows":
-            base_path = os.path.join("C:\\Program Files (x86)", Paths.GAME_DIR)
-
-        config: dict = {
-            'paths': {
-                'game': base_path,
-            }
-        }
+        config: dict = MainSettings().model_dump()
 
         if not (os.path.isdir(os.path.dirname(Paths.CONFIG))):
             os.makedirs(os.path.dirname(Paths.CONFIG))
@@ -29,6 +17,11 @@ class Settings:
         with open(Paths.CONFIG, "w") as f:
             yaml.safe_dump(config, f)
             f.close()
+
+        try:
+            MainSettings.model_validate(config)
+        except pydantic.ValidationError as e:
+            raise ConfigError(f"Failed to automatically detect best configuration.\n{e}") from e
 
         return config
 
@@ -44,10 +37,10 @@ class Settings:
                     f.close()
 
                 MainSettings.model_validate(config)
-            except yaml.YAMLError as exc:
-                raise ConfigError("[ERROR]\tThere was a loading the configuration file") from exc
-            except pydantic.ValidationError as exc:
-                raise ConfigError(f"[ERROR]\tThe configuration file is invalid.\n{exc}") from exc
+            except yaml.YAMLError as e:
+                raise ConfigError("There was a problem loading the configuration file.") from e
+            except pydantic.ValidationError as e:
+                raise ConfigError(f"The configuration file is invalid.\n{e}") from e
 
         return config
 
