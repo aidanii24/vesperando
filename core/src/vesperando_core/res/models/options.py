@@ -29,6 +29,8 @@ class ItemsOptions(BaseModel):
 
 
 class SearchOptions(BaseModel):
+    uses_min: int = 1
+    uses_max: int = 5
     pools_min: int = 1
     pools_max: int = 5
     items_min: int = 1

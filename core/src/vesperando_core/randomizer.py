@@ -481,7 +481,7 @@ class ItemRandomizer(BaseRandomizer):
 
 
 class ShopRandomizer(BaseRandomizer):
-    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+    def __init__(self, random_obj: random.Random, data: dict, _options: dict):
         self.random = random_obj
         self.shop_data = data['shop_data']
         self.item_to_category = data['item_to_category']
@@ -590,7 +590,7 @@ class ShopRandomizer(BaseRandomizer):
 class ChestRandomizer(BaseRandomizer):
     GALD_ID = 0xFFFFFFFE
 
-    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+    def __init__(self, random_obj: random.Random, data: dict, _options: dict):
         self.random = random_obj
         self.chest_data = data['chest_data']
         self.item_to_category = data['item_to_category']
@@ -700,6 +700,16 @@ class ChestRandomizer(BaseRandomizer):
         logger.info("")
 
 
+class SearchPointOptions:
+    def __init__(self, options: dict):
+        self.uses_min = options.get('uses_min', 1)
+        self.uses_max = options.get('uses_max', 5)
+        self.pools_min = options.get('pools_min', 1)
+        self.pools_max = options.get('pools_max', 5)
+        self.items_min = options.get('items_min', 1)
+        self.items_max = options.get('items_max', 5)
+
+
 class SearchPointRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
         self.random = random_obj
@@ -707,6 +717,7 @@ class SearchPointRandomizer(BaseRandomizer):
         self.item_by_category = data['item_by_category']
         self.common_items = data['common_items']
         self.abundant_items = set(item for c in {2, 8, 9} for item in self.item_by_category[c])
+        self.options = SearchPointOptions(options)
 
         self.statistics: dict = {
             'Contents': [],
@@ -730,15 +741,17 @@ class SearchPointRandomizer(BaseRandomizer):
 
         for _ in range(definition_count):
             # Randomize Definition
-            content_range: int = self.random_from_triangular(1, 5)
+            content_range: int = self.random_from_triangular(self.options.pools_min, self.options.pools_max)
             self.candidates['definitions'].append({
                 'type': self.random.choice(definition_types),
                 'content_range': content_range,
-                'max_use': self.random_from_triangular(1, 5)
+                'max_use': self.random_from_triangular(self.options.uses_min, self.options.uses_max)
             })
+            print(self.options.pools_min, self.options.pools_max)
 
             # Randomize Content
-            item_ranges: list[int] = [self.random.randint(1, 5) for _ in range(content_range)]
+            item_ranges: list[int] = [self.random.randint(self.options.items_min, self.options.items_max)
+                                      for _ in range(content_range)]
             for r in item_ranges:
                 self.candidates['contents'].append({
                     'item_range': r,
