@@ -35,10 +35,13 @@ class Options:
             except yaml.YAMLError as exc:
                 raise OptionsError("[ERROR]\tThere was a problem loading the options file.") from exc
             except pydantic.ValidationError as exc:
-                raise OptionsError(f"[ERROR]\tThe options file is invalid.\n{exc}") from exc
+                raise ValidationError(f"[ERROR]\tThe options file is invalid.\n{exc}") from exc
 
         return options
 
 
 class OptionsError(Exception):
+    pass
+
+class ValidationError(Exception):
     pass

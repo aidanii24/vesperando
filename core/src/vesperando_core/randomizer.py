@@ -50,7 +50,7 @@ class ArteOptions:
     def __init__(self, options: dict):
         self.tp_mod: float = options.get("tp_mod", 1.0)
         self.tp_min: int = options.get("tp_min", 1)
-        self.tp_max: int = options.get("tp_max", 99)
+        self.tp_max: int = options.get("tp_max", 100)
         self.learn_arte_usage_mod: float = options.get("learn_arte_usage_min", 1.0)
         self.learn_arte_usage_min: int = options.get("learn_arte_usage_min", 5)
         self.learn_arte_usage_max: int = options.get("learn_arte_usage_max", 200)
@@ -125,7 +125,6 @@ class ArteRandomizer(BaseRandomizer):
 
             # Learn Conditions
             if is_candidate and self.random.random() < Weights.ARTE_LEARN_OPPORTUNITIES[evolve_randomized + 1]:
-                if has_evolve: print("Randomizing Altered Arte. Evolve Randomized:", evolve_randomized)
                 self.randomize_learn(arte, user, evolve_randomized)
             else:
                 for i in range(1, 4):
@@ -293,7 +292,6 @@ class SkillRandomizer(BaseRandomizer):
                 sp = self.random_from_distribution(Weights.SKILL_SP_MU, Weights.SKILL_SP_SIGMA,
                                                    self.options.sp_min, self.options.sp_max)
 
-            print(sp)
             skill['sp_cost'] = max(min(int(sp * self.options.sp_mod), self.options.sp_max),
                                    self.options.sp_min)
 
@@ -747,7 +745,6 @@ class SearchPointRandomizer(BaseRandomizer):
                 'content_range': content_range,
                 'max_use': self.random_from_triangular(self.options.uses_min, self.options.uses_max)
             })
-            print(self.options.pools_min, self.options.pools_max)
 
             # Randomize Content
             item_ranges: list[int] = [self.random.randint(self.options.items_min, self.options.items_max)

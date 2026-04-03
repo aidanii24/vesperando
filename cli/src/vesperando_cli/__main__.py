@@ -30,14 +30,12 @@ def cli():
 @click.argument("targets", nargs=-1,
                 type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
 def generate(options, name, seed, spoiler, targets):
-    import yaml
     from vesperando_core import randomizer, options as options_handler
 
     # Get Options
     options_data: dict = {}
     has_targets_argument = len(targets) > 0
     is_options_available = False
-    print(options)
     if options:
         try:
             with open(options, "r") as f:
@@ -53,7 +51,13 @@ def generate(options, name, seed, spoiler, targets):
             if option_targets:
                 targets = option_targets
                 is_options_available = True
+        except options_handler.ValidationError as e:
+            logger.info("")
+            logger.error(f"The provided options file is invalid. Please fix your options file.\n{e}")
+
+            sys.exit(1)
         except Exception as e:
+            print(type(e))
             logger.info("")
             if e == IsADirectoryError:
                 logger.error(f"\"{options}\" is a directory.")
