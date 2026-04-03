@@ -330,26 +330,27 @@ class GamePatchPacker:
         apply_patch(self.output_dir, self.game_dir)
 
 def apply_patch(patched_path, game_dir):
-    prepare_game(game_dir)
+    restore_backup(game_dir)
+    prepare_game(patched_path, game_dir)
     shutil.copytree(patched_path, game_dir, dirs_exist_ok=True)
 
-def prepare_game(game_dir: str):
+def prepare_game(patched_dir: str, game_dir: str):
     data_dir: str = os.path.join(game_dir, "Data64")
-    contents: list[str] = os.listdir(data_dir)
+    patch_contents: list[str] = os.listdir(os.path.join(patched_dir, "Data64"))
 
     btl: str = os.path.join(game_dir, Paths.BTL)
-    if "btl" in contents and os.path.isfile(btl):
+    if "btl" in patch_contents and os.path.isfile(btl):
         os.remove(btl)
 
     item: str = os.path.join(game_dir, Paths.ITEM)
-    if "item" in contents and os.path.isfile(item):
+    if "item" in patch_contents and os.path.isfile(item):
         os.remove(item)
 
     npc: str = os.path.join(game_dir, Paths.NPC)
-    if "npc" in contents and os.path.isfile(npc):
+    if "npc" in patch_contents and os.path.isfile(npc):
         os.remove(npc)
 
-def clean_game(game_dir: str, quiet: bool = True):
+def clean_game(game_dir: str):
     detected_patches: list[str] = []
 
     btl: str = os.path.join(game_dir, "Data64", "btl")
@@ -368,7 +369,7 @@ def clean_game(game_dir: str, quiet: bool = True):
         for patches in detected_patches:
             shutil.rmtree(patches)
 
-def restore_backup(game_dir: str, quiet: bool = False):
+def restore_backup(game_dir: str):
     backup_dir: str = os.path.join(game_dir, Paths.BACKUP_DIR)
     if not os.path.isdir(backup_dir):
         raise PackerError("Could not find backups of original game file."
