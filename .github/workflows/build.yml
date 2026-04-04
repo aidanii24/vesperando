@@ -3,7 +3,8 @@ name: Build
 on:
   push:
     tags:
-      - "v*"
+      - "latest"
+      - "beta"
   workflow_dispatch:
 
 env:
