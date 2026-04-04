@@ -10,7 +10,7 @@ import time
 import sys
 import os
 
-from vesperando_core.res.models.options import MainOptions
+from vesperando_core.res.models.options import MainOptionsDefault
 from vesperando_core.conf.settings import Paths, Extensions, Weights
 from vesperando_core.res import enums, schema
 from vesperando_core.utils import keys_to_int, safe_divide
@@ -910,7 +910,7 @@ class BasicRandomizerProcedure:
                                    for item in items
                                    if enums.ItemCategory.is_common(category)])
 
-    def generate(self, targets: list, options: dict = MainOptions().model_dump() , spoil: bool = False):
+    def generate(self, targets: list, options: dict = MainOptionsDefault().model_dump() , spoil: bool = False):
         output: str = self.patch_output
 
         patch_data: dict = {

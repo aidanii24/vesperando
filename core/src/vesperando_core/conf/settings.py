@@ -17,7 +17,7 @@ class Paths:
     STATIC_PATH = resources.files(static)
     LIB_PATH = resources.files(lib)
 
-    CONFIG = os.path.join(EXEC_DIR, "config", "config.yaml")
+    CONFIG = os.path.join(EXEC_DIR, "config", "settings.yaml")
     OPTIONS_DIR = os.path.join(EXEC_DIR, "options")
     PATCHES_DIR = os.path.join(EXEC_DIR, "patches")
     BUILD_DIR = os.path.join(EXEC_DIR, "build")

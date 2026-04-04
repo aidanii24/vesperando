@@ -2,14 +2,14 @@ import pydantic
 import yaml
 import os
 
-from vesperando_core.res.models.options import MainOptions
+from vesperando_core.res.models.options import MainOptions, MainOptionsDefault
 from vesperando_core.conf.settings import Paths
 
 
 class Options:
     @staticmethod
     def generate():
-        options = MainOptions().model_dump()
+        options = MainOptionsDefault().model_dump()
 
         if not (os.path.isdir(Paths.OPTIONS_DIR)):
             os.makedirs(Paths.OPTIONS_DIR)

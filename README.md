@@ -27,13 +27,18 @@ Vesperando is available a command line utility. It is recommended to use a termi
 ## Configuration
 The application must be provided the path to the game directory to function properly.
 When running the application for the first time, it will attempt to detect where this directory is by itself.
-This will create the path `config/config.yaml`. If the detected game directory is incorrect, this file can be 
+This will create the path `config/settings.yaml`. This file can also be generated with the following command:
+```commandline
+vesperando_cli make-config settings
+```
+If the detected game directory is incorrect, this file can be 
 edited to provide the correct path.
 ```yaml
-# config.yaml
+# settings.yaml
 paths:
   game: path/to/game_directory
 ```
+
 Forward slashes can be used in Windows filesystems. If using backslashes, please escape them with 
 another backslash (e.g. `path\\to\\game_directory`).
 

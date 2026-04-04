@@ -19,7 +19,7 @@ datetime_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 
 @click.version_option("0.2.0", prog_name="vesperando-cli")
 @click.option("--licenses", type=click.BOOL, default=False, is_flag=True, help="Show license")
-@click.group(invoke_without_command=True)
+@click.group(no_args_is_help=True, invoke_without_command=True)
 def cli(licenses):
     if licenses:
         dist = metadata.distribution("vesperando_cli")
@@ -334,6 +334,17 @@ def restore():
         sys.exit(1)
 
     logger.info("Successfully restored original game files.")
+
+@cli.command(help="Generate configuration files")
+@click.argument("targets", nargs=-1, type=click.Choice(["settings", "options"],False))
+def make_config(targets):
+    if "settings" in targets:
+        from vesperando_core.configs import Settings
+        Settings.generate()
+    if "options" in targets:
+        from vesperando_core.options import Options
+        Options.generate()
+
 
 
 if __name__ == "__main__":

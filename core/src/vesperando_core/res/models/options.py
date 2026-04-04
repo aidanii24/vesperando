@@ -118,3 +118,12 @@ class MainOptions(BaseModel):
 
         # Partial target entries will be given the default values
         return value
+
+
+class MainOptionsDefault(BaseModel):
+    artes: Optional[ArtesOptions] = ArtesOptions()
+    skills: Optional[SkillsOptions] = SkillsOptions()
+    items: Optional[ItemsOptions] = ItemsOptions()
+    shops: Optional[dict] = None
+    chests: Optional[dict] = None
+    search: Optional[SearchOptions] = SearchOptions()
