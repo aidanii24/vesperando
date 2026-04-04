@@ -3,8 +3,7 @@ name: Build
 on:
   push:
     tags:
-      - "latest"
-      - "beta"
+      - "v*
   workflow_dispatch:
 
 env:
@@ -103,7 +102,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          name: vesperando ${{ github.ref_name }}
           draft: false
           prerelease: false
           overwrite_files: true
