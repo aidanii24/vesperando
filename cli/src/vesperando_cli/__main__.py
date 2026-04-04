@@ -1,3 +1,4 @@
+from importlib import metadata
 import datetime
 import logging
 import json
@@ -16,11 +17,16 @@ logger = logging.getLogger(LOGGER_NAME)
 
 datetime_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 
-@click.version_option("0.1.0", prog_name="vesperando-cli")
+@click.version_option("0.2.0", prog_name="vesperando-cli")
+@click.option("--licenses", type=click.BOOL, default=False, is_flag=True, help="Show license")
+@click.group(invoke_without_command=True)
+def cli(licenses):
+    if licenses:
+        dist = metadata.distribution("vesperando_cli")
+        info = dist.read_text("licenses/LICENSE")
 
-@click.group()
-def cli():
-    pass
+        click.echo(info)
+        sys.exit(1)
 
 @cli.command(help="Generate a new randomizer patch file")
 @click.option("--options", "-o", type=click.Path(exists=True), help="Options file to use")
