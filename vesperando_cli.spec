@@ -6,6 +6,7 @@ from PyInstaller.utils.hooks import copy_metadata
 datas = []
 hiddenimports = []
 datas += collect_data_files('vesperando_core')
+datas += collect_data_files('vesperando_cli')
 datas += collect_data_files('odfdo')
 datas += copy_metadata('odfdo')
 hiddenimports += collect_submodules('rich')

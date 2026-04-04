@@ -1,4 +1,4 @@
-from importlib import metadata
+from importlib import resources
 import datetime
 import logging
 import json
@@ -22,9 +22,7 @@ datetime_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 @click.group(no_args_is_help=True, invoke_without_command=True)
 def cli(licenses):
     if licenses:
-        dist = metadata.distribution("vesperando_cli")
-        info = dist.read_text("licenses/LICENSE")
-
+        info = resources.read_text("vesperando_cli", "LICENSE")
         click.echo(info)
         sys.exit(1)
 
