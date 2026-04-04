@@ -228,7 +228,10 @@ class ArteRandomizer(BaseRandomizer):
                 arte[f'evolve_parameter{_}'] = 0
 
     def report(self):
-        logger.info(f"{"\u2748 ARTES":>4}")
+        if sys.stdout.encoding == "utf-8":
+            logger.info(f"{"\u2748 ARTES":>4}")
+        else:
+            logger.info(f"{"> ARTES":>4}")
 
         artes_ratio: str = f"{self.statistics['Artes']:<4}/{len(self.candidates)}"
         tp_ratio: str = f"{self.statistics['TP Cost']:<4}/{self.statistics['Artes']}"
@@ -467,7 +470,10 @@ class ItemRandomizer(BaseRandomizer):
                         continue_iter = False
 
     def report(self):
-        logger.info("\u2B2C ITEMS")
+        if sys.stdout.encoding == "utf-8":
+            logger.info("\u2B2C ITEMS")
+        else:
+            logger.info("> ITEMS")
 
         base_total: int = len(self.candidates['base'])
 
@@ -577,7 +583,10 @@ class ShopRandomizer(BaseRandomizer):
         return new_item
 
     def report(self):
-        logger.info("\u20B2 SHOPS")
+        if sys.stdout.encoding == "utf-8":
+            logger.info("\u20B2 SHOPS")
+        else:
+            logger.info("> SHOPS")
 
         items_ratio: str = f"{self.statistics['Items']:<4}"
         full_shuffle_ratio: str = f"{self.statistics['Full Shuffle']:<4}/{self.statistics['Items']}"
@@ -684,7 +693,10 @@ class ChestRandomizer(BaseRandomizer):
         return amount_basis
 
     def report(self):
-        logger.info("\u225B CHESTS")
+        if sys.stdout.encoding == "utf-8":
+            logger.info("\u225B CHESTS")
+        else:
+            logger.info("> CHESTS")
 
         chests_ratio: str = f"{self.statistics['Chests']:<4}"
         full_shuffle_ratio: str = f"{self.statistics['Full Shuffle']:<4}/{self.statistics['Chests']}"
@@ -785,7 +797,10 @@ class SearchPointRandomizer(BaseRandomizer):
             self.statistics['Items'].extend(item_ranges)
 
     def report(self):
-        logger.info("\u219F SEARCH POINTS")
+        if sys.stdout.encoding == "utf-8":
+            logger.info("\u219F SEARCH POINTS")
+        else:
+            logger.info("> SEARCH POINTS")
 
         avg_con: int = sum(self.statistics['Contents']) / 88
         avg_itm: int = safe_divide(sum(self.statistics['Items']), sum(self.statistics['Contents']))

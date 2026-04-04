@@ -12,6 +12,7 @@
 /references/
 config.json
 config.y[a]ml
+settings.y[a]ml
 options.y[a]ml
 .env
 

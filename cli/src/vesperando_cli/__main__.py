@@ -80,11 +80,16 @@ def generate(options, name, seed, spoiler, targets):
 
     logger.info("vesperando: Basic Randomizer")
     logger.info(f"Randomizer {app_randomizer.identifier}")
-
     if is_options_available:
-        logger.info(f"{"\u2713":<4} Using Options: {options}")
+        if sys.stdout.encoding == "utf-8":
+            logger.info(f"{"\u2713":<4} Using Options: {options}")
+        else:
+            logger.info(f"{"!":<4} Using Options: {options}")
 
-    logger.info(f"{"\u2713":<4} Using Targets: {targets if targets else '[ALL]'}")
+    if sys.stdout.encoding == "utf-8":
+        logger.info(f"{"\u2713":<4} Using Targets: {targets if targets else '[ALL]'}")
+    else:
+        logger.info(f"{"!":<4} Using Targets: {targets if targets else '[ALL]'}")
 
     if is_options_available and has_targets_argument:
         logger.info("")

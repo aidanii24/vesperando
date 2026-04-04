@@ -1,5 +1,6 @@
 import logging
 import os
+
 from rich.logging import RichHandler
 
 from vesperando_core.conf.settings import Paths
@@ -52,7 +53,7 @@ def set_file_handler(filename: str, logger: logging.Logger):
         os.makedirs(Paths.LOG_DIR)
 
     # Create File Handling
-    file_handler = logging.FileHandler(filename)
+    file_handler = logging.FileHandler(filename, encoding='utf-8')
     file_handler.setFormatter(VesperandoLogFormatter())
 
     logger.addHandler(file_handler)

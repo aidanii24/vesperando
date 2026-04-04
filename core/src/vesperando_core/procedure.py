@@ -49,7 +49,10 @@ class GamePatchProcedure:
         logger.info(f"{">":>4} {"Player:":<16} {self.patch_data.get('player', 'vesperando-player')}")
         logger.info(f"{">":>4} {"Seed:":<16} {self.patch_data.get('seed', 'unknown')}")
         logger.info(f"{">":>4} {"Generation Date:":<16} {self.patch_data.get('created', 'unknown')}")
-        logger.info(f"\n{"\u2609":>4} Threads: {self.threads}")
+        if sys.stdout.encoding == "utf-8":
+            logger.info(f"\n{"\u2609":>4} Threads: {self.threads}")
+        else:
+            logger.info(f"\n{">":>4} Threads: {self.threads}")
         logger.info("")
 
         if 'artes' in self.patch_data or 'skills' in self.patch_data:
@@ -74,7 +77,10 @@ class GamePatchProcedure:
 
         logger.info(f"\nPatch Applied. Finished in {end - start:.2f} seconds.")
         if self.apply_immediately:
-            logger.info("\u2713 Automatically applied patch to the game directory.")
+            if sys.stdout.encoding == "utf-8":
+                logger.info("\u2713 Automatically applied patch to the game directory.")
+            else:
+                logger.info("> Automatically applied patch to the game directory.")
         else:
             logger.info(f"Patch Output: {self.packer.output_dir}")
 
