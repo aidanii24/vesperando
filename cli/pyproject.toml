@@ -1,6 +1,6 @@
 [project]
 name = "vesperando_cli"
-version = "0.2.0"
+version = "0.2.1"
 authors = [{ name="aidanii", email="aidanii_real@proton.me" }]
 description = "CLI Application for generating randomization patches and application of patches to Tales of Vesperia: Definitive Edition."
 requires-python = ">=3.13"
