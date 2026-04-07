@@ -78,6 +78,8 @@ class GamePatchPacker:
 
     def verify_vesperia_file(self, filepath: str) -> bool:
         basename = os.path.basename(filepath)
+        if basename not in self.checksums:
+            return True
 
         try:
             with open(filepath, "rb") as file:
@@ -105,7 +107,7 @@ class GamePatchPacker:
 
             return backup_path
         elif os.path.isfile(original_path):
-            if self.verify_vesperia_file(original_path):
+            if not self.verify_vesperia_file(original_path):
                 raise PackerError(f"Invalid File: {basename} may have already been patched, "
                                   f"modified, or may be corrupted.")
 
