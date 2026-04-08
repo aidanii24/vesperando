@@ -683,11 +683,11 @@ class ChestRandomizer(BaseRandomizer):
             self.statistics['Gald Amount'] += 1
             new_amount = self.randomize_gald_amount(new_amount)
         elif item == self.GALD_ID and new_item != item:
-            new_amount = amount % 15
+            new_amount = amount % 15 + 1
 
         return {
             'item_id': new_item,
-            'amount': new_amount,
+            'amount': max(new_amount, 1),
         }
 
     def randomize_gald_amount(self, amount_basis = 100):
