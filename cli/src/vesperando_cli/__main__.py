@@ -17,7 +17,7 @@ logger = logging.getLogger(LOGGER_NAME)
 
 datetime_id = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
 
-@click.version_option("0.2.1", prog_name="vesperando-cli")
+@click.version_option("0.2.2", prog_name="vesperando-cli")
 @click.option("--licenses", type=click.BOOL, default=False, is_flag=True, help="Show license")
 @click.group(no_args_is_help=True, invoke_without_command=True)
 def cli(licenses):
