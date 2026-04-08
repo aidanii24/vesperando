@@ -99,7 +99,7 @@ def generate(options, name, seed, spoiler, targets):
     logger.info("")
     app_randomizer.generate(targets, options_data, spoiler)
 
-@cli.command(help="Patch the game with a randomizer patch file")
+@cli.command(help="Create the modified files for use on the game")
 @click.option("--threads", "-t", type=int, default=8, help="Maximum number of threads to use")
 @click.option("--clean", "-c", is_flag=True, help="Remove residue files generated during patching")
 @click.option("--apply-immediately", "-a", is_flag=True, help="Apply the patch immediately after patching")
