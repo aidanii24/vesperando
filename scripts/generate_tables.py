@@ -2,14 +2,15 @@ import json
 import csv
 import os
 
+from vesperando_core.conf.settings import Paths
 from vesperando_core.res.enums import Characters
+from vesperando_core.utils import keys_to_int
 
+
+fld: str = os.path.abspath(os.path.dirname(__file__))
 
 def strip_formatting(string: str) -> str:
     return string.replace("\n", "").replace("\t", "").replace("\r", "")
-
-def keys_to_int(x):
-    return {int(k): v for k, v in x.items()}
 
 def convert_strings_csv():
     strings_csv = os.path.join("artifacts", "strings.csv")
@@ -516,10 +517,7 @@ def generate_game_data_tables():
 
     skills: dict = {}
     for skill in skills_data['skills']:
-        skills[skill['id']] = {
-            'users': [*chara_by_skills.get(skill['id'], [])],
-            'properties': skill
-        }
+        skills[skill['id']] = skill
 
     skills_data['skills'] = skills
 
@@ -544,6 +542,33 @@ def generate_game_data_tables():
             json.dump(v, f)
             f.flush()
             f.close()
+
+
+def generate_streamlined_game_data_tables():
+    skills_data = {}
+
+    with open(Paths.STATIC_PATH.joinpath("skills.json")) as f:
+        skills_data = json.load(f, object_hook=keys_to_int)
+
+    skill_entries: dict = skills_data.get('entries', {})
+
+    new_data = {}
+    for sid, skill in skill_entries.items():
+        original: dict = skill.get('properties', {})
+
+        properties = {key if key != 'unknown2' else 'character_ids': value
+                      for key, value in original.items()}
+
+        new_data[sid] = properties
+
+    with open(os.path.join(fld, "artifacts", "skills.json"), "w") as f:
+        new_json: dict = {
+            'entries': new_data
+        }
+
+        json.dump(new_json, f)
+        f.flush()
+        f.close()
 
 def generate_metadata_tables():
     input_path = os.path.join("artifacts", "old")
@@ -592,5 +617,4 @@ class DataTableGenerator:
 
 
 if __name__ == "__main__":
-    generate_game_data_tables()
-    generate_metadata_tables()
+    generate_streamlined_game_data_tables()

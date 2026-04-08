@@ -900,14 +900,16 @@ class BasicRandomizerProcedure:
         with open(Paths.STATIC_PATH.joinpath("skills.json")) as f:
             skills_data_table = json.load(f, object_hook=keys_to_int)
 
-        self.skills_data_table = {int(sid): skill['properties']
-                                  for sid, skill in skills_data_table['entries'].items()}
+        self.skills_data_table = {int(sid): skill for sid, skill in skills_data_table['entries'].items()}
 
         skills_by_char = {}
-        for sid, data in skills_data_table['entries'].items():
-            if not data['users']: continue
-            for user in data['users']:
-                skills_by_char.setdefault(user, []).append(sid)
+        for sid, data in self.skills_data_table.items():
+            character_usable = data.get('character_usable', 0)
+            if not character_usable: continue
+
+            for character in enums.Characters:
+                if character.bitflag() & character_usable:
+                    skills_by_char.setdefault(character.value, []).append(sid)
 
         self.skills_by_char = skills_by_char
 

@@ -97,7 +97,7 @@ class SkillsEntry(ctypes.Structure):
         ("name_string_key", ctypes.c_uint32),
         ("desc_string_key", ctypes.c_uint32),
         ("unknown1", ctypes.c_uint32),
-        ("unknown2", ctypes.c_uint32),
+        ("character_usable", ctypes.c_uint32),
         ("sp_cost", ctypes.c_uint32),
         ("lp_cost", ctypes.c_uint32),
         ("symbol", ctypes.c_uint32),

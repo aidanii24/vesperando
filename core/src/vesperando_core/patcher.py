@@ -79,9 +79,9 @@ class GamePatcher:
 
         patched_data: dict = {}
         for sid, patch in sorted(patches.items()):
-            if not sid == original_data[sid]['properties']['id']:
+            if not sid == original_data[sid]['id']:
                 raise PatchValidationError(f"There was an error resolving the patch for Skill Entry {sid}")
-            original_properties: dict = original_data[sid]['properties']
+            original_properties: dict = original_data[sid]
             patched_data[original_properties['entry']] = {**original_properties, **patch}
 
         header_size: int = ctypes.sizeof(gtypes.SkillsHeader)
