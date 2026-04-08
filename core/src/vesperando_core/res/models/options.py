@@ -13,6 +13,7 @@ class ArtesOptions(BaseModel):
     learn_arte_usage_min: MaxThousand = 5
     learn_arte_usage_max: MaxThousand = 200
     enable_non_altered_evolve: bool = False
+    keep_azure_edge_fs: bool = True
 
     @model_validator(mode='after')
     def check_tp_range(self) -> Self:

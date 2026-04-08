@@ -2,6 +2,12 @@ from pydantic import AfterValidator
 from typing import Annotated, Callable
 
 
+def check_positive(value: int | float) -> int | float:
+    if value < 0:
+        raise ValueError(f"{value} is negative, which is invalid.")
+
+    return value
+
 def check_positive_strict(value: int | float) -> int | float:
     if value <= 0:
         raise ValueError(f"{value} is zero or negative, which is invalid.")
@@ -18,7 +24,7 @@ def factory_check_max(max_value: int) -> Callable[[int | float], int | float]:
     return lambda x: check_max(x, max_value)
 
 def check_weapon_skill_count(value: int | float) -> int | float:
-    check_positive_strict(value)
+    check_positive(value)
     check_max(value, 3)
     return value
 

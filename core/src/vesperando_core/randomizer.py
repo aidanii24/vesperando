@@ -55,6 +55,7 @@ class ArteOptions:
         self.learn_arte_usage_min: int = options.get("learn_arte_usage_min", 5)
         self.learn_arte_usage_max: int = options.get("learn_arte_usage_max", 200)
         self.enable_non_altered_evolve: bool = options.get("enable_non_altered_evolve", False)
+        self.keep_azure_edge_fs: bool = options.get("keep_azure_edge_fs", True)
 
 
 class ArteRandomizer(BaseRandomizer):
@@ -101,7 +102,10 @@ class ArteRandomizer(BaseRandomizer):
                 self.randomize_cast_time(arte)
 
             # Fatal Strike
-            if is_candidate and self.random.random() <= Weights.ARTE_FS:
+            ## Respect Keep Azure Edge FS option. This is required as the Fatal Strike tutorial assumes
+            ## Azure Edge's original FS Type, and will softlock the game when it gets changes.
+            skip_fs: bool = arte.get('id', 0) == 17 and self.options.keep_azure_edge_fs
+            if is_candidate and not skip_fs and self.random.random() <= Weights.ARTE_FS:
                 self.randomize_fatal_strike(arte)
 
             # Evolutions
