@@ -966,9 +966,8 @@ class BasicRandomizerProcedure:
             self.skill_randomizer.report()
 
         if not targets or 'items' in targets:
-            skills_lp_table: dict = {}
-            if 'skills' in patch_data:
-                skills_lp_table = {sid: v['lp_cost'] for sid,v in patch_data['skills'].items()}
+            lp_source: dict = patch_data.get('skills', self.skills_data_table)
+            skills_lp_table: dict = {sid: v['lp_cost'] for sid,v in lp_source.items()}
 
             logger.info("> Randomizing Items")
             data: dict = {
