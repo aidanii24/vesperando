@@ -34,6 +34,9 @@ class SkillsOptions(BaseModel):
     sp_mod: Mod = 1.0
     sp_min: MaxHundred = 1
     sp_max: MaxHundred = 30
+    lp_mod: Mod = 1.0
+    lp_min: MaxTenThousand = 100
+    lp_max: MaxTenThousand = 1600
 
     @model_validator(mode='after')
     def check_sp_range(self) -> Self:
@@ -42,26 +45,22 @@ class SkillsOptions(BaseModel):
 
         return self
 
+    @model_validator(mode='after')
+    def check__lp_range(self) -> Self:
+        if self.lp_min > self.lp_max:
+            raise ValueError("\"lp_min\" must be less than \"lp_max\".")
+
+        return self
 
 class ItemsOptions(BaseModel):
     price_mod: Mod = 1.0
     weapon_skills_min: WeaponSkillCount = 0
     weapon_skills_max: WeaponSkillCount = 3
-    weapon_skill_lp_mod: Mod = 1.0
-    weapon_skill_lp_min: MaxTenThousand = 100
-    weapon_skill_lp_max: MaxTenThousand = 1600
 
     @model_validator(mode='after')
     def check_skill_count_range(self) -> Self:
         if self.weapon_skills_min > self.weapon_skills_max:
             raise ValueError("\"weapon_skills_min\" must be less than \"weapon_skills_max\".")
-
-        return self
-
-    @model_validator(mode='after')
-    def check_skills_lp_range(self) -> Self:
-        if self.weapon_skill_lp_min > self.weapon_skill_lp_max:
-            raise ValueError("\"weapon_skill_lp_min\" must be less than \"weapon_skill_lp_max\".")
 
         return self
 

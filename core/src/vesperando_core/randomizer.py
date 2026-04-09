@@ -265,6 +265,9 @@ class SkillOptions:
         self.sp_mod: float = options.get('sp_mod', 1.0)
         self.sp_min: int = options.get('sp_min', 1)
         self.sp_max: int = options.get('sp_max', 30)
+        self.lp_mod: float = options.get('lp_mod', 1.0)
+        self.lp_min: int = options.get('lp_min', 100)
+        self.lp_max: int = options.get('lp_max', 1600)
 
 
 class SkillRandomizer(BaseRandomizer):
@@ -296,7 +299,7 @@ class SkillRandomizer(BaseRandomizer):
 
             # SP Cost
             sp: int = skill.get('sp_cost', 0)
-            if is_candidate and sp and self.random.random() <= 0.95:
+            if is_candidate and sp and self.random.random() <= Weights.SKILL_SP_COST:
                 self.statistics['SP Cost'] += 1
                 sp = self.random_from_distribution(Weights.SKILL_SP_MU, Weights.SKILL_SP_SIGMA,
                                                    self.options.sp_min, self.options.sp_max)
@@ -305,12 +308,18 @@ class SkillRandomizer(BaseRandomizer):
                                    self.options.sp_min)
 
             # LP
-            if is_candidate and skill['lp_cost']:
+            lp: int = skill.get('lp_cost', 0)
+            if is_candidate and skill['lp_cost'] and self.random.random() <= Weights.SKILL_LP:
                 self.statistics['LP'] += 1
-                ranges = sorted([int(self.random_from_triangular(100, 1600)),
-                                 int(self.random_from_triangular(100, 600))])
-                base = round(self.random_from_triangular(*ranges), -2)
-                skill['lp_cost'] = base
+                lower_max: int = max(self.options.lp_max // 3, (self.options.lp_min + self.options.lp_max) // 2)
+                ranges = sorted([int(self.random_from_triangular(self.options.lp_min, self.options.lp_max)),
+                                 int(self.random_from_triangular(self.options.lp_min, lower_max))])
+                lp = round(self.random_from_triangular(*ranges), -2)
+
+            skill['lp_cost'] = max(
+                min(int(lp * self.options.lp_mod), self.options.lp_max),
+                self.options.lp_min
+            )
 
             # Symbol Type
             if is_candidate and self.random.random() <= Weights.SKILL_SYMBOL:
@@ -353,9 +362,6 @@ class ItemOptions:
         self.price_mod: float = options.get('price_mod', 1.0)
         self.weapon_skills_min: int = options.get('weapon_skills_min', 1)
         self.weapon_skills_max: int = options.get('weapon_skills_max', 3)
-        self.weapon_skill_lp_mod: float = options.get('weapon_skill_lp_mod', 1.0)
-        self.weapon_skill_lp_min: int = options.get('weapon_skill_lp_min', 100)
-        self.weapon_skill_lp_max: int = options.get('weapon_skill_lp_max', 1600)
 
 
 class ItemRandomizer(BaseRandomizer):
@@ -438,20 +444,7 @@ class ItemRandomizer(BaseRandomizer):
                             item[f'skill{i + 1}'] = skill
 
                             if skill in self.skills_lp_table:
-                                base = self.skills_lp_table[skill]
-                                mod_range = sorted([self.random_from_triangular(25, 500),
-                                                    self.random_from_triangular(25, 150)])
-                                mod = self.random_from_triangular(*mod_range)
-                                lp = int(max(
-                                    min(base * mod * 0.01 // 5 * 5, self.options.weapon_skill_lp_max),
-                                    self.options.weapon_skill_lp_min
-                                ))
-                            else:
-                                lp = int(self.random_from_distribution(
-                                    Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,
-                                    self.options.weapon_skill_lp_min,
-                                    self.options.weapon_skill_lp_max
-                                ))
+                                lp = self.skills_lp_table.get(skill, 10)
 
                             skills_candidates.discard(skill)
                             for u in users:
@@ -460,10 +453,7 @@ class ItemRandomizer(BaseRandomizer):
                             if not len(skills_candidates):
                                 continue_iter = False
 
-                        item[f'skill{i + 1}_lp'] = max(
-                            min(int(lp * self.options.weapon_skill_lp_mod), self.options.weapon_skill_lp_max),
-                            self.options.weapon_skill_lp_min
-                        )
+                        item[f'skill{i + 1}_lp'] = lp
 
                         if i + 1 >= self.options.weapon_skills_max:
                             continue_iter = False
