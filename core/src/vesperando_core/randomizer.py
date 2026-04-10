@@ -432,7 +432,7 @@ class ItemRandomizer(BaseRandomizer):
                 # Skills
                 continue_iter: bool = True
                 for i, opp in enumerate(Weights.ITEM_SKILL_OPPORTUNITIES):
-                    roll: float = self.random.random() if i + 1 < self.options.weapon_skills_min else -1
+                    roll: float = self.random.random() if i + 1 > self.options.weapon_skills_min else -1
                     if continue_iter and roll <= opp:
                         self.statistics['Skills'] += 1
 
