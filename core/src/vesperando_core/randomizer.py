@@ -68,6 +68,8 @@ class ArteRandomizer(BaseRandomizer):
         self.statistics: dict = {
             'Artes': 0,
             'TP Cost': 0,
+            'TP Cost (Multiplier)': 0,
+            'TP Cost (Full Random)': 0,
             'Cast Time': 0,
             'Fatal Strikes': 0,
             'Evolutions': 0,
@@ -141,7 +143,22 @@ class ArteRandomizer(BaseRandomizer):
 
     def randomize_tp_cost(self, arte):
         self.statistics['TP Cost'] += 1
-        return math.ceil(int(arte['tp_cost']) * self.random_from_triangular(10, 200) * 0.01)
+        use_multiplier: bool = self.random.random() <= Weights.ARTE_TP_COST_MULTIPLIER
+
+        if use_multiplier:
+            self.statistics['TP Cost (Multiplier)'] += 1
+            ranges = sorted([
+                self.random_from_triangular(25, 100),
+                self.random_from_triangular(25, 300)
+            ])
+            base = int(arte['tp_cost'] * self.random_from_triangular(*ranges) / 100)
+            tp_cost = base // 5 * 5
+        else:
+            self.statistics['TP Cost (Full Random)'] += 1
+            base = self.random_from_triangular(self.options.tp_min, self.options.tp_max)
+            tp_cost = base // 5 * 5
+
+        return tp_cost
 
 
     def randomize_cast_time(self, arte):
@@ -237,15 +254,22 @@ class ArteRandomizer(BaseRandomizer):
         else:
             logger.info(f"{"> ARTES":>4}")
 
-        artes_ratio: str = f"{self.statistics['Artes']:<4}/{len(self.candidates)}"
-        tp_ratio: str = f"{self.statistics['TP Cost']:<4}/{self.statistics['Artes']}"
-        cast_time_ratio: str = f"{self.statistics['Cast Time']:<4}/{self.statistics['Artes']}"
-        fatal_strike_ratio: str = f"{self.statistics['Fatal Strikes']:<4}/{self.statistics['Artes']}"
-        evolution_ratio: str = f"{self.statistics['Evolutions']:<4}/{self.statistics['Artes']}"
-        learn_condition_ratio: str = f"{self.statistics['Learn Conditions']:<4}/{self.statistics['Artes']}"
+        artes_ratio: str = f"{self.statistics['Artes']:>4}/{len(self.candidates)}"
+        tp_ratio: str = f"{self.statistics['TP Cost']:>4}/{self.statistics['Artes']}"
+        tp_multiplier_ratio: str = f"{self.statistics['TP Cost (Multiplier)']:>4}/{self.statistics['TP Cost']}"
+        tp_full_ratio: str = f"{self.statistics['TP Cost (Full Random)']:>4}/{self.statistics['TP Cost']}"
+        cast_time_ratio: str = f"{self.statistics['Cast Time']:>4}/{self.statistics['Artes']}"
+        fatal_strike_ratio: str = f"{self.statistics['Fatal Strikes']:>4}/{self.statistics['Artes']}"
+        evolution_ratio: str = f"{self.statistics['Evolutions']:>4}/{self.statistics['Artes']}"
+        learn_condition_ratio: str = f"{self.statistics['Learn Conditions']:>4}/{self.statistics['Artes']}"
 
         artes_percentage: float = safe_divide(self.statistics['Artes'], len(self.candidates))
         tp_percentage: float = safe_divide(self.statistics['TP Cost'], self.statistics['Artes'])
+        tp_multiplier_percentage: float = safe_divide(
+            self.statistics['TP Cost (Multiplier)'],
+            self.statistics['TP Cost']
+        )
+        tp_full_percentage: float = safe_divide(self.statistics['TP Cost (Full Random)'], self.statistics['TP Cost'])
         cast_time_percentage: float = safe_divide(self.statistics['Cast Time'], self.statistics['Artes'])
         fatal_strike_percentage: float = safe_divide(self.statistics['Fatal Strikes'], self.statistics['Artes'])
         evolution_percentage: float = safe_divide(self.statistics['Evolutions'], self.statistics['Artes'])
@@ -253,6 +277,8 @@ class ArteRandomizer(BaseRandomizer):
 
         logger.info(f"{"":>4}{"> Candidates:":<21}{artes_ratio:<12}{artes_percentage:.2f}%")
         logger.info(f"{"":>4}{"> TP Cost:":<21}{tp_ratio:<12}{tp_percentage:.2f}%")
+        logger.info(f"{"":>6}{"> TP Cost (Multiplier):":<28}{tp_multiplier_ratio:<12}{tp_multiplier_percentage:.2f}%")
+        logger.info(f"{"":>6}{"> TP Cost (Full Random):":<28}{tp_full_ratio:<12}{tp_full_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Cast Time:":<21}{cast_time_ratio:<12}{cast_time_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Fatal Strikes:":<21}{fatal_strike_ratio:<12}{fatal_strike_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Evolutions:":<21}{evolution_ratio:<12}{evolution_percentage:.2f}%")
@@ -301,8 +327,10 @@ class SkillRandomizer(BaseRandomizer):
             sp: int = skill.get('sp_cost', 0)
             if is_candidate and sp and self.random.random() <= Weights.SKILL_SP_COST:
                 self.statistics['SP Cost'] += 1
-                sp = self.random_from_distribution(Weights.SKILL_SP_MU, Weights.SKILL_SP_SIGMA,
-                                                   self.options.sp_min, self.options.sp_max)
+                sp = self.random_from_distribution(
+                    Weights.SKILL_SP_MU, Weights.SKILL_SP_SIGMA,
+                    self.options.sp_min, self.options.sp_max
+                )
 
             skill['sp_cost'] = max(min(int(sp * self.options.sp_mod), self.options.sp_max),
                                    self.options.sp_min)
@@ -311,10 +339,11 @@ class SkillRandomizer(BaseRandomizer):
             lp: int = skill.get('lp_cost', 0)
             if is_candidate and skill['lp_cost'] and self.random.random() <= Weights.SKILL_LP:
                 self.statistics['LP'] += 1
-                lower_max: int = max(self.options.lp_max // 3, (self.options.lp_min + self.options.lp_max) // 2)
-                ranges = sorted([int(self.random_from_triangular(self.options.lp_min, self.options.lp_max)),
-                                 int(self.random_from_triangular(self.options.lp_min, lower_max))])
-                lp = round(self.random_from_triangular(*ranges), -2)
+                lp = self.random_from_distribution(
+                    Weights.SKILL_LP_MU, Weights.SKILL_LP_SIGMA,
+                    self.options.lp_min, self.options.lp_max
+                )
+                lp = round(lp, -2)
 
             skill['lp_cost'] = max(
                 min(int(lp * self.options.lp_mod), self.options.lp_max),
@@ -371,13 +400,14 @@ class ItemRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
         self.random = random_obj
         self.items_data = data['items_data']
-        self.skills_lp_table = data['skills_lp_table']
         self.skills_by_char = data['skills_by_char']
         self.options = ItemOptions(options)
 
         self.statistics: dict = {
             'Items': 0,
             'Prices': 0,
+            'Prices (Multiplier)': 0,
+            'Prices (Million Random)': 0,
             'Skills': 0,
         }
 
@@ -406,10 +436,22 @@ class ItemRandomizer(BaseRandomizer):
             # Buy Price
             buy_price: int = item.get('buy_price', 0)
             if buy_price:
-                if is_candidate and self.random.random() <= 0.95:
+                if is_candidate and self.random.random() <= Weights.ITEM_PRICE:
                     self.statistics['Prices'] += 1
-                    base = int(item['buy_price'] * self.random_from_triangular(25, 200) / 100)
-                    buy_price = base // 5 * 5
+                    use_multiplier: bool = self.random.random() <= Weights.ITEM_PRICE_MULTIPLIER
+
+                    if use_multiplier:
+                        self.statistics['Prices (Multiplier)'] += 1
+                        ranges = sorted([
+                            self.random_from_triangular(25, 100),
+                            self.random_from_triangular(25, 500)
+                        ])
+                        base = int(item['buy_price'] * self.random_from_triangular(*ranges) / 100)
+                        buy_price = base // 5 * 5
+                    else:
+                        self.statistics['Prices (Million Random)'] += 1
+                        base = self.random_from_triangular(25, 1000000)
+                        buy_price = base // 5 * 5
             else:
                 base = self.random_from_triangular(25, 1000000)
                 buy_price = base // 5 * 5
@@ -417,7 +459,7 @@ class ItemRandomizer(BaseRandomizer):
             item['buy_price'] = int(buy_price * self.options.price_mod)
 
             # Weapon Properties
-            if enums.ItemCategory.is_weapon(data['category']):
+            if enums.ItemCategory.is_weapon(data.get('category', 0)):
                 skills_candidates: set[int] = set(skill for char in users
                                                   for skill in self.skills_by_char[char]
                                                   if char in self.skills_by_char)
@@ -480,16 +522,32 @@ class ItemRandomizer(BaseRandomizer):
 
         base_total: int = len(self.candidates['base'])
 
-        items_ratio: str = f"{self.statistics['Items']:<4}/{base_total}"
-        prices_ratio: str = f"{self.statistics['Prices']:<4}/{self.statistics['Items']}"
-        skills_ratio: str = f"{self.statistics['Skills']:<4}/{self.statistics['Items']}"
+        items_ratio: str = f"{self.statistics['Items']:>4}/{base_total}"
+        prices_ratio: str = f"{self.statistics['Prices']:>4}/{self.statistics['Items']}"
+        prices_multiplier_ratio: str = f"{self.statistics['Prices (Multiplier)']:>4}/{self.statistics['Prices']}"
+        prices_million_ratio: str = f"{self.statistics['Prices (Million Random)']:>4}/{self.statistics['Prices']}"
+        skills_ratio: str = f"{self.statistics['Skills']:>4}/{self.statistics['Items']}"
 
         items_percentage: float = safe_divide(self.statistics['Items'], base_total)
         prices_percentage: float = safe_divide(self.statistics['Prices'], self.statistics['Items'])
+        prices_multiplier_percentage: float = safe_divide(
+            self.statistics['Prices (Multiplier)'],
+            self.statistics['Prices']
+        )
+        prices_million_percentage: float = safe_divide(
+            self.statistics['Prices (Million Random)'],
+            self.statistics['Prices']
+        )
         skills_percentage: float = safe_divide(self.statistics['Skills'], self.statistics['Items'])
 
         logger.info(f"{"":>4}{"> Candidates:":<21}{items_ratio:<12}{items_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Prices:":<21}{prices_ratio:<12}{prices_percentage:.2f}%")
+        logger.info(
+            f"{"":>6}{"> Prices (Multiplier):":<28}{prices_multiplier_ratio:<12}{prices_multiplier_percentage:.2f}%"
+        )
+        logger.info(
+            f"{"":>6}{"> Prices (Million Random):":<28}{prices_million_ratio:<12}{prices_million_percentage:.2f}%"
+        )
         logger.info(f"{"":>4}{"> Skills:":<21}{skills_ratio:<12}{skills_percentage:.2f}%")
         logger.info("")
 
@@ -975,13 +1033,9 @@ class BasicRandomizerProcedure:
             self.skill_randomizer.report()
 
         if not targets or 'items' in targets:
-            lp_source: dict = patch_data.get('skills', self.skills_data_table)
-            skills_lp_table: dict = {sid: v['lp_cost'] for sid,v in lp_source.items()}
-
             logger.info("> Randomizing Items")
             data: dict = {
                 'items_data': self.items_data_table,
-                'skills_lp_table': skills_lp_table,
                 'skills_by_char': self.skills_by_char,
             }
 

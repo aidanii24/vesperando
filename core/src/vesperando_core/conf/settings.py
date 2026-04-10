@@ -48,6 +48,7 @@ class Extensions:
 class Weights:
     ARTE_CANDIDACY = 0.05
     ARTE_TP_COST = 0.4
+    ARTE_TP_COST_MULTIPLIER = 0.9
     ARTE_CAST_TIME = 0.7
     ARTE_FS = 0.75
     ARTE_EVOLVE = 0.6   # 0.258 for actual ration of character artes with evolves in Vanilla
@@ -76,7 +77,7 @@ class Weights:
     )
     SKILL_CANDIDACY = 0.05
     SKILL_SP_COST = 0.95
-    SKILL_SP_MU = 7.6
+    SKILL_SP_MU = 3.8   # Vanilla is at 7.6
     SKILL_SP_SIGMA = 5
     SKILL_LP = 0.95
     SKILL_LP_MU = 329.16
@@ -93,6 +94,7 @@ class Weights:
     )
     ITEM_CANDIDACY = 0.05
     ITEM_PRICE = 0.95
+    ITEM_PRICE_MULTIPLIER = 0.99
     ITEM_SKILL_OPPORTUNITIES: tuple = (
         0.96,
         0.875,
