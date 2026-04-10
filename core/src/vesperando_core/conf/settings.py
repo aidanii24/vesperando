@@ -98,6 +98,7 @@ class Weights:
         0.875,
         0.61
     )
+    ITEM_SKILL_LP = 0.1
     SHOP_CANDIDACY = 0.1
     SHOP_CANDIDACY_REPEAT = 0.75
     SHOP_CANDIDACY_CONSUMABLE = 0.7

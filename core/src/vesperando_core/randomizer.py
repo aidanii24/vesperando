@@ -362,6 +362,9 @@ class ItemOptions:
         self.price_mod: float = options.get('price_mod', 1.0)
         self.weapon_skills_min: int = options.get('weapon_skills_min', 1)
         self.weapon_skills_max: int = options.get('weapon_skills_max', 3)
+        self.weapon_skill_lp_ratio_mod: float = options.get('weapon_skill_lp_ratio_mod', 1.0)
+        self.weapon_skill_lp_ratio_min: int = options.get('weapon_skill_lp_ratio_min', 10)
+        self.weapon_skill_lp_ratio_max: int = options.get('weapon_skill_lp_ratio_max', 100)
 
 
 class ItemRandomizer(BaseRandomizer):
@@ -443,17 +446,23 @@ class ItemRandomizer(BaseRandomizer):
                             skill = self.random.choice([*skills_candidates])
                             item[f'skill{i + 1}'] = skill
 
-                            if skill in self.skills_lp_table:
-                                lp = self.skills_lp_table.get(skill, 10)
+                            if self.random.random() < Weights.ITEM_SKILL_LP:
+                                lp = self.random_from_triangular(
+                                    self.options.weapon_skill_lp_ratio_min,
+                                    self.options.weapon_skill_lp_ratio_max,
+                                    'max'
+                                )
+                                lp = round(lp, -1)
+                            elif lp <= 0 or self.random.random() > Weights.ITEM_SKILL_LP:
+                                lp = 100
 
-                            skills_candidates.discard(skill)
-                            for u in users:
-                                set_skills_per_char[u].discard(skill)
-
-                            if not len(skills_candidates):
-                                continue_iter = False
-
-                        item[f'skill{i + 1}_lp'] = lp
+                        item[f'skill{i + 1}_lp'] = max(
+                            min(int(
+                                lp * self.options.weapon_skill_lp_ratio_mod),
+                                self.options.weapon_skill_lp_ratio_max
+                            ),
+                            self.options.weapon_skill_lp_ratio_min
+                        )
 
                         if i + 1 >= self.options.weapon_skills_max:
                             continue_iter = False

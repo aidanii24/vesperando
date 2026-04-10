@@ -56,11 +56,21 @@ class ItemsOptions(BaseModel):
     price_mod: Mod = 1.0
     weapon_skills_min: WeaponSkillCount = 0
     weapon_skills_max: WeaponSkillCount = 3
+    weapon_skill_lp_ratio_mod: Mod = 1.0
+    weapon_skill_lp_ratio_min: MaxHundred = 10
+    weapon_skill_lp_ratio_max: MaxHundred = 100
 
     @model_validator(mode='after')
     def check_skill_count_range(self) -> Self:
         if self.weapon_skills_min > self.weapon_skills_max:
             raise ValueError("\"weapon_skills_min\" must be less than \"weapon_skills_max\".")
+
+        return self
+
+    @model_validator(mode='after')
+    def check_skill_lp_ratio_range(self) -> Self:
+        if self.weapon_skills_min > self.weapon_skills_max:
+            raise ValueError("\"weapon_skill_lp_ratio_min\" must be less than \"weapon_skill_lp_ratio_max\".")
 
         return self
 
