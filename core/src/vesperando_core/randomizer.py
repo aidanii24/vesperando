@@ -463,6 +463,7 @@ class ItemRandomizer(BaseRandomizer):
                 skills_candidates: set[int] = set(skill for char in users
                                                   for skill in self.skills_by_char[char]
                                                   if char in self.skills_by_char)
+                skills_candidates.intersection_update(*[self.skills_by_char[char] for char in users])
 
                 skills_set: set[int] = skills_candidates.difference(*[set_skills_per_char[s] for s in users])
 
