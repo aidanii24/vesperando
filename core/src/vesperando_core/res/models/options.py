@@ -18,14 +18,19 @@ class ArtesOptions(BaseModel):
     @model_validator(mode='after')
     def check_tp_range(self) -> Self:
         if self.tp_min > self.tp_max:
-            raise ValueError("\"tp_min\" must be less than \"tp_max\".")
+            raise ValueError(
+                f"\"tp_min\" ({self.tp_min}) must not be greater than \"tp_max\" ({self.tp_max})."
+            )
 
         return self
 
     @model_validator(mode='after')
     def check_learn_arte_usage_range(self) -> Self:
         if self.learn_arte_usage_min > self.learn_arte_usage_max:
-            raise ValueError("\"learn_arte_usage_min\" must be less than \"learn_arte_usage_max\".")
+            raise ValueError(
+                f"\"learn_arte_usage_min\" ({self.learn_arte_usage_min}) "
+                f"must not be greater than \"learn_arte_usage_max\". ({self.learn_arte_usage_max})"
+            )
 
         return self
 
@@ -41,14 +46,14 @@ class SkillsOptions(BaseModel):
     @model_validator(mode='after')
     def check_sp_range(self) -> Self:
         if self.sp_min > self.sp_max:
-            raise ValueError("\"sp_min\" must be less than \"sp_max\".")
+            raise ValueError(f"\"sp_min\" ({self.sp_min}) must not be greater than \"sp_max\" ({self.sp_max}).")
 
         return self
 
     @model_validator(mode='after')
     def check__lp_range(self) -> Self:
         if self.lp_min > self.lp_max:
-            raise ValueError("\"lp_min\" must be less than \"lp_max\".")
+            raise ValueError(f"\"lp_min\" ({self.lp_min}) must not be greater than \"lp_max\" ({self.lp_max}).")
 
         return self
 
@@ -63,14 +68,20 @@ class ItemsOptions(BaseModel):
     @model_validator(mode='after')
     def check_skill_count_range(self) -> Self:
         if self.weapon_skills_min > self.weapon_skills_max:
-            raise ValueError("\"weapon_skills_min\" must be less than \"weapon_skills_max\".")
+            raise ValueError(
+                f"\"weapon_skills_min\" ({self.weapon_skills_min}) "
+                f"must not be greater than \"weapon_skills_max\" ({self.weapon_skills_max})."
+            )
 
         return self
 
     @model_validator(mode='after')
     def check_skill_lp_ratio_range(self) -> Self:
         if self.weapon_skills_min > self.weapon_skills_max:
-            raise ValueError("\"weapon_skill_lp_ratio_min\" must be less than \"weapon_skill_lp_ratio_max\".")
+            raise ValueError(
+                f"\"weapon_skill_lp_ratio_min\" ({self.weapon_skill_lp_ratio_min}) "
+                f"must not be greater than \"weapon_skill_lp_ratio_max\" ({self.weapon_skill_lp_ratio_max})."
+            )
 
         return self
 
@@ -86,21 +97,25 @@ class SearchOptions(BaseModel):
     @model_validator(mode='after')
     def check_uses_range(self) -> Self:
         if self.uses_min > self.uses_max:
-            raise ValueError("\"uses_min\" must be less than \"uses_max\".")
+            raise ValueError(f"\"uses_min\" ({self.uses_min}) must not be greater than \"uses_max\" ({self.uses_max}).")
 
         return self
 
     @model_validator(mode='after')
     def check_pools_range(self) -> Self:
         if self.pools_min > self.pools_max:
-            raise ValueError("\"pools_min\" must be less than \"pools_max\".")
+            raise ValueError(
+                f"\"pools_min\" ({self.pools_min}) must not be greater than \"pools_max\" ({self.pools_max})."
+            )
 
         return self
 
     @model_validator(mode='after')
     def check_items_range(self) -> Self:
         if self.uses_min > self.uses_max:
-            raise ValueError("\"items_min\" must be less than \"items_max\".")
+            raise ValueError(
+                f"\"items_min\" ({self.items_min}) must not be greater than \"items_max\" ({self.items_max})."
+            )
 
         return self
 
