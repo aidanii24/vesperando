@@ -1,6 +1,6 @@
 [project]
 name = "vesperando_core"
-version = "0.2.2"
+version = "0.2.3"
 authors = [{ name="aidanii", email="aidanii_real@proton.me" }]
 description = "Core library for generating randomization patches and application of patches to Tales of Vesperia: Definitive Edition."
 readme = "README.md"
