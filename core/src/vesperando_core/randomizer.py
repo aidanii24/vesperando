@@ -488,6 +488,7 @@ class ItemRandomizer(BaseRandomizer):
                         if is_candidate or (not is_candidate and not skill):
                             skill = self.random.choice([*skills_candidates])
                             item[f'skill{i + 1}'] = skill
+                            skills_candidates.discard(skill)
 
                             if self.random.random() < Weights.ITEM_SKILL_LP:
                                 lp = self.random_from_triangular(
