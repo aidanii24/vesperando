@@ -77,7 +77,7 @@ class ItemsOptions(BaseModel):
 
     @model_validator(mode='after')
     def check_skill_lp_ratio_range(self) -> Self:
-        if self.weapon_skills_min > self.weapon_skills_max:
+        if self.weapon_skill_lp_ratio_min > self.weapon_skill_lp_ratio_max:
             raise ValueError(
                 f"\"weapon_skill_lp_ratio_min\" ({self.weapon_skill_lp_ratio_min}) "
                 f"must not be greater than \"weapon_skill_lp_ratio_max\" ({self.weapon_skill_lp_ratio_max})."
