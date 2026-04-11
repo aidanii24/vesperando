@@ -446,7 +446,7 @@ class ItemRandomizer(BaseRandomizer):
                             self.random_from_triangular(25, 100),
                             self.random_from_triangular(25, 500)
                         ])
-                        base = int(item['buy_price'] * self.random_from_triangular(*ranges) / 100)
+                        base = max(int(item['buy_price'] * self.random_from_triangular(*ranges) / 100), 5)
                         buy_price = base // 5 * 5
                     else:
                         self.statistics['Prices (Million Random)'] += 1
