@@ -1,7 +1,7 @@
 from pydantic import BaseModel, model_validator, field_validator
 from typing import Optional, Self
 
-from vesperando_core.res.models.annotations import (MaxTenThousand, MaxThousand, MaxHundred, MaxTen, Mod, TP,
+from vesperando_core.res.models.annotations import (MaxTenThousand, MaxThousand, MaxHundred, MaxTen, Mod, TP, LPRatio,
                                                     WeaponSkillCount)
 
 
@@ -62,8 +62,8 @@ class ItemsOptions(BaseModel):
     weapon_skills_min: WeaponSkillCount = 0
     weapon_skills_max: WeaponSkillCount = 3
     weapon_skill_lp_ratio_mod: Mod = 1.0
-    weapon_skill_lp_ratio_min: MaxHundred = 10
-    weapon_skill_lp_ratio_max: MaxHundred = 100
+    weapon_skill_lp_ratio_min: LPRatio = 10
+    weapon_skill_lp_ratio_max: LPRatio = 100
 
     @model_validator(mode='after')
     def check_skill_count_range(self) -> Self:

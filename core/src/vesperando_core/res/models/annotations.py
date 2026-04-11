@@ -59,6 +59,11 @@ def check_tp(value: int | float) -> int | float:
     check_max(value, 200)
     return value
 
+def check_lp_ratio(value: int) -> int:
+    check_positive_strict(value)
+    check_max(value, 100)
+    return value
+
 
 IntPositiveStrict = Annotated[int, AfterValidator(check_positive_strict)]
 MaxTenThousand = Annotated[int, AfterValidator(check_max_ten_thousand)]
@@ -67,4 +72,5 @@ MaxHundred = Annotated[int, AfterValidator(check_max_hundred)]
 MaxTen = Annotated[int, AfterValidator(check_max_ten)]
 Mod = Annotated[float, AfterValidator(check_mod)]
 TP = Annotated[int, AfterValidator(check_tp)]
+LPRatio = Annotated[int, AfterValidator(check_lp_ratio)]
 WeaponSkillCount = Annotated[int, AfterValidator(check_weapon_skill_count)]
