@@ -366,11 +366,11 @@ class SkillRandomizer(BaseRandomizer):
     def report(self):
         logger.info("& SKILLS")
 
-        skills_ratio: str = f"{self.statistics['Skills']:<4}/{len(self.candidates)}"
-        sp_cost_ratio: str = f"{self.statistics['SP Cost']:<4}/{self.statistics['Skills']}"
-        lp_ratio: str = f"{self.statistics['LP']:<4}/{self.statistics['Skills']}"
-        symbols_ratio: str = f"{self.statistics['Symbols']:<4}/{self.statistics['Skills']}"
-        symbol_weights_ratio: str = f"{self.statistics['Symbol Weights']:<4}/{self.statistics['Skills']}"
+        skills_ratio: str = f"{self.statistics['Skills']:>4}/{len(self.candidates)}"
+        sp_cost_ratio: str = f"{self.statistics['SP Cost']:>4}/{self.statistics['Skills']}"
+        lp_ratio: str = f"{self.statistics['LP']:>4}/{self.statistics['Skills']}"
+        symbols_ratio: str = f"{self.statistics['Symbols']:>4}/{self.statistics['Skills']}"
+        symbol_weights_ratio: str = f"{self.statistics['Symbol Weights']:>4}/{self.statistics['Skills']}"
 
         skills_percentage: float = safe_divide(self.statistics['Skills'], len(self.candidates))
         sp_cost_percentage: float = safe_divide(self.statistics['SP Cost'], self.statistics['Skills'])
@@ -651,9 +651,9 @@ class ShopRandomizer(BaseRandomizer):
         else:
             logger.info("> SHOPS")
 
-        items_ratio: str = f"{self.statistics['Items']:<4}"
-        full_shuffle_ratio: str = f"{self.statistics['Full Shuffle']:<4}/{self.statistics['Items']}"
-        same_category_ratio: str = f"{self.statistics['Same Category']:<4}/{self.statistics['Items']}"
+        items_ratio: str = f"{self.statistics['Items']:>4}"
+        full_shuffle_ratio: str = f"{self.statistics['Full Shuffle']:>4}/{self.statistics['Items']}"
+        same_category_ratio: str = f"{self.statistics['Same Category']:>4}/{self.statistics['Items']}"
 
         full_shuffle_percentage: float = safe_divide(self.statistics['Full Shuffle'], self.statistics['Items'])
         same_category_percentage: float = safe_divide(self.statistics['Same Category'], self.statistics['Items'])
@@ -761,11 +761,11 @@ class ChestRandomizer(BaseRandomizer):
         else:
             logger.info("> CHESTS")
 
-        chests_ratio: str = f"{self.statistics['Chests']:<4}"
-        full_shuffle_ratio: str = f"{self.statistics['Full Shuffle']:<4}/{self.statistics['Chests']}"
-        same_category_ratio: str = f"{self.statistics['Same Category']:<4}/{self.statistics['Chests']}"
-        item_amount_ratio: str = f"{self.statistics['Item Amount']:<4}/{self.statistics['Chests']}"
-        gald_amount_ratio: str = f"{self.statistics['Gald Amount']:<4}/{self.statistics['Chests']}"
+        chests_ratio: str = f"{self.statistics['Chests']:>4}"
+        full_shuffle_ratio: str = f"{self.statistics['Full Shuffle']:>4}/{self.statistics['Chests']}"
+        same_category_ratio: str = f"{self.statistics['Same Category']:>4}/{self.statistics['Chests']}"
+        item_amount_ratio: str = f"{self.statistics['Item Amount']:>4}/{self.statistics['Chests']}"
+        gald_amount_ratio: str = f"{self.statistics['Gald Amount']:>4}/{self.statistics['Chests']}"
 
         full_shuffle_percentage: float = safe_divide(self.statistics['Full Shuffle'], self.statistics['Chests'])
         same_category_percentage: float = safe_divide(self.statistics['Same Category'], self.statistics['Chests'])
