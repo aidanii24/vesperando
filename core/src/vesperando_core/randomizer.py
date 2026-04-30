@@ -899,8 +899,7 @@ class EventsRandomizer(BaseRandomizer):
                     e for e in equipment
                     if self.items_data.get(e, {}).get('character_usable', 0) & character.bitflag() > 0
                 ]
-                self.equipment_by_char[category].setdefault(character, []).extend(char_equipment)
-
+                self.equipment_by_char[category].setdefault(character.value, []).extend(char_equipment)
         self.placed_events = {
             'artes': {_: [] for _ in range(1, 10)},
             'skills': {_: [] for _ in range(1, 10)},
@@ -934,9 +933,10 @@ class EventsRandomizer(BaseRandomizer):
             },
             'key': []
         }
+
         for file, entries in self.candidates.items():
             for address, properties in entries.items():
-                match properties.get(type, None):
+                match properties.get('type', None):
                     case 10:
                         self.randomize_arte(properties, placed['artes'])
                     case 20:
@@ -948,7 +948,9 @@ class EventsRandomizer(BaseRandomizer):
         if placed is None:
             placed = dict()
 
-        equip_type = properties.get('type', 0)
+        # set_param_pc has Main, Sub, Body and Head use ID's of 0xB, 0xC, 0xD and 0xE respectively
+        # so we remove the difference from their values as represented in the items data table
+        equip_type = properties.get('metadata', 0) - 0x8
         character = properties.get('character', 0)
         if not equip_type or not character: return
 
