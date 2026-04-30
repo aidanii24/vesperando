@@ -31,8 +31,14 @@ def cli(licenses):
 @click.option("--seed", type=click.INT, help="Seed to use")
 @click.option("--name", "-n", type=click.STRING, help="Name to identify the patch")
 @click.option("--spoiler", "-s", is_flag=True, help="Generate Spoiler Log")
-@click.argument("targets", nargs=-1,
-                type=click.Choice(["artes", "skills", "items", "shops", "chests", "search"],False))
+@click.argument(
+    "targets",
+    nargs=-1,
+    type=click.Choice(
+        ["artes", "skills", "items", "shops", "chests", "search", "events"],
+        False
+    )
+)
 def generate(options, name, seed, spoiler, targets):
     from vesperando_core import randomizer, options as options_handler
 

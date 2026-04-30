@@ -4,21 +4,20 @@ import os
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 if os.getenv("ENV", "") == "DEBUG": os.environ["EXEC_DIR"] = os.path.dirname(os.path.abspath(__file__))
 
-from vesperando_core import randomizer
+from click.testing import CliRunner
+from vesperando_cli.__main__ import cli
 
+def test_generate():
+    print("[TEST] Testing 'generate' command")
 
-if __name__ == "__main__":
-    ptd = os.path.join(os.getenv('EXEC_DIR', os.getcwd()), "patches")
-    if os.path.isdir(ptd):
-        for content in os.listdir(ptd):
-            path = os.path.join(ptd, content)
-            if os.path.isfile(path):
-                os.remove(path)
+    runner = CliRunner()
+    result = runner.invoke(cli, ['generate', 'events', '-s'], catch_exceptions=False)
 
-    targets: list[str] = []
+    print("\n---------------------\n[TEST] OUTPUT:\n---------------------\n")
+    print(result.output)
 
-    print("[INTEGRATION TEST] Generating Patches...")
-    print("\t-| Targets: ", targets if targets else "ALL")
-    template = randomizer.BasicRandomizerProcedure(targets)
-    template.generate(targets, True)
+    assert result.exit_code == 0
+
     print("[TEST] Done.")
+
+test_generate()

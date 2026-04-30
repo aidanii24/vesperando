@@ -879,6 +879,110 @@ class SearchPointRandomizer(BaseRandomizer):
         logger.info(f"{"":>4}{"> Average Items per Content:":<40}{average_items}")
         logger.info("")
 
+class EventsRandomizer(BaseRandomizer):
+    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+        self.random = random_obj
+        self.events_data = data.get('events_data', {})
+        self.artes_by_char = data.get('artes_by_char', {})
+        self.skills_by_char = data.get('skills_by_char', {})
+        self.items_data = data.get('items_data', {})
+        self.item_by_category = data.get('item_by_category', {})
+        self.common_items = data.get('common_items', {})
+        self.equipment_by_char = {}
+        for category in range(enums.ItemCategory.MAIN.value, enums.ItemCategory.BODY.value + 1):
+            equipment: list = self.item_by_category.get(category, [])
+            self.equipment_by_char[category] = {}
+            if not equipment: continue
+
+            for character in enums.Characters:
+                char_equipment: list = [
+                    e for e in equipment
+                    if self.items_data.get(e, {}).get('character_usable', 0) & character.bitflag() > 0
+                ]
+                self.equipment_by_char[category].setdefault(character, []).extend(char_equipment)
+
+        self.placed_events = {
+            'artes': {_: [] for _ in range(1, 10)},
+            'skills': {_: [] for _ in range(1, 10)},
+            'equips': {_: [] for _ in range(1, 10)},
+        }
+
+        self.candidates = {}
+        for f, entries in self.events_data.items():
+            # Correspondents are related functions that usually use the same value as the base function
+            # (e.g. Equip Skill counterpart of a Lean Skill). This is not an explicit relationship that
+            # exists in-game technically, but is used here to consolidate data and reduce space
+            correspondents: list[int] = []
+            for props in entries.values():
+                correspondent: int = props.get('correspondent', None)
+                if correspondent: correspondents.append(correspondent)
+
+            for add, props in entries.items():
+                if add in correspondents: continue
+                patch_props = props.copy()
+                patch_props.pop('correspondent', None)
+                self.candidates.setdefault(f, {})[add] = patch_props
+
+    def randomize(self):
+        character_template: dict = {character.value: [] for character in enums.Characters}
+        placed: dict = {
+            'artes': deepcopy(character_template),
+            'skills': deepcopy(character_template),
+            'equips': {
+                _: deepcopy(character_template)
+                for _ in range(enums.ItemCategory.MAIN.value, enums.ItemCategory.BODY.value + 1)
+            },
+            'key': []
+        }
+        for file, entries in self.candidates.items():
+            for address, properties in entries.items():
+                match properties.get(type, None):
+                    case 10:
+                        self.randomize_arte(properties, placed['artes'])
+                    case 20:
+                        self.randomize_skill(properties, placed['skills'])
+                    case 31:
+                        self.randomize_equip(properties, placed['equips'])
+
+    def randomize_equip(self, properties: dict, placed: dict = None):
+        if placed is None:
+            placed = dict()
+
+        equip_type = properties.get('type', 0)
+        character = properties.get('character', 0)
+        if not equip_type or not character: return
+
+        placed_equip: list = placed.get(equip_type, {}).get(character, [])
+        candidates: list = [*set(self.equipment_by_char[equip_type][character]).difference(placed_equip)]
+        new_equip: int = self.random.choice(candidates)
+        properties['target'] = new_equip
+        placed[equip_type].setdefault(character, []).append(new_equip)
+
+    def randomize_arte(self, properties: dict, placed: dict = None):
+        if placed is None:
+            placed = dict()
+
+        character = properties.get('character', 0)
+        if not character: return
+
+        placed_artes: list = placed.get(character, [])
+        candidates: list = [*set(self.artes_by_char.get(character, [])).difference(placed_artes)]
+        new_arte: int = random.choice(candidates)
+        properties['target'] = new_arte
+        placed.setdefault(character, []).append(new_arte)
+
+    def randomize_skill(self, properties: dict, placed: dict = None):
+        if placed is None:
+            placed = dict()
+
+        character = properties.get('character', 0)
+        if not character: return
+
+        placed_skills: list = placed.get('character', [])
+        candidates: list = [*set(self.skills_by_char.get(character, [])).difference(placed_skills)]
+        new_skill = random.choice(candidates)
+        properties['target'] = new_skill
+        placed.setdefault(character, []).append(new_skill)
 
 class BasicRandomizerProcedure:
     artes_data_table: dict
@@ -896,6 +1000,8 @@ class BasicRandomizerProcedure:
     item_by_category: dict
     common_items: tuple # Any valid non-key and non-DLC item
 
+    events_data_table: dict
+
     seed: int
     random: random.Random
 
@@ -905,6 +1011,7 @@ class BasicRandomizerProcedure:
     shop_randomizer: ShopRandomizer
     chest_randomizer: ChestRandomizer
     search_point_randomizer: SearchPointRandomizer
+    events_randomizer: EventsRandomizer
 
     identifier: str = "randomizer"
     patch_output: str = os.path.join(Paths.PATCHES_DIR, f"randomizer.{Extensions.BASIC_PATCH}")
@@ -920,15 +1027,18 @@ class BasicRandomizerProcedure:
         self.patch_output = os.path.join(Paths.PATCHES_DIR, f"{self.identifier}{Extensions.BASIC_PATCH}")
         self.report_output = os.path.join(Paths.PATCHES_DIR, f"tovde-spoiler-{self.identifier}.ods")
 
-        if not targets or 'artes' in targets:
+        if not targets or {'artes', 'events'}.intersection(targets):
             self.load_artes_data()
 
-        if not targets or {'artes', 'skills', 'items'}.intersection(targets):
+        if not targets or {'artes', 'skills', 'items', 'events'}.intersection(targets):
             self.load_skills_data()
 
-        item_dependents: set[str] = set(targets).intersection({'items', 'shops', 'chests', 'search'})
+        item_dependents: set[str] = set(targets).intersection({'items', 'shops', 'chests', 'search', 'events'})
         if not targets or item_dependents:
             self.load_items_data()
+
+        if not targets or 'events' in targets:
+            self.load_events_data()
 
         if not os.path.isdir(Paths.PATCHES_DIR):
             os.makedirs(Paths.PATCHES_DIR)
@@ -991,6 +1101,10 @@ class BasicRandomizerProcedure:
         self.common_items = tuple([item for category, items in self.item_by_category.items()
                                    for item in items
                                    if enums.ItemCategory.is_common(category)])
+
+    def load_events_data(self):
+        with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
+            self.events_data_table = json.load(f, object_hook=keys_to_int)
 
     def generate(self, targets: list, options: dict = MainOptionsDefault().model_dump() , spoil: bool = False):
         output: str = self.patch_output
@@ -1097,6 +1211,23 @@ class BasicRandomizerProcedure:
             patch_data['search'] = self.search_point_randomizer.fetch()
             self.search_point_randomizer.report()
 
+        if not targets or 'events' in targets:
+            data: dict = {
+                'events_data': self.events_data_table,
+                'artes_by_char': self.artes_by_char,
+                'skills_by_char': self.skills_by_char,
+                'items_data': self.items_data_table,
+                'item_by_category': self.item_by_category,
+                'common_items': self.common_items,
+            }
+
+            logger.info("> Randomizing Events")
+            self.events_randomizer = EventsRandomizer(self.random, data, options.get('events', {}))
+            self.events_randomizer.randomize()
+
+            patch_data['events'] = self.events_randomizer.fetch()
+            self.events_randomizer.report()
+
         end_time: float = time.time()
 
         logger.info(f"\nRandomization Complete. Finished in {end_time - start_time:.2f} seconds.")
@@ -1127,6 +1258,7 @@ if __name__ == "__main__":
         'shops',
         'chests',
         'search'
+        'events'
     ]
 
     target_list: list[str] = []
