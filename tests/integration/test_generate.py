@@ -18,7 +18,7 @@ def test_generate():
 
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['generate', 'events', '-s'], catch_exceptions=False)
+    result = runner.invoke(cli, ['generate', '-s'], catch_exceptions=False)
 
     print("\n---------------------\n[TEST] OUTPUT:\n---------------------\n")
     print(result.output)

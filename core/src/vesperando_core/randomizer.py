@@ -941,8 +941,18 @@ class EventsRandomizer(BaseRandomizer):
 
         for file, entries in self.candidates.items():
             for address, properties in entries.items():
-                if self.random.random() < Weights.EVENTS_CANDIDACY: continue
-                match properties.get('type', None):
+                event_type: int = properties.get('event_type', 0)
+                if self.random.random() < Weights.EVENTS_CANDIDACY:
+                    # Even if candidacy roll failed, if the event provides a key item,
+                    # record it to the placed dictionary to prevent duplicates
+                    if event_type == 39:
+                        item_data: dict = self.items_data.get(properties.get('target', 0), {})
+                        category: int = item_data.get('category', 0)
+                        if category == enums.ItemCategory.VALUABLES.value:
+                            placed['valuables'].append(item_data['id'])
+
+                    continue
+                match event_type:
                     case 10:
                         self.randomize_arte(properties, placed['artes'])
                     case 20:
