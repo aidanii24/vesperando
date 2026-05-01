@@ -887,7 +887,12 @@ class EventsRandomizer(BaseRandomizer):
         self.skills_by_char = data.get('skills_by_char', {})
         self.items_data = data.get('items_data', {})
         self.item_by_category = data.get('item_by_category', {})
-        self.common_items = data.get('common_items', {})
+        self.common_items = data.get('common_items', [])
+        self.base_items = []
+        for iid, item in self.items_data.items():
+            category: int = item.get('category', 0)
+            if enums.ItemCategory.is_valid(category) and category < enums.ItemCategory.DLC.value:
+                self.base_items.append(iid)
         self.equipment_by_char = {}
         for category in range(enums.ItemCategory.MAIN.value, enums.ItemCategory.BODY.value + 1):
             equipment: list = self.item_by_category.get(category, [])
@@ -931,18 +936,77 @@ class EventsRandomizer(BaseRandomizer):
                 _: deepcopy(character_template)
                 for _ in range(enums.ItemCategory.MAIN.value, enums.ItemCategory.BODY.value + 1)
             },
-            'key': []
+            'valuables': []
         }
 
         for file, entries in self.candidates.items():
             for address, properties in entries.items():
+                if self.random.random() < Weights.EVENTS_CANDIDACY: continue
                 match properties.get('type', None):
                     case 10:
                         self.randomize_arte(properties, placed['artes'])
                     case 20:
                         self.randomize_skill(properties, placed['skills'])
+                    case 30:
+                        self.randomize_item(properties, placed['valuables'])
                     case 31:
                         self.randomize_equip(properties, placed['equips'])
+                    case 39:
+                        self.randomize_gald(file, properties)
+
+    def randomize_arte(self, properties: dict, placed: dict = None):
+        if placed is None:
+            placed = dict()
+
+        character = properties.get('character', 0)
+        if not character: return
+
+        if self.random.random() < Weights.EVENTS_CHARACTER_TARGET:
+            character = self.random.choice(list(enums.Characters)).value
+
+        placed_artes: list = placed.get(character, [])
+        candidates: list = [*set(self.artes_by_char.get(character, [])).difference(placed_artes)]
+        new_arte: int = random.choice(candidates)
+        properties['target'] = new_arte
+        properties['character'] = character
+        placed.setdefault(character, []).append(new_arte)
+
+    def randomize_skill(self, properties: dict, placed: dict = None):
+        if placed is None:
+            placed = dict()
+
+        character = properties.get('character', 0)
+        if not character: return
+
+        if self.random.random() < Weights.EVENTS_CHARACTER_TARGET:
+            character = self.random.choice(list(enums.Characters)).value
+
+        placed_skills: list = placed.get('character', [])
+        candidates: list = [*set(self.skills_by_char.get(character, [])).difference(placed_skills)]
+        new_skill = random.choice(candidates)
+        properties['target'] = new_skill
+        properties['character'] = character
+        placed.setdefault(character, []).append(new_skill)
+
+    def randomize_item(self, properties: dict, placed: list = None):
+        if placed is None:
+            placed = []
+
+        candidates: set = set(self.base_items).difference(placed)
+        new_item: int = random.choice([*candidates])
+        category: int = self.items_data[new_item].get('category', 0)
+        if enums.ItemCategory.is_abundant(category):
+            amount: int = self.random.randint(1, 15)
+        elif enums.ItemCategory.is_weapon(category) and self.random.random() < Weights.EVENTS_ITEM_WEAPON_AMOUNT:
+            amount: int = self.random_from_triangular(1, 15)
+        else:
+            amount: int = 1
+
+        properties['target'] = new_item
+        properties['metadata'] = amount
+
+        if category == enums.ItemCategory.VALUABLES.value:
+            placed.append(new_item)
 
     def randomize_equip(self, properties: dict, placed: dict = None):
         if placed is None:
@@ -960,31 +1024,12 @@ class EventsRandomizer(BaseRandomizer):
         properties['target'] = new_equip
         placed[equip_type].setdefault(character, []).append(new_equip)
 
-    def randomize_arte(self, properties: dict, placed: dict = None):
-        if placed is None:
-            placed = dict()
+    def randomize_gald(self, file_index, properties):
+        multiplier = max(file_index // 25, 1)
 
-        character = properties.get('character', 0)
-        if not character: return
-
-        placed_artes: list = placed.get(character, [])
-        candidates: list = [*set(self.artes_by_char.get(character, [])).difference(placed_artes)]
-        new_arte: int = random.choice(candidates)
-        properties['target'] = new_arte
-        placed.setdefault(character, []).append(new_arte)
-
-    def randomize_skill(self, properties: dict, placed: dict = None):
-        if placed is None:
-            placed = dict()
-
-        character = properties.get('character', 0)
-        if not character: return
-
-        placed_skills: list = placed.get('character', [])
-        candidates: list = [*set(self.skills_by_char.get(character, [])).difference(placed_skills)]
-        new_skill = random.choice(candidates)
-        properties['target'] = new_skill
-        placed.setdefault(character, []).append(new_skill)
+        amount_floor = self.random_from_triangular(1, 100 * max(1, multiplier))
+        amount_ceil = self.random_from_triangular(100 * max(1, multiplier) // 4, 1000 * max(1, multiplier))
+        properties['metadata'] = self.random_from_triangular(*sorted([amount_floor, amount_ceil]))
 
 class BasicRandomizerProcedure:
     artes_data_table: dict

@@ -258,7 +258,7 @@ class PatchSpoiler:
         report_list: list = []
         for file, events in patch.items():
             report_list.append([self.resolve_scenario_name(file)])
-            for event in events.values():
+            for event in sorted(events.values(), key=lambda e: e.get('character', 999)):
                 report_list.append(self.resolve_event_name(event))
 
         report: Table = Table("EVENTS")
