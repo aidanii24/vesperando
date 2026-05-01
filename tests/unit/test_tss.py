@@ -2,19 +2,17 @@ import ctypes
 import mmap
 import time
 import json
-import pdb
 import os
 
-from game_types import TSSHeader, TSSStringEntry, VesperiaStructureEncoder
-
-from debug import test_structure, format_bytes
+from vesperando_core.game_types import TSSHeader, TSSStringEntry, VesperiaStructureEncoder
 
 
 def parse_tss():
-    test_file: str = "../builds/strings/string_dic_ENG.so"
-    dump_file: str = "../builds/strings/output.txt"
-    extract_file: str = "../builds/manifests/strings.json"
-    data_file: str = "../builds/strings/strings.json"
+    bdr: str = os.path.dirname(os.path.abspath(__file__))
+    test_file: str = f"{bdr}/control/string_dic_ENG.so"
+    dump_file: str = f"{bdr}/artifacts/output.txt"
+    extract_file: str = f"{bdr}/artifacts/strings.json"
+    data_file: str = f"{bdr}/artifacts/strings.json"
     stop: bytes = (0xFFFFFFFF).to_bytes(4, byteorder="little")
 
     header_size: int = ctypes.sizeof(TSSHeader)

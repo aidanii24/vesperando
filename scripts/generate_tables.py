@@ -12,6 +12,9 @@ fld: str = os.path.abspath(os.path.dirname(__file__))
 def strip_formatting(string: str) -> str:
     return string.replace("\n", "").replace("\t", "").replace("\r", "")
 
+def process_string_dict(p):
+    return {int(k) if k.isdigit() else k: strip_formatting(v) for k, v in p.items()}
+
 def convert_strings_csv():
     strings_csv = os.path.join("artifacts", "strings.csv")
     assert os.path.isfile(strings_csv)
@@ -571,22 +574,41 @@ def generate_streamlined_game_data_tables():
         f.close()
 
 def generate_metadata_tables():
-    input_path = os.path.join("artifacts", "old")
-    strings_data = json.load(open(os.path.join(input_path, "strings.json")), object_hook=keys_to_int)
-    artes_data = json.load(open(os.path.join(input_path, "artes.json")))
-    skills_data = json.load(open(os.path.join(input_path, "skills.json")))
+    bdr: str = os.path.dirname(os.path.abspath(__file__))
+    input_path = os.path.join(bdr, "control")
+    strings_data = json.load(open(os.path.join(input_path, "strings.json")), object_hook=process_string_dict)
+    artes_data = json.load(open(os.path.join(input_path, "artes.json")))['entries']
+    skills_data = json.load(open(os.path.join(input_path, "skills.json")))['entries']
     items_data = json.load(open(os.path.join(input_path, "item.json")))
-    map_names = json.load(open(os.path.join(input_path, "named_npc_maps.json")))
     search_names = json.load(open(os.path.join(input_path, "named_search_points.json")))
-    shop_data = json.load(open(os.path.join(input_path, "named_shops.json")))
+    map_names = {}
+    shop_data = {}
+    scenario_data = {}
 
-    artes = {arte['id']: strings_data.get(arte['name_string_key']) for arte in artes_data['artes']
+    artes = {arte['id']: strings_data.get(arte['name_string_key']) for arte in artes_data
              if arte['name_string_key'] in strings_data}
-
-    skills = {skill['id']: strings_data.get(skill['name_string_key']) for skill in skills_data['skills']
+    skills = {skill['id']: strings_data.get(skill['name_string_key']) for skill in skills_data.values()
              if skill['name_string_key'] in strings_data}
-    items = {item['id']: strings_data.get(item['name_string_key']) for item in items_data['items']
+    items = {item['id']: strings_data.get(item['name_string_key']) for item in items_data.values()
              if item['name_string_key'] in strings_data}
+
+    with open(os.path.join(input_path, "named_npc_maps.csv"), 'r') as f:
+        reader = csv.DictReader(f, fieldnames=['k', 'v'])
+        for i, row in enumerate(reader):
+            if i == 0: continue
+            map_names[row['k']] = row['v']
+
+    with open(os.path.join(input_path, "named_shops.csv"), 'r') as f:
+        reader = csv.DictReader(f, fieldnames=['k', 'v'])
+        for i, row in enumerate(reader):
+            if i == 0: continue
+            shop_data[row['k']] = row['v']
+
+    with open(os.path.join(input_path, "named_scenarios.csv"), 'r') as f:
+        reader = csv.DictReader(f, fieldnames=['k', 'v'])
+        for i, row in enumerate(reader):
+            if i == 0: continue
+            scenario_data[row['k']] = row['v']
 
     metadata: dict = {
         'artes': artes,
@@ -595,9 +617,10 @@ def generate_metadata_tables():
         'maps': map_names,
         'search': search_names,
         'shops': shop_data,
+        'scenario': scenario_data
     }
 
-    metadata_path: str = os.path.join("artifacts", "static", "metadata.json")
+    metadata_path: str = os.path.join(bdr, "artifacts", "metadata.json")
     with open(metadata_path, "w+") as f:
         json.dump(metadata, f)
         f.flush()
@@ -617,4 +640,4 @@ class DataTableGenerator:
 
 
 if __name__ == "__main__":
-    generate_streamlined_game_data_tables()
+    generate_metadata_tables()

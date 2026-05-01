@@ -10,6 +10,13 @@ from vesperando_cli.__main__ import cli
 def test_generate():
     print("[TEST] Testing 'generate' command")
 
+    print("[TEST] Cleaning 'patches'")
+    bdr: str = os.path.dirname(os.path.abspath(__file__))
+    for filename in os.listdir(os.path.join(bdr, "patches")):
+        try: os.remove(os.path.join(bdr, "patches", filename))
+        except Exception as e: print(f"[TEST] Failed to remove {filename}")
+
+
     runner = CliRunner()
     result = runner.invoke(cli, ['generate', 'events', '-s'], catch_exceptions=False)
 

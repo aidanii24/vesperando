@@ -1,5 +1,6 @@
 import json
 import os
+from importlib.metadata import metadata
 
 from odfdo import Document, Table, Row
 
@@ -28,6 +29,7 @@ class PatchSpoiler:
         self.map_name_table = data['maps']
         self.search_names= data['search']['FIELD']
         self.shop_name_table = data['shops']
+        self.scenario_name_table = data['scenario']
 
         self.spoiler = {}
 
@@ -51,6 +53,9 @@ class PatchSpoiler:
 
         if 'search' in patch:
             reports.append(self.spoil_search(patch['search']))
+
+        if 'events' in patch:
+            reports.append(self.spoil_events(patch['events']))
 
         spoiler_sheet: Document = Document("spreadsheet")
         spoiler_sheet.body.clear()
@@ -249,6 +254,20 @@ class PatchSpoiler:
 
         return report
 
+    def spoil_events(self, patch: dict) -> Table:
+        report_list: list = []
+        for file, events in patch.items():
+            report_list.append([self.resolve_scenario_name(file)])
+            for event in events.values():
+                report_list.append(self.resolve_event_name(event))
+
+        report: Table = Table("EVENTS")
+        report.set_row_values(0, ["EVENTS"])
+        for i, row in enumerate(report_list):
+            report.set_row_values(i + 1, row)
+
+        return report
+
     def resolve_chest_item_name(self, item_id: int) -> str:
         if item_id == 0xFFFFFFFE:
             return "Gald"
@@ -256,6 +275,35 @@ class PatchSpoiler:
             return self.item_name_table[item_id]
         else:
             return str(item_id)
+
+    def resolve_scenario_name(self, filename: str) -> str:
+        return self.scenario_name_table.get(filename, filename)
+
+    def resolve_event_name(self, event) -> list[str | int]:
+        target: int = event.get('target')
+        match event.get('type', None):
+            case 10:
+                arte: str = self.arte_name_table.get(target, target)
+                character: str = enums.Characters(event.get('character', 0)).name
+                return [character, arte]
+            case 20:
+                skill: str = self.skill_name_table.get(target, target)
+                character: str = enums.Characters(event.get('character', 0)).name
+                return [character, skill]
+            case 30:
+                item: str = self.item_name_table.get(target, target)
+                amount: int = event.get('metadata', 0)
+                return [amount, item]
+            case 31:
+                item: str = self.item_name_table.get(target, target)
+                character: str = enums.Characters(event.get('character', 0)).name
+                return [character, item]
+            case 39:
+                gald_amount: int = event.get('metadata', 0)
+                return [gald_amount, "GALD"]
+
+        return ['Unknown Event']
+
 
 
 if __name__ == '__main__':

@@ -177,3 +177,14 @@ class SearchPointType(enum.Enum):
     SHELL = 1
     BONES = 2
     SEAGULL = 3
+
+class PCParamSlot(enum.Enum):
+    INVALID = 0x0
+    MAIN = 0xB
+    SUB = 0xC
+    BODY = 0xD
+    HEAD = 0xE
+
+    @classmethod
+    def __missing__(cls, key):
+        return cls.INVALID

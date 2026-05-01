@@ -4,6 +4,7 @@
 # Development
 **/patches/*
 **/build/*
+**/control/**
 **/output/*
 **/artifacts/*
 */builds/
