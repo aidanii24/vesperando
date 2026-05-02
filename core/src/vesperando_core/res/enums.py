@@ -188,3 +188,12 @@ class PCParamSlot(enum.Enum):
     @classmethod
     def __missing__(cls, key):
         return cls.INVALID
+
+    def as_category(self):
+        category: int = self.value - 0x8
+        if self.value == 0xD:
+            return category + 1
+        elif self.value == 0xE:
+            return category - 1
+
+        return category

@@ -1024,7 +1024,7 @@ class EventsRandomizer(BaseRandomizer):
 
         # set_param_pc has Main, Sub, Body and Head use ID's of 0xB, 0xC, 0xD and 0xE respectively
         # so we remove the difference from their values as represented in the items data table
-        equip_type = properties.get('metadata', 0) - 0x8
+        equip_type = enums.PCParamSlot(properties.get('metadata', 0)).as_category()
         character = properties.get('character', 0)
         if not equip_type or not character: return
 
