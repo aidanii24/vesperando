@@ -941,7 +941,7 @@ class EventsRandomizer(BaseRandomizer):
 
         for file, entries in self.candidates.items():
             for address, properties in entries.items():
-                event_type: int = properties.get('event_type', 0)
+                event_type: int = properties.get('type', 0)
                 if self.random.random() < Weights.EVENTS_CANDIDACY:
                     # Even if candidacy roll failed, if the event provides a key item,
                     # record it to the placed dictionary to prevent duplicates

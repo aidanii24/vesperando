@@ -61,7 +61,7 @@ class GamePatchProcedure:
         if 'items' in self.patch_data:
             self.patch_items()
 
-        if 'shops' in self.patch_data:
+        if 'shops' in self.patch_data or 'events' in self.patch_data:
             self.patch_scenario()
 
         if 'chests' in self.patch_data or 'search' in self.patch_data:
@@ -114,6 +114,21 @@ class GamePatchProcedure:
             logger.info("> Patching Shops")
             self.packer.decompress_scenario('0')
             self.patcher.patch_shops(self.patch_data['shops'])
+
+        if 'events' in self.patch_data:
+            logger.info("> Patching Events")
+            files: list = [*self.patch_data['events'].keys()]
+
+            with ThreadPoolExecutor(max_workers=self.threads) as executor:
+                dec_queue = files.copy()
+                if 0 in dec_queue and 'shops' in self.patch_data:
+                    dec_queue.remove(0)
+
+                for file_index in dec_queue:
+                    filename: str = str(file_index)
+                    executor.submit(self.packer.decompress_scenario, filename)
+
+            self.patcher.patch_events(self.patch_data['events'], threads=self.threads)
 
         self.packer.pack_scenario()
 

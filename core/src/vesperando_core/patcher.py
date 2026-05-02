@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import ctypes
 import mmap
 import json
@@ -203,6 +204,82 @@ class GamePatcher:
 
             mm.flush()
             mm.close()
+
+    def patch_events(self, patches: dict, lang: str = "ENG", threads: int = 8):
+        with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
+            original_data = json.load(f, object_hook=keys_to_int)
+
+        with ThreadPoolExecutor(max_workers=threads) as executor:
+            for scenario, events in patches.items():
+                executor.submit(self.patch_scenario, f"{scenario}.dec", events, original_data[scenario], lang)
+
+    def patch_scenario(self, target_file, patches, reference, lang: str = 'ENG'):
+        target: str = os.path.join(self.build_dir, "language", f".{lang}.dec", target_file)
+        with open(target, 'r+b') as f:
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
+
+            for address, properties in patches.items():
+                if properties.get('ignore', False): continue
+
+                event_type: int = properties.get('type', 0)
+                correspondant: int = reference.get(address, {}).get('correspondant', 0)
+                if reference.get(correspondant, {}).get('ignore', False):
+                    correspondant: int = 0
+                match event_type:
+                    case 10 | 20:
+                        self.patch_learn_arte_skill(mm, address, properties)
+                        if correspondant:
+                            self.patch_equip_arte_skill(mm, address, properties)
+                    case 30:
+                        self.patch_add_item(mm, address, properties)
+                    case 31:
+                        self.patch_equip_item(mm, address, properties)
+                    case 39:
+                        self.patch_add_gald(mm, address, properties)
+
+            mm.flush()
+            mm.close()
+            f.close()
+
+    @staticmethod
+    def patch_learn_arte_skill(mm: mmap.mmap, address: int, properties: dict):
+        mm.seek(address)
+        mm.write(int.to_bytes(properties['target'],2, 'little', signed=False))
+
+        mm.seek(address - 0x10)
+        mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
+
+    @staticmethod
+    def patch_equip_arte_skill(mm: mmap.mmap, address: int, properties: dict):
+        mm.seek(address)
+        mm.write(int.to_bytes(properties['target'], 2, 'little', signed=False))
+
+        mm.seek(address - 0x1C)
+        mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
+
+    @staticmethod
+    def patch_add_item(mm: mmap.mmap, address: int, properties: dict):
+        mm.seek(address)
+        mm.write(int.to_bytes(properties['target'], 2, 'little', signed=False))
+
+        mm.seek(address + 0xB)
+        mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
+
+    @staticmethod
+    def patch_equip_item(mm: mmap.mmap, address: int, properties: dict):
+        mm.seek(address)
+        mm.write(int.to_bytes(properties['target'], 2, 'little', signed=False))
+
+        mm.seek(address - 0x10)
+        mm.write(int.to_bytes(properties['metadata'], 1, 'little', signed=False))
+
+        mm.seek(address + 0x20)
+        mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
+
+    @staticmethod
+    def patch_add_gald(mm: mmap.mmap, address: int, properties: dict):
+        mm.seek(address)
+        mm.write(int.to_bytes(properties['metadata'], 2, 'little', signed=False))
 
     def patch_chests(self, target_file: str, patches: dict):
         path: str = os.path.join(self.build_dir, "maps", target_file, "0004.dec")

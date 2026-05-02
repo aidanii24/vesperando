@@ -1,4 +1,6 @@
 from dotenv import load_dotenv
+import traceback
+import sys
 import os
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
@@ -16,12 +18,17 @@ def test_generate():
         try: os.remove(os.path.join(bdr, "patches", filename))
         except Exception as e: print(f"[TEST] Failed to remove {filename}")
 
+    print("[TEST] Running Application")
+    args: list[str] = ["generate", *sys.argv[1:], "-s"]
+    print(f"> vesperando_cli", *args)
 
     runner = CliRunner()
-    result = runner.invoke(cli, ['generate', '-s'], catch_exceptions=False)
+    result = runner.invoke(cli, args)
 
-    print("\n---------------------\n[TEST] OUTPUT:\n---------------------\n")
+    print("[TEST] OUTPUT:")
     print(result.output)
+    if result.exception:
+        traceback.print_exception(*result.exc_info)
 
     assert result.exit_code == 0
 
