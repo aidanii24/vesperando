@@ -229,7 +229,7 @@ class GamePatcher:
                     case 10 | 20:
                         self.patch_learn_arte_skill(mm, address, properties)
                         if correspondant:
-                            self.patch_equip_arte_skill(mm, address, properties)
+                            self.patch_equip_arte_skill(mm, correspondant, properties)
                     case 30:
                         self.patch_add_item(mm, address, properties)
                     case 31:
@@ -262,8 +262,8 @@ class GamePatcher:
         mm.seek(address)
         mm.write(int.to_bytes(properties['target'], 2, 'little', signed=False))
 
-        mm.seek(address + 0xB)
-        mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
+        mm.seek(address + 0xC)
+        mm.write(int.to_bytes(properties['metadata'], 1, 'little', signed=False))
 
     @staticmethod
     def patch_equip_item(mm: mmap.mmap, address: int, properties: dict):
@@ -273,7 +273,7 @@ class GamePatcher:
         mm.seek(address - 0x10)
         mm.write(int.to_bytes(properties['metadata'], 1, 'little', signed=False))
 
-        mm.seek(address + 0x20)
+        mm.seek(address - 0x20)
         mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
 
     @staticmethod
