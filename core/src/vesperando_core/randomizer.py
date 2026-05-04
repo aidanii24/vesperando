@@ -922,7 +922,12 @@ class EventsRandomizer(BaseRandomizer):
                 if correspondent: correspondents.append(correspondent)
 
             for add, props in entries.items():
+                # Correspondents will be implicitly patched based on the base event data,
+                # so it does not need to be in the patch data
                 if add in correspondents: continue
+                # Action "0" addresses are events we want to prevent from happening,
+                # so it does not need to be in the patch data
+                if props.get("action", 0) > 0: continue
                 patch_props = props.copy()
                 patch_props.pop('correspondent', None)
                 self.candidates.setdefault(f, {})[add] = patch_props
