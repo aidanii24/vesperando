@@ -5,7 +5,7 @@ from importlib.metadata import metadata
 from odfdo import Document, Table, Row
 
 from vesperando_core.conf.settings import Paths
-from vesperando_core.res import enums
+from vesperando_core.res import enums, sort
 from vesperando_core.utils import keys_to_int
 
 
@@ -258,7 +258,16 @@ class PatchSpoiler:
         report_list: list = []
         for file, events in patch.items():
             report_list.append([self.resolve_scenario_name(file)])
-            for event in sorted(events.values(), key=lambda e: e.get('character', 999)):
+
+            def get_sort(e) -> tuple:
+                md: int = e.get('metadata', 0)
+                equip_slot = 0 if md not in enums.PCParamSlot else enums.PCParamSlot(md).as_category()
+
+                return (e.get('character', 999),
+                        sort.event_type.get(e.get('type'), 999),
+                        equip_slot,
+                        e.get('target', 999))
+            for event in sorted(events.values(), key=get_sort):
                 report_list.append(self.resolve_event_name(event))
 
         report: Table = Table("EVENTS")
@@ -285,11 +294,11 @@ class PatchSpoiler:
             case 10:
                 arte: str = self.arte_name_table.get(target, target)
                 character: str = enums.Characters(event.get('character', 0)).name
-                return [character, arte]
+                return [character, "Arte", arte]
             case 20:
                 skill: str = self.skill_name_table.get(target, target)
                 character: str = enums.Characters(event.get('character', 0)).name
-                return [character, skill]
+                return [character, "Skill", skill]
             case 30:
                 item: str = self.item_name_table.get(target, target)
                 amount: int = event.get('metadata', 0)
@@ -297,7 +306,9 @@ class PatchSpoiler:
             case 31:
                 item: str = self.item_name_table.get(target, target)
                 character: str = enums.Characters(event.get('character', 0)).name
-                return [character, item]
+                slot: str = enums.PCParamSlot(event.get('metadata', 0)).name
+                slot = slot[0] + slot[1:].lower()
+                return [character, slot, item]
             case 39:
                 gald_amount: int = event.get('metadata', 0)
                 return [gald_amount, "GALD"]

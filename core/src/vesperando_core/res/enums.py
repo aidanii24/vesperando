@@ -191,6 +191,7 @@ class PCParamSlot(enum.Enum):
 
     def as_category(self):
         category: int = self.value - 0x8
+        if category < 0: return 0
         if self.value == 0xD:
             return category + 1
         elif self.value == 0xE:
