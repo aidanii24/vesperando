@@ -4,9 +4,11 @@ import mmap
 import json
 import os
 
-from vesperando_core.utils import keys_to_int
 from vesperando_core import game_types as gtypes
+from vesperando_core.res.enums import EventAction
 from vesperando_core.conf.settings import Paths
+from vesperando_core.utils import keys_to_int
+
 
 
 class GamePatcher:
@@ -219,16 +221,21 @@ class GamePatcher:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
 
             for address, properties in patches.items():
-                if properties.get('ignore', False): continue
-
+                action = properties.get('action', EventAction.ALLOW.value)
                 event_type: int = properties.get('type', 0)
+
                 correspondant: int = reference.get(address, {}).get('correspondant', 0)
-                if reference.get(correspondant, {}).get('ignore', False):
-                    correspondant: int = 0
+                cor_action: int = reference.get(correspondant, {}).get('action', EventAction.ALLOW.value)
+
+                if action == EventAction.NULLIFY.value and 'character' in properties:
+                    properties['character'] = 0
+
                 match event_type:
                     case 10 | 20:
                         self.patch_learn_arte_skill(mm, address, properties)
                         if correspondant:
+                            if cor_action == EventAction.NULLIFY.value and 'character' in properties:
+                                properties['character'] = 0
                             self.patch_equip_arte_skill(mm, correspondant, properties)
                     case 30:
                         self.patch_add_item(mm, address, properties)

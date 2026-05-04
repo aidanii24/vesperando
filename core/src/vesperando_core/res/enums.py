@@ -198,3 +198,11 @@ class PCParamSlot(enum.Enum):
             return category - 1
 
         return category
+
+class EventAction(enum.Enum):
+    ALLOW = 0
+    NULLIFY = 1
+
+    @classmethod
+    def _missing_(cls, value):
+        return cls.ALLOW
