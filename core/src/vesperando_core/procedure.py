@@ -119,11 +119,9 @@ class GamePatchProcedure:
             logger.info("> Patching Events")
             files: list = [*self.patch_data['events'].keys()]
 
+            dec_queue = files.copy()
+            if 0 in dec_queue and 'shops' in self.patch_data: dec_queue.remove(0)
             with ThreadPoolExecutor(max_workers=self.threads) as executor:
-                dec_queue = files.copy()
-                if 0 in dec_queue and 'shops' in self.patch_data:
-                    dec_queue.remove(0)
-
                 for file_index in dec_queue:
                     filename: str = str(file_index)
                     executor.submit(self.packer.decompress_scenario, filename)
