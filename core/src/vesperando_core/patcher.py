@@ -241,8 +241,8 @@ class GamePatcher:
                         self.patch_learn_arte_skill(mm, address, properties)
                         if correspondent:
                             skip_events.add(correspondent)
-                            if cor_action == EventAction.NULLIFY.value and 'character' in properties:
-                                properties['character'] = 0
+                            if cor_action == EventAction.NULLIFY.value:
+                                properties['target'] = 0
 
                             if event_type == 10:
                                 self.patch_equip_arte(mm, correspondent, properties)
