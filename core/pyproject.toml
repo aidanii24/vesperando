@@ -17,7 +17,7 @@ dependencies = [
     "pydantic==2.12.5",
     "setuptools==80.9.0",
     "libvespy~=0.1.2",
-    "vesperando_core~=0.2.0",
+    "vesperando_core~=0.3.0",
     "PyYAML~=6.0.3",
 ]
 
