@@ -78,7 +78,10 @@ class PatchSpoiler:
                     else:
                         learn_conditions.extend(["" for _ in range(3)])
                 elif condition_id == 1:
-                    learn_conditions.extend(["Level", parameter_id, ""])
+                    if parameter_id >= 300:
+                        learn_conditions.extend(["Event", "", ""])
+                    else:
+                        learn_conditions.extend(["Level", parameter_id, ""])
                 elif condition_id == 2:
                     learn_conditions.extend(["Arte Usage", self.arte_name_table[parameter_id], f"x{meta_id}"])
                 elif condition_id == 3:
