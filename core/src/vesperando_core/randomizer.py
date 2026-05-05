@@ -1083,8 +1083,7 @@ class BasicRandomizerProcedure:
         if not targets or item_dependents:
             self.load_items_data()
 
-        if not targets or 'events' in targets:
-            self.load_events_data()
+        self.load_events_data()
 
         if not os.path.isdir(Paths.PATCHES_DIR):
             os.makedirs(Paths.PATCHES_DIR)
