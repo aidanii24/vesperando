@@ -230,8 +230,8 @@ class GamePatcher:
                 action = properties.get('action', EventAction.ALLOW.value)
                 event_type: int = properties.get('type', 0)
 
-                correspondant: int = reference.get(address, {}).get('correspondant', 0)
-                cor_action: int = reference.get(correspondant, {}).get('action', EventAction.ALLOW.value)
+                correspondent: int = reference.get(address, {}).get('correspondent', 0)
+                cor_action: int = reference.get(correspondent, {}).get('action', EventAction.ALLOW.value)
 
                 if action == EventAction.NULLIFY.value and 'character' in properties:
                     properties['character'] = 0
@@ -239,11 +239,15 @@ class GamePatcher:
                 match event_type:
                     case 10 | 20:
                         self.patch_learn_arte_skill(mm, address, properties)
-                        if correspondant:
-                            skip_events.add(correspondant)
+                        if correspondent:
+                            skip_events.add(correspondent)
                             if cor_action == EventAction.NULLIFY.value and 'character' in properties:
                                 properties['character'] = 0
-                            self.patch_equip_arte_skill(mm, correspondant, properties)
+
+                            if event_type == 10:
+                                self.patch_equip_arte(mm, correspondent, properties)
+                            elif event_type == 20:
+                                self.patch_equip_skill(mm, correspondent, properties)
                     case 30:
                         self.patch_add_item(mm, address, properties)
                     case 31:
@@ -264,11 +268,19 @@ class GamePatcher:
         mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
 
     @staticmethod
-    def patch_equip_arte_skill(mm: mmap.mmap, address: int, properties: dict):
+    def patch_equip_arte(mm: mmap.mmap, address: int, properties: dict):
         mm.seek(address)
         mm.write(int.to_bytes(properties['target'], 2, 'little', signed=False))
 
         mm.seek(address - 0x1C)
+        mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
+
+    @staticmethod
+    def patch_equip_skill(mm: mmap.mmap, address: int, properties: dict):
+        mm.seek(address)
+        mm.write(int.to_bytes(properties['target'], 2, 'little', signed=False))
+
+        mm.seek(address - 0x10)
         mm.write(int.to_bytes(properties['character'], 1, 'little', signed=False))
 
     @staticmethod
