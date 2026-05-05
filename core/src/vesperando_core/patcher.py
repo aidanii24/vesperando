@@ -233,12 +233,12 @@ class GamePatcher:
                 correspondent: int = reference.get(address, {}).get('correspondent', 0)
                 cor_action: int = reference.get(correspondent, {}).get('action', EventAction.ALLOW.value)
 
-                if action == EventAction.NULLIFY.value and 'character' in properties:
-                    properties['character'] = 0
-
                 match event_type:
                     case 10 | 20:
+                        if action == EventAction.NULLIFY.value and 'character' in properties:
+                            properties['target'] = 0
                         self.patch_learn_arte_skill(mm, address, properties)
+
                         if correspondent:
                             skip_events.add(correspondent)
                             if cor_action == EventAction.NULLIFY.value:
@@ -251,6 +251,8 @@ class GamePatcher:
                     case 30:
                         self.patch_add_item(mm, address, properties)
                     case 31:
+                        if action == EventAction.NULLIFY.value and 'character' in properties:
+                            properties['metadata'] = 0
                         self.patch_equip_item(mm, address, properties)
                     case 39:
                         self.patch_add_gald(mm, address, properties)
