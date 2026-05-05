@@ -74,13 +74,7 @@ jobs:
         run: ls -R ./dist/
 
   release:
-    if: >- 
-      github.event_name == 'push' &&
-      startsWith(github.ref, 'refs/tags') &&
-      !contains(github.ref_name, 'alpha') &&
-      !contains(github.ref_name, 'beta') &&
-      !contains(github.ref_name, 'dev') &&
-      !contains(github.ref_name, 'rc') &&
+    if: github.event_name == 'push'
     needs: build
     runs-on: ubuntu-latest
     permissions:
