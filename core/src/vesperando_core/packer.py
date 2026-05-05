@@ -220,7 +220,7 @@ class GamePatchPacker:
         scenario.extract(path, extract_dir)
 
     def decompress_scenario(self, file: str, lang: str = "ENG"):
-        assert file, f"Unexpected empty file entry."
+        assert file, f"Unexpected empty file entry: File {file}"
 
         work_dir: str = os.path.join(self.build_dir, "language")
         if not os.path.isdir(work_dir): os.mkdir(work_dir)

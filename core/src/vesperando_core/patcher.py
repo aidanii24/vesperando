@@ -220,7 +220,13 @@ class GamePatcher:
         with open(target, 'r+b') as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
 
-            for address, properties in patches.items():
+            skip_events: set = set()
+
+            for address, properties in reference.items():
+                if address in skip_events: continue
+
+                if address in patches: properties.update(patches[address])
+
                 action = properties.get('action', EventAction.ALLOW.value)
                 event_type: int = properties.get('type', 0)
 
@@ -234,6 +240,7 @@ class GamePatcher:
                     case 10 | 20:
                         self.patch_learn_arte_skill(mm, address, properties)
                         if correspondant:
+                            skip_events.add(correspondant)
                             if cor_action == EventAction.NULLIFY.value and 'character' in properties:
                                 properties['character'] = 0
                             self.patch_equip_arte_skill(mm, correspondant, properties)
