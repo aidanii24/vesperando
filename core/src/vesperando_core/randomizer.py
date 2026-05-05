@@ -1079,10 +1079,7 @@ class BasicRandomizerProcedure:
         if not targets or {'artes', 'skills', 'items', 'events'}.intersection(targets):
             self.load_skills_data()
 
-        item_dependents: set[str] = set(targets).intersection({'items', 'shops', 'chests', 'search', 'events'})
-        if not targets or item_dependents:
-            self.load_items_data()
-
+        self.load_items_data()
         self.load_events_data()
 
         if not os.path.isdir(Paths.PATCHES_DIR):
@@ -1151,6 +1148,29 @@ class BasicRandomizerProcedure:
         with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
             self.events_data_table = json.load(f, object_hook=keys_to_int)
 
+    def get_preplaced_events(self):
+        preplaced_events = {
+            'artes': {},
+            'skills': {},
+            'valuables': [],
+        }
+        for events in self.events_data_table.values():
+            for properties in events.values():
+                event_type: int = properties.get('type', 0)
+                target: int = properties.get('target', 0)
+                character: int = properties.get('character', 0)
+                match event_type:
+                    case 10:
+                        preplaced_events['artes'].setdefault(character, []).append(target)
+                    case 20:
+                        preplaced_events['skills'].setdefault(character, []).append(target)
+                    case 30:
+                        item_category: int = self.item_to_category.get(target, 0)
+                        if item_category == enums.ItemCategory.VALUABLES.value:
+                            preplaced_events['valuables'].append(target)
+
+        return preplaced_events
+
     def generate(self, targets: list, options: dict = MainOptionsDefault().model_dump() , spoil: bool = False):
         output: str = self.patch_output
 
@@ -1166,6 +1186,7 @@ class BasicRandomizerProcedure:
 
         start_time: float = time.time()
 
+        preplaced: dict = {}
         if not targets or 'events' in targets:
             data: dict = {
                 'events_data': self.events_data_table,
@@ -1181,7 +1202,10 @@ class BasicRandomizerProcedure:
             self.events_randomizer.randomize()
 
             patch_data['events'] = self.events_randomizer.fetch()
+            preplaced = self.events_randomizer.fetch()
             self.events_randomizer.report()
+        else:
+            preplaced = {}
 
         if not targets or 'artes' in targets:
             data: dict = {
