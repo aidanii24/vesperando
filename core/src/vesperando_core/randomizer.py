@@ -927,7 +927,7 @@ class EventsRandomizer(BaseRandomizer):
                 if add in correspondents: continue
                 # Action "NULLIFY" addresses are events we want to prevent from happening,
                 # so it does not need to be in the patch data
-                if props.get("action", enums.EventAction.ALLOW) > 0: continue
+                if props.get("action", enums.EventAction.ALLOW.value) > 0: continue
                 patch_props = props.copy()
                 patch_props.pop('correspondent', None)
                 self.candidates.setdefault(f, {})[add] = patch_props
