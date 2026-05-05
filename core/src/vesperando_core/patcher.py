@@ -253,6 +253,7 @@ class GamePatcher:
                     case 31:
                         if action == EventAction.NULLIFY.value and 'character' in properties:
                             properties['metadata'] = 0
+                            properties['target'] = 0
                         self.patch_equip_item(mm, address, properties)
                     case 39:
                         self.patch_add_gald(mm, address, properties)
