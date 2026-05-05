@@ -64,6 +64,7 @@ class ArteRandomizer(BaseRandomizer):
         self.artes_data = data['artes_data']
         self.artes_by_char = data['artes_by_char']
         self.skills_by_char = data['skills_by_char']
+        self.preplaced = data['preplaced']
         self.placed = {c: set(a) for c, a in data['preplaced'].items()}
         self.options = ArteOptions(options)
         self.statistics: dict = {
@@ -93,6 +94,8 @@ class ArteRandomizer(BaseRandomizer):
             data: dict = self.artes_data[arte['id']]
             user: int = data['character_ids'][0]
 
+            is_preplaced: bool = arte['id'] in self.preplaced[user]
+
             # TP Cost
             tp: int = arte.get('tp_cost', 0)
             if is_candidate and self.random.random() <= Weights.ARTE_TP_COST:
@@ -115,24 +118,37 @@ class ArteRandomizer(BaseRandomizer):
             has_evolve: bool = bool(arte.get('evolve_base', False))
             randomize_evolve: bool = has_evolve or self.options.enable_non_altered_evolve
             evolve_randomized: bool = False
-            if is_candidate and randomize_evolve:
+            if is_candidate and not is_preplaced and randomize_evolve:
                 chance = Weights.ARTE_EVOLVE if has_evolve else Weights.ARTE_NON_ALTERED_EVOLVE
 
                 if self.random.random() <= chance:
                     self.randomize_evolutions(arte, user)
 
-                    if arte['evolve_base'] and not has_evolve:
-                        self.randomize_evolution_requirement(arte)
+                    if arte['evolve_base']:
+                        if has_evolve:
+                            self.randomize_evolution_requirement(arte)
 
-                    evolve_randomized = True
+                        evolve_randomized = True
 
                 if has_evolve and self.random.random() > Weights.ARTE_EVOLVE_REQUIREMENT:
                     self.randomize_evolution_requirement(arte)
                     evolve_randomized = True
+            elif arte['id'] in self.preplaced[user]:
+                arte['evolve_base'] = 0
 
             # Learn Conditions
-            if is_candidate and self.random.random() < Weights.ARTE_LEARN_OPPORTUNITIES[evolve_randomized + 1]:
+            learn_roll: float = Weights.ARTE_LEARN_OPPORTUNITIES[evolve_randomized + 1]
+            if is_candidate and not is_preplaced and self.random.random() < learn_roll:
                 self.randomize_learn(arte, user, evolve_randomized)
+            elif arte['id'] in self.placed[user]:
+                arte['learn_condition1'] = 1
+                arte['learn_parameter1'] = 300
+                arte['unknown3'] = 0
+
+                for i in range(2, 4):
+                    arte[f'learn_condition{i}'] = 0
+                    arte[f'learn_parameter{i}'] = 0
+                    arte[f'unknown{i + 2}'] = 0
             else:
                 for i in range(1, 4):
                     usage: int = arte.get(f'unknown{i + 2}', 0)
