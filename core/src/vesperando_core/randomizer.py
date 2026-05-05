@@ -64,6 +64,7 @@ class ArteRandomizer(BaseRandomizer):
         self.artes_data = data['artes_data']
         self.artes_by_char = data['artes_by_char']
         self.skills_by_char = data['skills_by_char']
+        self.placed = {c: set(a) for c, a in data['preplaced'].items()}
         self.options = ArteOptions(options)
         self.statistics: dict = {
             'Artes': 0,
@@ -120,7 +121,7 @@ class ArteRandomizer(BaseRandomizer):
                 if self.random.random() <= chance:
                     self.randomize_evolutions(arte, user)
 
-                    if not has_evolve:
+                    if arte['evolve_base'] and not has_evolve:
                         self.randomize_evolution_requirement(arte)
 
                     evolve_randomized = True
@@ -141,6 +142,9 @@ class ArteRandomizer(BaseRandomizer):
                             self.options.learn_arte_usage_max
                         )
 
+            ## Add to 'preplaced' to signify it is available to be used as requirement
+            self.placed[user].add(arte['id'])
+
     def randomize_tp_cost(self, arte):
         self.statistics['TP Cost'] += 1
         use_multiplier: bool = self.random.random() <= Weights.ARTE_TP_COST_MULTIPLIER
@@ -160,7 +164,6 @@ class ArteRandomizer(BaseRandomizer):
 
         return tp_cost
 
-
     def randomize_cast_time(self, arte):
         self.statistics['Cast Time'] += 1
         arte['cast_time'] = math.ceil(int(arte['cast_time']) * self.random.randrange(10, 200) * 0.01)
@@ -170,9 +173,13 @@ class ArteRandomizer(BaseRandomizer):
         arte['fatal_strike_type'] = self.random.randrange(0, 3)
 
     def randomize_evolutions(self, arte, user):
+        candidates: set = self.placed[user] - {arte['id']}
+        if not candidates:
+            arte['evolve_base'] = 0
+
         self.statistics['Evolutions'] += 1
 
-        arte['evolve_base'] = self.random.choice([a for a in self.artes_by_char[user] if a != arte['id']])
+        arte['evolve_base'] = self.random.choice([*candidates])
 
         continue_iter: bool = True
         iterations: int = 1
@@ -203,6 +210,7 @@ class ArteRandomizer(BaseRandomizer):
         self.statistics['Learn Conditions'] += 1
 
         continue_iter: bool = True
+        arte_candidates_available: bool = True
         iterations: int = 2 if has_evolve else 1
         while iterations < len(Weights.ARTE_LEARN_OPPORTUNITIES):
             if continue_iter:
@@ -217,7 +225,12 @@ class ArteRandomizer(BaseRandomizer):
                     cap_level: int = self.random_from_triangular(5, 100)
                     parameter = self.random.randint(1, cap_level)
                 elif condition == 2:
-                    parameter: int = self.random.choice([a for a in self.artes_by_char[user] if a != arte['id']])
+                    candidates: set = self.placed[user] - {arte['id']}
+                    if not candidates:
+                        arte_candidates_available = False
+                        continue
+
+                    parameter: int = self.random.choice([*candidates])
                     ranges = sorted([int(self.random_from_triangular(self.options.learn_arte_usage_min,
                                                                      self.options.learn_arte_usage_max // 2)),
                                     int(self.random_from_triangular(self.options.learn_arte_usage_min,
@@ -238,6 +251,8 @@ class ArteRandomizer(BaseRandomizer):
 
             if continue_iter and self.random.random() > Weights.ARTE_LEARN_OPPORTUNITIES[iterations]:
                 continue_iter = False
+
+            if not arte_candidates_available: arte_candidates_available = True
 
             iterations += 1
 
@@ -1186,7 +1201,6 @@ class BasicRandomizerProcedure:
 
         start_time: float = time.time()
 
-        preplaced: dict = {}
         if not targets or 'events' in targets:
             data: dict = {
                 'events_data': self.events_data_table,
@@ -1202,16 +1216,17 @@ class BasicRandomizerProcedure:
             self.events_randomizer.randomize()
 
             patch_data['events'] = self.events_randomizer.fetch()
-            preplaced = self.events_randomizer.fetch()
+            preplaced = deepcopy(self.events_randomizer.placed_events)
             self.events_randomizer.report()
         else:
-            preplaced = {}
+            preplaced = self.get_preplaced_events()
 
         if not targets or 'artes' in targets:
             data: dict = {
                 'artes_data': self.artes_data_table,
                 'artes_by_char': self.artes_by_char,
                 'skills_by_char': self.skills_by_char,
+                'preplaced': preplaced['artes']
             }
 
             logger.info("> Randomizing Artes")
