@@ -905,10 +905,16 @@ class EventsRandomizer(BaseRandomizer):
                     if self.items_data.get(e, {}).get('character_usable', 0) & character.bitflag() > 0
                 ]
                 self.equipment_by_char[category].setdefault(character.value, []).extend(char_equipment)
-        self.placed_events = {
-            'artes': {_: [] for _ in range(1, 10)},
-            'skills': {_: [] for _ in range(1, 10)},
-            'equips': {_: [] for _ in range(1, 10)},
+
+        character_template: dict = {character.value: [] for character in enums.Characters}
+        self.placed_events: dict[str, dict[int, list[int]] | list] = {
+            'artes': deepcopy(character_template),
+            'skills': deepcopy(character_template),
+            'equips': {
+                _: deepcopy(character_template)
+                for _ in range(enums.ItemCategory.MAIN.value, enums.ItemCategory.BODY.value + 1)
+            },
+            'valuables': []
         }
 
         self.candidates = {}
@@ -933,17 +939,6 @@ class EventsRandomizer(BaseRandomizer):
                 self.candidates.setdefault(f, {})[add] = patch_props
 
     def randomize(self):
-        character_template: dict = {character.value: [] for character in enums.Characters}
-        placed: dict = {
-            'artes': deepcopy(character_template),
-            'skills': deepcopy(character_template),
-            'equips': {
-                _: deepcopy(character_template)
-                for _ in range(enums.ItemCategory.MAIN.value, enums.ItemCategory.BODY.value + 1)
-            },
-            'valuables': []
-        }
-
         for file, entries in self.candidates.items():
             for address, properties in entries.items():
                 event_type: int = properties.get('type', 0)
@@ -954,24 +949,22 @@ class EventsRandomizer(BaseRandomizer):
                         item_data: dict = self.items_data.get(properties.get('target', 0), {})
                         category: int = item_data.get('category', 0)
                         if category == enums.ItemCategory.VALUABLES.value:
-                            placed['valuables'].append(item_data['id'])
+                            self.placed_events['valuables'].append(item_data['id'])
 
                     continue
                 match event_type:
                     case 10:
-                        self.randomize_arte(properties, placed['artes'])
+                        self.randomize_arte(properties)
                     case 20:
-                        self.randomize_skill(properties, placed['skills'])
+                        self.randomize_skill(properties)
                     case 30:
-                        self.randomize_item(properties, placed['valuables'])
+                        self.randomize_item(properties)
                     case 31:
-                        self.randomize_equip(properties, placed['equips'])
+                        self.randomize_equip(properties)
                     case 39:
                         self.randomize_gald(file, properties)
 
-    def randomize_arte(self, properties: dict, placed: dict = None):
-        if placed is None:
-            placed = dict()
+    def randomize_arte(self, properties: dict):
 
         character = properties.get('character', 0)
         if not character: return
@@ -979,35 +972,29 @@ class EventsRandomizer(BaseRandomizer):
         if self.random.random() < Weights.EVENTS_CHARACTER_TARGET:
             character = self.random.choice(list(enums.Characters)).value
 
-        placed_artes: list = placed.get(character, [])
+        placed_artes: list = self.placed_events['artes'].get(character, [])
         candidates: list = [*set(self.artes_by_char.get(character, [])).difference(placed_artes)]
         new_arte: int = random.choice(candidates)
         properties['target'] = new_arte
         properties['character'] = character
-        placed.setdefault(character, []).append(new_arte)
+        self.placed_events['artes'].setdefault(character, []).append(new_arte)
 
-    def randomize_skill(self, properties: dict, placed: dict = None):
-        if placed is None:
-            placed = dict()
-
+    def randomize_skill(self, properties: dict):
         character = properties.get('character', 0)
         if not character: return
 
         if self.random.random() < Weights.EVENTS_CHARACTER_TARGET:
             character = self.random.choice(list(enums.Characters)).value
 
-        placed_skills: list = placed.get('character', [])
+        placed_skills: list = self.placed_events['skills'].get(character, [])
         candidates: list = [*set(self.skills_by_char.get(character, [])).difference(placed_skills)]
         new_skill = random.choice(candidates)
         properties['target'] = new_skill
         properties['character'] = character
-        placed.setdefault(character, []).append(new_skill)
+        self.placed_events['skills'].setdefault(character, []).append(new_skill)
 
-    def randomize_item(self, properties: dict, placed: list = None):
-        if placed is None:
-            placed = []
-
-        candidates: set = set(self.base_items).difference(placed)
+    def randomize_item(self, properties: dict,):
+        candidates: set = set(self.base_items).difference(self.placed_events.get('valuables', []))
         new_item: int = random.choice([*candidates])
         category: int = self.items_data[new_item].get('category', 0)
         if enums.ItemCategory.is_abundant(category):
@@ -1021,23 +1008,20 @@ class EventsRandomizer(BaseRandomizer):
         properties['metadata'] = amount
 
         if category == enums.ItemCategory.VALUABLES.value:
-            placed.append(new_item)
+            self.placed_events.get('valuables', []).append(new_item)
 
-    def randomize_equip(self, properties: dict, placed: dict = None):
-        if placed is None:
-            placed = dict()
-
+    def randomize_equip(self, properties: dict,):
         # set_param_pc has Main, Sub, Body and Head use ID's of 0xB, 0xC, 0xD and 0xE respectively
         # so we remove the difference from their values as represented in the items data table
         equip_type = enums.PCParamSlot(properties.get('metadata', 0)).as_category()
         character = properties.get('character', 0)
         if not equip_type or not character: return
 
-        placed_equip: list = placed.get(equip_type, {}).get(character, [])
+        placed_equip: list = self.placed_events.get('equips', {}).get(equip_type, {}).get(character, [])
         candidates: list = [*set(self.equipment_by_char[equip_type][character]).difference(placed_equip)]
         new_equip: int = self.random.choice(candidates)
         properties['target'] = new_equip
-        placed[equip_type].setdefault(character, []).append(new_equip)
+        self.placed_events.get('equips', {}).get(equip_type, {}).setdefault(character, []).append(new_equip)
 
     def randomize_gald(self, file_index, properties):
         multiplier = max(file_index // 25, 1)
@@ -1183,6 +1167,23 @@ class BasicRandomizerProcedure:
 
         start_time: float = time.time()
 
+        if not targets or 'events' in targets:
+            data: dict = {
+                'events_data': self.events_data_table,
+                'artes_by_char': self.artes_by_char,
+                'skills_by_char': self.skills_by_char,
+                'items_data': self.items_data_table,
+                'item_by_category': self.item_by_category,
+                'common_items': self.common_items,
+            }
+
+            logger.info("> Randomizing Events")
+            self.events_randomizer = EventsRandomizer(self.random, data, options.get('events', {}))
+            self.events_randomizer.randomize()
+
+            patch_data['events'] = self.events_randomizer.fetch()
+            self.events_randomizer.report()
+
         if not targets or 'artes' in targets:
             data: dict = {
                 'artes_data': self.artes_data_table,
@@ -1272,23 +1273,6 @@ class BasicRandomizerProcedure:
 
             patch_data['search'] = self.search_point_randomizer.fetch()
             self.search_point_randomizer.report()
-
-        if not targets or 'events' in targets:
-            data: dict = {
-                'events_data': self.events_data_table,
-                'artes_by_char': self.artes_by_char,
-                'skills_by_char': self.skills_by_char,
-                'items_data': self.items_data_table,
-                'item_by_category': self.item_by_category,
-                'common_items': self.common_items,
-            }
-
-            logger.info("> Randomizing Events")
-            self.events_randomizer = EventsRandomizer(self.random, data, options.get('events', {}))
-            self.events_randomizer.randomize()
-
-            patch_data['events'] = self.events_randomizer.fetch()
-            self.events_randomizer.report()
 
         end_time: float = time.time()
 
