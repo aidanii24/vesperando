@@ -9,7 +9,7 @@ license-files = ["LICENSE*"]
 dependencies = [
     "click==8.3.1",
     "rich~=14.3.3",
-    "vesperando_core~=0.3.0",
+    "vesperando_core~=0.3.0.dev1",
 ]
 
 [project.optional-dependencies]
