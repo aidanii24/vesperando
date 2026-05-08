@@ -92,6 +92,8 @@ class Weights:
         0.27,
         0.25
     )
+    SKILL_PARAMETER = 0.12
+    SKILL_PARAMETER_NEXT = 0.4
     ITEM_CANDIDACY = 0.05
     ITEM_PRICE = 0.95
     ITEM_PRICE_MULTIPLIER = 0.99

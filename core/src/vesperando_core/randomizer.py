@@ -339,6 +339,7 @@ class SkillRandomizer(BaseRandomizer):
             'LP': 0,
             'Symbols': 0,
             'Symbol Weights': 0,
+            'Parameters': 0,
         }
 
         # Filter out dummy skill and enemy exclusive skill "Heal Down" (id 445)
@@ -394,6 +395,25 @@ class SkillRandomizer(BaseRandomizer):
                                                                        Weights.SKILL_SYMBOL_WEIGHT_SIGMA,
                                                                        1, 30)
 
+            # Parameters
+            if is_candidate:
+                chance: float = Weights.SKILL_PARAMETER
+                for _ in range(1, 4):
+                    value: float = skill.get(f'parameter{_}', 0)
+                    if not value: break
+
+                    if self.random.random() <= chance:
+                        ranges: list[int] = sorted([
+                            self.random_from_triangular(5, 100),
+                            self.random_from_triangular(5, 500),
+                        ])
+                        mod: int = self.random_from_triangular(*ranges)
+                        skill[f'parameter{_}'] = float(max(min(value * mod / 100, 0xFFFF), 0.0001))
+
+                    if _ == 1:
+                        self.statistics['Parameters'] += 1
+                        chance = Weights.SKILL_PARAMETER_NEXT
+
     def report(self):
         logger.info("& SKILLS")
 
@@ -402,18 +422,21 @@ class SkillRandomizer(BaseRandomizer):
         lp_ratio: str = f"{self.statistics['LP']:>4}/{self.statistics['Skills']}"
         symbols_ratio: str = f"{self.statistics['Symbols']:>4}/{self.statistics['Skills']}"
         symbol_weights_ratio: str = f"{self.statistics['Symbol Weights']:>4}/{self.statistics['Skills']}"
+        parameters_ratio: str = f"{self.statistics['Parameters']:>4}/{self.statistics['Skills']}"
 
         skills_percentage: float = safe_divide(self.statistics['Skills'], len(self.candidates))
         sp_cost_percentage: float = safe_divide(self.statistics['SP Cost'], self.statistics['Skills'])
         lp_percentage: float = safe_divide(self.statistics['LP'], self.statistics['Skills'])
         symbols_percentage: float = safe_divide(self.statistics['Symbols'], self.statistics['Skills'])
         symbol_weights_percentage: float = safe_divide(self.statistics['Symbol Weights'], self.statistics['Skills'])
+        parameters_percentage: float = safe_divide(self.statistics['Parameters'], self.statistics['Skills'])
 
         logger.info(f"{"":>4}{"> Candidates:":<21}{skills_ratio:<12}{skills_percentage:.2f}%")
         logger.info(f"{"":>4}{"> SP Cost:":<21}{sp_cost_ratio:<12}{sp_cost_percentage:.2f}%")
         logger.info(f"{"":>4}{"> LP:":<21}{lp_ratio:<12}{lp_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Symbols:":<21}{symbols_ratio:<12}{symbols_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Symbol Weights:":<21}{symbol_weights_ratio:<12}{symbol_weights_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Parameters:":<21}{parameters_ratio:<12}{parameters_percentage:.2f}%")
         logger.info("")
 
 

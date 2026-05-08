@@ -41,6 +41,9 @@ class Skills(Patch):
         'lp_cost',
         'symbol',
         'symbol_weight',
+        'parameter1',
+        'parameter2',
+        'parameter3',
         'is_equippable'
     }
 

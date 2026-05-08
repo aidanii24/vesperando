@@ -102,9 +102,9 @@ class SkillsEntry(ctypes.Structure):
         ("lp_cost", ctypes.c_uint32),
         ("symbol", ctypes.c_uint32),
         ("symbol_weight", ctypes.c_uint32),
-        ("paramater1", ctypes.c_float),
-        ("paramater2", ctypes.c_float),
-        ("paramater3", ctypes.c_float),
+        ("parameter1", ctypes.c_float),
+        ("parameter2", ctypes.c_float),
+        ("parameter3", ctypes.c_float),
         ("is_equippable", ctypes.c_uint32),
     ]
 

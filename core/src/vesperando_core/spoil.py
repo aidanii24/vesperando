@@ -133,12 +133,16 @@ class PatchSpoiler:
         report_list: list = []
         for skill in [*patch.values()]:
             report_list.append([
-                self.skill_name_table[skill['id']], skill['sp_cost'], skill['lp_cost'],
+                self.skill_name_table[skill['id']],
+                skill['sp_cost'], skill['lp_cost'],
                 enums.SkillSymbols(skill['symbol']).name,
+                *[skill[f'parameter{_}'] for _ in range(1, 4)],
                 skill['symbol_weight'], 'Yes' if skill['is_equippable'] else 'No'
             ])
 
-        field_names: list[str] = ["Skill", "SP", "LP", "Symbol", "Symbol Weight", "Equippable"]
+        field_names: list[str] = [
+            "Skill", "SP", "LP", "Symbol", "Symbol Weight", "Parameter 1", "Parameter 2", "Parameter 3", "Equippable"
+        ]
 
         report: Table = Table("SKILLS")
         report.set_row_values(0, field_names)
