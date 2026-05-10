@@ -94,7 +94,7 @@ class ArteRandomizer(BaseRandomizer):
             data: dict = self.artes_data[arte['id']]
             user: int = data['character_ids'][0]
 
-            is_preplaced: bool = arte['id'] in self.preplaced[user]
+            is_preplaced: bool = arte['id'] in self.preplaced.get(user, [])
 
             # TP Cost
             tp: int = arte.get('tp_cost', 0)
@@ -133,14 +133,14 @@ class ArteRandomizer(BaseRandomizer):
                 if has_evolve and self.random.random() > Weights.ARTE_EVOLVE_REQUIREMENT:
                     self.randomize_evolution_requirement(arte)
                     evolve_randomized = True
-            elif arte['id'] in self.preplaced[user]:
+            elif arte['id'] in self.preplaced.get(user, []):
                 arte['evolve_base'] = 0
 
             # Learn Conditions
             learn_roll: float = Weights.ARTE_LEARN_OPPORTUNITIES[evolve_randomized + 1]
             if is_candidate and not is_preplaced and self.random.random() < learn_roll:
                 self.randomize_learn(arte, user, evolve_randomized)
-            elif arte['id'] in self.placed[user]:
+            elif arte['id'] in self.placed.get(user, []):
                 arte['learn_condition1'] = 1
                 arte['learn_parameter1'] = 300
                 arte['unknown3'] = 0
@@ -159,7 +159,7 @@ class ArteRandomizer(BaseRandomizer):
                         )
 
             ## Add to 'preplaced' to signify it is available to be used as requirement
-            self.placed[user].add(arte['id'])
+            self.placed.setdefault(user, set()).add(arte['id'])
 
     def randomize_tp_cost(self, arte):
         self.statistics['TP Cost'] += 1
@@ -187,6 +187,9 @@ class ArteRandomizer(BaseRandomizer):
     def randomize_fatal_strike(self, arte):
         self.statistics['Fatal Strikes'] += 1
         arte['fatal_strike_type'] = self.random.randrange(0, 3)
+
+    def randomize_effect(self, arte):
+        self.statistics['Effect'] += 1
 
     def randomize_evolutions(self, arte, user):
         candidates: set = self.placed[user] - {arte['id']}
@@ -241,7 +244,7 @@ class ArteRandomizer(BaseRandomizer):
                     cap_level: int = self.random_from_triangular(5, 100)
                     parameter = self.random.randint(1, cap_level)
                 elif condition == 2:
-                    candidates: set = self.placed[user] - {arte['id']}
+                    candidates: set = self.placed.get(user, set()) - {arte['id']}
                     if not candidates:
                         arte_candidates_available = False
                         continue
