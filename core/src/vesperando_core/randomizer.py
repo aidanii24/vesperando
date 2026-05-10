@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Sequence
 from copy import deepcopy
 import datetime
 import logging
@@ -74,9 +74,18 @@ class ArteRandomizer(BaseRandomizer):
             'TP Cost (Full Random)': 0,
             'Cast Time': 0,
             'Fatal Strikes': 0,
+            'Elements': 0,
+            'Effects': 0,
+            'Power': 0,
             'Evolutions': 0,
             'Learn Conditions': 0
         }
+
+        self.POWER_PROPERTIES: Sequence[str] = [k for k in self.artes_data[0].keys() if "_power" in k]
+        self.ELEMENTAL_PROPERTIES: Sequence[str] = [
+            "fire_elemental", "water_elemental", "earth_elemental", "wind_elemental",
+            "light_elemental", "dark_elemental"
+        ]
 
         # `artes_by_char` should already have all the valid candidates
         candidates: dict = {aid: artes for aid, artes in self.artes_data.items()
@@ -113,6 +122,21 @@ class ArteRandomizer(BaseRandomizer):
             skip_fs: bool = arte.get('id', 0) == 17 and self.options.keep_azure_edge_fs
             if is_candidate and not skip_fs and self.random.random() <= Weights.ARTE_FS:
                 self.randomize_fatal_strike(arte)
+
+            # Element
+            if is_candidate and self.random.random() <= Weights.ARTE_ELEMENT_OPPORTUNITY:
+                self.randomize_element(arte)
+
+            # Effects
+            if is_candidate and self.random.random() <= Weights.ARTE_EFFECT_OPPORTUNITY:
+                self.randomize_effect(arte)
+
+            # Power
+            if is_candidate and self.random.random() <= Weights.ARTE_POWER_OPPORTUNITY:
+                self.randomize_power(arte)
+
+            # Target Type
+            self.randomize_target_type(arte)
 
             # Evolutions
             has_evolve: bool = bool(arte.get('evolve_base', False))
@@ -189,7 +213,94 @@ class ArteRandomizer(BaseRandomizer):
         arte['fatal_strike_type'] = self.random.randrange(0, 3)
 
     def randomize_effect(self, arte):
-        self.statistics['Effect'] += 1
+        self.statistics['Effects'] += 1
+        continue_iter: bool = True
+        for _ in range(1, 4):
+            if _ > 1 and continue_iter and self.random.random() > Weights.ARTE_EFFECT_OPPORTUNITY:
+                continue_iter = False
+                arte[f'status_effect{_}'] = 0
+                arte[f'status_effect{_}_parameter'] = 0
+
+                continue
+
+            effect: int = self.random.choice(list(enums.ArteEffects)).value
+            parameter: int = 0
+            if enums.ArteEffects.is_by_power(effect):
+                ranges: list[int] = sorted([
+                    self.random_from_triangular(1, 50),
+                    self.random_from_triangular(1, 200),
+                ])
+                parameter: int = self.random_from_triangular(*ranges)
+            elif enums.ArteEffects.is_by_duration(effect):
+                ranges: list[int] = sorted([
+                    self.random_from_triangular(100, 300),
+                    self.random_from_triangular(100, 1000),
+                ])
+                parameter: int = self.random_from_triangular(*ranges)
+            elif effect == enums.ArteEffects.IMBUE_ELEMENT.value:
+                parameter: int = self.random.randint(0, 5)
+
+            arte[f'status_effect{_}'] = effect
+            arte[f'status_effect{_}_parameter'] = parameter
+
+    def randomize_power(self, arte):
+        self.statistics['Power'] += 1
+
+        if arte['status_effect1'] > 0 and self.random.random() <= Weights.ARTE_EFFECT_ONLY_OPPORTUNITY:
+            arte['power'] = 0
+            for prop in self.POWER_PROPERTIES:
+                if prop not in arte: continue
+                arte[prop] = 0
+        else:
+            arte['power'] = math.ceil(self.random_from_distribution(
+                Weights.ARTE_POWER_MU,
+                Weights.ARTE_POWER_SIGMA,
+                0,
+                3000
+            ))
+            for prop in self.POWER_PROPERTIES:
+                if prop not in arte: continue
+                if arte[prop] == 0: continue
+
+                arte[prop] = (self.random_from_triangular(0, 200) + arte[prop]) // 2
+
+    def randomize_element(self, arte):
+        self.statistics['Elements'] += 1
+
+        element_count: int = self.random.choices(
+            [0, 1, 2],
+            Weights.ARTE_ELEMENT_COUNT_DISTRIBUTION,
+            k=1
+        )[0]
+        elements: list[str] = self.random.choices(
+            self.ELEMENTAL_PROPERTIES,
+            Weights.ARTE_ELEMENT_DISTRIBUTION,
+            k=8
+        )[:element_count]
+
+        for element in self.ELEMENTAL_PROPERTIES:
+            if element not in arte: continue
+            if element in elements: arte[element] = 1
+            else: arte[element] = 0
+
+    def randomize_target_type(self, arte):
+        target_type: int = arte['target_type']
+
+        # Do not change target type if there is no Status Effect,
+        # or if the original target type is self
+        if not arte['status_effect1'] or target_type == enums.TargetType.SELF.value: return
+
+        eligible_types: list[int] = [
+            enums.TargetType.ALLY.value,
+            enums.TargetType.AREA.value,
+            enums.TargetType.ALL_ALLIES.value,
+            enums.TargetType.ALLIES_ONLY.value,
+        ]
+
+        if not arte['power']:
+            eligible_types.append(enums.TargetType.SELF.value)
+
+        arte['target_type'] = self.random.choice(eligible_types)
 
     def randomize_evolutions(self, arte, user):
         candidates: set = self.placed[user] - {arte['id']}

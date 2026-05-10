@@ -1,3 +1,4 @@
+from typing import Sequence
 import enum
 
 
@@ -57,6 +58,58 @@ class ArteLearningTypes(enum.Enum):
     LEVEL = 1
     ARTE_USAGE = 2
     SKILL = 3
+
+
+class ArteEffects(enum.Enum):
+    HP_RECOVERY = 1
+    KO_RECOVERY = 2
+    CURE_PHYSICAL_AILMENTS = 3
+    P_ATK_UP = 4
+    M_ATK_UP = 5
+    P_DEF_UP = 6
+    M_DEF_UP = 7
+    AUTO_RECOVER = 8
+    IRON_STANCE = 9
+    INVULNERABILITY = 10
+    CURE_MAGICAL_AILMENTS = 11
+    IMBUE_ELEMENT = 12
+    TP_RECOVERY = 13
+    REDUCE_DAMAGE = 14
+    LUCK_UP = 15
+
+    @classmethod
+    def is_by_power(cls, effect) -> bool:
+        powered_effects: Sequence[int] = [1, 2, 4, 5, 6, 7, 13, 15]
+
+        if isinstance(effect, cls):
+            return effect.value in powered_effects
+        elif isinstance(effect, int):
+            return effect in powered_effects
+        elif isinstance(effect, str):
+            try:
+                validity: bool = cls[effect].value in powered_effects
+                return validity
+            except AttributeError:
+                return False
+
+        return False
+
+    @classmethod
+    def is_by_duration(cls, effect) -> bool:
+        timed_effects: Sequence[int] = [9, 10, 14]
+
+        if isinstance(effect, cls):
+            return effect.value in timed_effects
+        elif isinstance(effect, int):
+            return effect in timed_effects
+        elif isinstance(effect, str):
+            try:
+                validity: bool = cls[effect].value in timed_effects
+                return validity
+            except AttributeError:
+                return False
+
+        return False
 
 
 class SkillSymbols(enum.Enum):
@@ -177,6 +230,18 @@ class SearchPointType(enum.Enum):
     SHELL = 1
     BONES = 2
     SEAGULL = 3
+
+
+class TargetType(enum.Enum):
+    ENEMY = 0
+    ENEMIES_ONLY = 1
+    ALLY = 2
+    AREA = 3
+    ALL_ENEMIES = 4
+    ALL_ALLIES = 5
+    SELF = 6
+    ALLIES_ONLY = 7
+
 
 class PCParamSlot(enum.Enum):
     INVALID = 0x0

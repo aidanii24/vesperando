@@ -75,6 +75,26 @@ class Weights:
         (0.75, 0.05),
         (0.5, 0.5)
     )
+    ARTE_EFFECT_OPPORTUNITY: float = 0.185
+    ARTE_EFFECT_NEXT_OPPORTUNITY: float = 0.21
+    ARTE_EFFECT_ONLY_OPPORTUNITY: float = 0.18
+    ARTE_POWER_OPPORTUNITY: float = 0.4
+    ARTE_POWER_MU: float = 243.60
+    ARTE_POWER_SIGMA: float = 280.62
+    ARTE_ELEMENT_OPPORTUNITY: float = 0.25
+    ARTE_ELEMENT_COUNT_DISTRIBUTION: tuple = (
+        0.75,
+        0.10,
+        0.15
+    )
+    ARTE_ELEMENT_DISTRIBUTION: tuple = (
+        0.27,
+        0.14,
+        0.14,
+        0.23,
+        0.14,
+        0.06,
+    )
     SKILL_CANDIDACY = 0.05
     SKILL_SP_COST = 0.95
     SKILL_SP_MU = 3.8   # Vanilla is at 7.6
