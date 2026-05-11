@@ -209,9 +209,9 @@ class ArtesEntry(ctypes.Structure):
         ("evolve_parameter3", ctypes.c_uint32),
         ("evolve_parameter4", ctypes.c_uint32),
         ("physical_attack_mod", ctypes.c_uint32),
-        ("unknown11", ctypes.c_uint32),
-        ("unknown12", ctypes.c_uint32),
-        ("unknown13", ctypes.c_uint32),
+        ("status_effect1_duration", ctypes.c_uint32),
+        ("status_effect2_duration", ctypes.c_uint32),
+        ("status_effect3_duration", ctypes.c_uint32),
         ("fatal_strike_type", ctypes.c_uint32),
         # Time/Weather Power
         ("day_weather_power", ctypes.c_uint32),
