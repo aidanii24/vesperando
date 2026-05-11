@@ -128,7 +128,11 @@ class ArteRandomizer(BaseRandomizer):
                 self.randomize_element(arte)
 
             # Effects
-            if is_candidate and self.random.random() <= Weights.ARTE_EFFECT_OPPORTUNITY:
+            if arte.get('target_type', 0) <= 1:
+                effect_opportunity: float = Weights.ARTE_EFFECT_OPPORTUNITY
+            else:
+                effect_opportunity: float = Weights.ARTE_EFFECT_OPPORTUNITY_MULTI
+            if is_candidate and self.random.random() <= effect_opportunity:
                 self.randomize_effect(arte)
 
             # Power

@@ -76,6 +76,7 @@ class Weights:
         (0.5, 0.5)
     )
     ARTE_EFFECT_OPPORTUNITY: float = 0.185
+    ARTE_EFFECT_OPPORTUNITY_MULTI: float = 0.37
     ARTE_EFFECT_NEXT_OPPORTUNITY: float = 0.21
     ARTE_EFFECT_ONLY_OPPORTUNITY: float = 0.18
     ARTE_POWER_OPPORTUNITY: float = 0.4
