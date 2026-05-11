@@ -361,10 +361,16 @@ class ArteRandomizer(BaseRandomizer):
                         continue
 
                     parameter: int = self.random.choice([*candidates])
-                    ranges = sorted([int(self.random_from_triangular(self.options.learn_arte_usage_min,
-                                                                     self.options.learn_arte_usage_max // 2)),
-                                    int(self.random_from_triangular(self.options.learn_arte_usage_min,
-                                                                    self.options.learn_arte_usage_max))])
+                    ranges = sorted([
+                        int(self.random_from_triangular(
+                            self.options.learn_arte_usage_min,
+                            max(self.options.learn_arte_usage_max // 2, self.options.learn_arte_usage_min)
+                        )),
+                        int(self.random_from_triangular(
+                            self.options.learn_arte_usage_min,
+                            self.options.learn_arte_usage_max
+                        ))
+                    ])
                     meta = max(self.random_from_triangular(*ranges) // 5 * 5, 5)
                     meta = max(min(int(meta * self.options.learn_arte_usage_mod), self.options.learn_arte_usage_max),
                                self.options.learn_arte_usage_min)
