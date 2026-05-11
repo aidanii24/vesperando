@@ -347,10 +347,10 @@ def restore():
 @cli.command(help="Generate configuration files")
 @click.argument("targets", nargs=-1, type=click.Choice(["settings", "options"],False))
 def make_config(targets):
-    if "settings" in targets:
+    if not targets or "settings" in targets:
         from vesperando_core.configs import Settings
         Settings.generate()
-    if "options" in targets:
+    if not targets or "options" in targets:
         from vesperando_core.options import Options
         Options.generate()
 
