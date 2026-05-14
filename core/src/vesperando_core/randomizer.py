@@ -268,7 +268,7 @@ class ArteRandomizer(BaseRandomizer):
             arte['power'] = math.ceil(self.random_from_distribution(
                 Weights.ARTE_POWER_MU,
                 Weights.ARTE_POWER_SIGMA,
-                0,
+                10,
                 3000
             ))
             for prop in self.POWER_PROPERTIES:
