@@ -48,7 +48,7 @@ class Extensions:
 class Weights:
     ARTE_CANDIDACY = 0.05
     ARTE_TP_COST = 0.4
-    ARTE_TP_COST_MULTIPLIER = 0.9
+    ARTE_TP_COST_MULTIPLIER = 0.4
     ARTE_CAST_TIME = 0.7
     ARTE_FS = 0.75
     ARTE_EVOLVE = 0.6   # 0.258 for actual ration of character artes with evolves in Vanilla
