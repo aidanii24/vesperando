@@ -1,6 +1,4 @@
 import json
-import os
-from importlib.metadata import metadata
 
 from odfdo import Document, Table, Row
 
@@ -20,6 +18,15 @@ class PatchSpoiler:
     spoiler: dict
 
     def __init__(self):
+        self.ELEMENTS: list = [
+            'fire_elemental',
+            'water_elemental',
+            'earth_elemental',
+            'wind_elemental',
+            'light_elemental',
+            'dark_elemental'
+        ]
+
         with open(Paths.STATIC_PATH.joinpath("metadata.json")) as f:
             data = json.load(f, object_hook=keys_to_int)
 
@@ -63,19 +70,10 @@ class PatchSpoiler:
         spoiler_sheet.save(output)
 
     def spoil_artes(self, patch: dict) -> Table:
-        ELEMENTS: list = [
-            'fire_elemental',
-            'water_elemental',
-            'earth_elemental',
-            'wind_elemental',
-            'light_elemental',
-            'dark_elemental'
-        ]
-
         report_list: list = []
         for arte in [*patch.values()]:
             elements: list = []
-            for e in ELEMENTS:
+            for e in self.ELEMENTS:
                 if arte.get(e, 0):
                     elements.append(e.capitalize().rsplit("_")[0])
 
