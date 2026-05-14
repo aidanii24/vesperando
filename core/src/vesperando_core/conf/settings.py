@@ -82,6 +82,7 @@ class Weights:
     ARTE_POWER_OPPORTUNITY: float = 0.4
     ARTE_POWER_MU: float = 243.60
     ARTE_POWER_SIGMA: float = 280.62
+    ARTE_POWER_MOD_OPPORTUNITY: float = 0.2
     ARTE_TARGET_OPPORTUNITY: float = 0.1
     ARTE_TARGET_DISTRIBUTION: tuple = (
         0.5,

@@ -30,7 +30,7 @@ class Artes(Patch):
         'status_effect3_duration',
         'power',
         'physical_attack_mod',
-        'magical_attack_mod',
+        'magic_attack_mod',
         "vs_human_power",
         "vs_beast_power",
         "vs_bird_power",

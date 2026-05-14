@@ -49,6 +49,45 @@ class ArteTypes(enum.Enum):
         return False
 
     @classmethod
+    def is_physical(cls, atype):
+        physical: list[cls] = [
+            cls.BASE,
+            cls.ARCANE,
+            cls.BURST_PHYSICAL,
+            cls.ALTERED_PHYSICAL,
+            cls.BURST_VAR_PHYSICAL,
+        ]
+
+        if isinstance(atype, cls):
+            return atype in physical
+        elif isinstance(atype, int):
+            return cls(atype) in physical
+        elif isinstance(atype, str):
+            return cls[atype] in physical
+
+        return False
+
+    @classmethod
+    def is_magic(cls, atype):
+        physical: list[cls] = [
+            cls.NOVICE,
+            cls.INTERMEDIATE,
+            cls.ADVANCED,
+            cls.BURST_MAGIC,
+            cls.ALTERED_MAGIC,
+            cls.BURST_VAR_MAGIC,
+        ]
+
+        if isinstance(atype, cls):
+            return atype in physical
+        elif isinstance(atype, int):
+            return cls(atype) in physical
+        elif isinstance(atype, str):
+            return cls[atype] in physical
+
+        return False
+
+    @classmethod
     def _missing_(cls, value):
         return -1
 

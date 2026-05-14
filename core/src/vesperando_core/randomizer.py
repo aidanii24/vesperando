@@ -277,6 +277,51 @@ class ArteRandomizer(BaseRandomizer):
                 10,
                 3000
             ))
+
+            # Check if primarily a physical arte, magic arte, or a neutral/special arte
+            # Change randomization accordingly
+            atype: int = arte.get('arte_type', 0)
+
+            if self.random.random() <= Weights.ARTE_POWER_MOD_OPPORTUNITY:
+                first_min: int = 0
+                first_max: int = 100
+                second_min: int = 50
+                second_max: int = 100
+                mode: Literal['min', 'max'] = 'max'
+                if enums.ArteTypes.is_physical(atype):
+                    first_min = self.random.randint(30, 100)
+                    second_min = self.random.randint(80, 100)
+                elif enums.ArteTypes.is_magic(atype):
+                    first_max = self.random.randint(30, 80)
+                    second_min = self.random.randint(0, 50)
+                    mode = 'min'
+
+                ranges: list[int] = sorted([
+                    self.random_from_triangular(first_min, first_max, mode),
+                    self.random_from_triangular(second_min, second_max, mode),
+                ])
+                arte['physical_attack_mod'] = self.random_from_triangular(*ranges, mode=mode)
+
+            if self.random.random() <= Weights.ARTE_POWER_MOD_OPPORTUNITY:
+                first_min: int = 0
+                first_max: int = 100
+                second_min: int = 50
+                second_max: int = 100
+                mode: Literal['min', 'max'] = 'max'
+                if enums.ArteTypes.is_magic(atype):
+                    first_min = self.random.randint(30, 100)
+                    second_min = self.random.randint(80, 100)
+                elif enums.ArteTypes.is_physical(atype):
+                    first_max = self.random.randint(30, 80)
+                    second_min = self.random.randint(0, 50)
+                    mode = 'min'
+
+                ranges: list[int] = sorted([
+                    self.random_from_triangular(first_min, first_max, mode),
+                    self.random_from_triangular(second_min, second_max, mode),
+                ])
+                arte['magic_attack_mod'] = self.random_from_triangular(*ranges, mode=mode)
+
             for prop in self.POWER_PROPERTIES:
                 if prop not in arte: continue
                 if arte[prop] == 0: continue
