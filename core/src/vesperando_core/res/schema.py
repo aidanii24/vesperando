@@ -29,6 +29,8 @@ class Artes(Patch):
         'status_effect3_parameter',
         'status_effect3_duration',
         'power',
+        'physical_attack_mod',
+        'magical_attack_mod',
         "vs_human_power",
         "vs_beast_power",
         "vs_bird_power",
@@ -68,6 +70,7 @@ class Artes(Patch):
         'evolve_parameter3',
         'evolve_condition4',
         'evolve_parameter4',
+        'is_usable_outside_battle'
     }
 
 

@@ -78,6 +78,30 @@ class ArteEffects(enum.Enum):
     LUCK_UP = 15
 
     @classmethod
+    def usable_outside_battle(cls, effect):
+        """
+        Check if ArteEffect is appropriate to be usable outside battle.
+        """
+        usable_effects: Sequence[int] = [
+            cls.HP_RECOVERY.value,
+            cls.KO_RECOVERY.value,
+            cls.TP_RECOVERY.value,
+        ]
+
+        if isinstance(effect, cls):
+            return effect.value in usable_effects
+        elif isinstance(effect, int):
+            return effect in usable_effects
+        elif isinstance(effect, str):
+            try:
+                validity: bool = cls[effect].value in usable_effects
+                return validity
+            except AttributeError:
+                return False
+
+        return False
+
+    @classmethod
     def has_power(cls, effect: 'ArteEffects' | int | str) -> bool:
         """
         Check if ArteEffect uses an Arte Parameter to determine it's power in a scale of 100.

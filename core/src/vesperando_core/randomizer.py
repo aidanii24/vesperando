@@ -218,6 +218,8 @@ class ArteRandomizer(BaseRandomizer):
 
     def randomize_effect(self, arte):
         self.statistics['Effects'] += 1
+
+        usable_outside_battle: bool = False
         continue_iter: bool = True
         for _ in range(1, 4):
             roll: float = self.random.random()
@@ -229,6 +231,8 @@ class ArteRandomizer(BaseRandomizer):
             duration: int = 0
             if continue_iter:
                 effect = self.random.choice(list(enums.ArteEffects)).value
+                if enums.ArteEffects.usable_outside_battle(effect):
+                    usable_outside_battle = True
 
                 if enums.ArteEffects.has_power(effect):
                     ranges: list[int] = sorted([
@@ -255,6 +259,8 @@ class ArteRandomizer(BaseRandomizer):
             arte[f'status_effect{_}'] = effect
             arte[f'status_effect{_}_parameter'] = parameter
             arte[f'status_effect{_}_duration'] = duration
+
+        arte[f'is_usable_outside_battle'] = int(usable_outside_battle)
 
     def randomize_power(self, arte):
         self.statistics['Power'] += 1
