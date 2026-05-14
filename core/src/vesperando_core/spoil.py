@@ -63,8 +63,47 @@ class PatchSpoiler:
         spoiler_sheet.save(output)
 
     def spoil_artes(self, patch: dict) -> Table:
+        ELEMENTS: list = [
+            'fire_elemental',
+            'water_elemental',
+            'earth_elemental',
+            'wind_elemental',
+            'light_elemental',
+            'dark_elemental'
+        ]
+
         report_list: list = []
         for arte in [*patch.values()]:
+            elements: list = []
+            for e in ELEMENTS:
+                if arte.get(e, 0):
+                    elements.append(e.capitalize().rsplit("_")[0])
+
+            effects: list = []
+            for _ in range(1, 4):
+                effect: int = arte.get(f"status_effect{_}", 0)
+                if not effect:
+                    effects.extend(["" for _ in range(3)])
+                    continue
+
+                parameter: int = arte.get(f"status_effect{_}_parameter", 0)
+                parameter_display: str = ""
+                if effect == enums.ArteEffects.IMBUE_ELEMENT.value:
+                    parameter_display = enums.ArteEffectsImbueElements(parameter).name
+                elif parameter:
+                    parameter_display = f"{parameter}"
+
+                duration: int = arte.get(f"status_effect{_}_duration", 0)
+                duration_display: str = ""
+                if duration > 0:
+                    duration_display = f"{duration / 60:.2f}s"
+
+                effects.extend([
+                    enums.ArteEffects(effect).name.replace("_", " "),
+                    parameter_display,
+                    duration_display
+                ])
+
             learn_conditions: list = []
             # Parse Learn Conditions
             for _ in range(1, 4):
@@ -104,14 +143,22 @@ class PatchSpoiler:
                     evolve_conditions.extend(["INVALID", "!"])
 
             details: list = [
-                self.arte_name_table[arte['id']], arte['tp_cost'], arte['cast_time'] if arte['cast_time'] else "N/A",
-                *learn_conditions, *evolve_conditions,
-                enums.FatalStrikeType(arte['fatal_strike_type']).name
+                self.arte_name_table[arte['id']],
+                arte["power"],
+                arte['tp_cost'],
+                arte['cast_time'] if arte['cast_time'] else "N/A",
+                ", ".join(elements),
+                enums.TargetType(arte['target_type']).name.replace("_", " ").title(),
+                *learn_conditions,
+                *evolve_conditions,
+                *effects,
+                enums.FatalStrikeType(arte['fatal_strike_type']).name,
+                * [f"{v}%" for p, v in arte.items() if "_power" in p]
             ]
 
             report_list.append(details)
 
-        field_names: list[str] = ["Arte", "TP", "Cast Time",
+        field_names: list[str] = ["Arte", "Power", "TP", "Cast Time", "Elements", "Target Type",
                                   "Learn Condition 1", "Learn Parameter 1", "Learn Meta 1",
                                   "Learn Condition 2", "Learn Parameter 2", "Learn Meta 2",
                                   "Learn Condition 3", "Learn Parameter 3", "Learn Meta 3",
@@ -120,6 +167,10 @@ class PatchSpoiler:
                                   "Evolve Condition 2", "Evolve Parameter 2",
                                   "Evolve Condition 3", "Evolve Parameter 3",
                                   "Evolve Condition 4", "Evolve Parameter 4",
+                                  "Global Effect 1", "Global Effect 1 Parameter", "Global Effect 1 Duration",
+                                  "Global Effect 2", "Global Effect 2 Parameter", "Global Effect 2 Duration",
+                                  "Global Effect 3", "Global Effect 3 Parameter", "Global Effect 3 Duration",
+                                  *[p.replace("_", " ").title() for p in arte.keys() if "_power" in p],
                                   "Fatal Strike Type"]
 
         report: Table = Table("ARTES")

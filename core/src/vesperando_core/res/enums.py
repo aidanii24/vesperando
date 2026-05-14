@@ -160,6 +160,15 @@ class ArteEffects(enum.Enum):
         return False
 
 
+class ArteEffectsImbueElements(enum.Enum):
+    FIRE = 0
+    EARTH = 1
+    WIND = 2
+    WATER = 3
+    LIGHT = 4
+    DARK = 5
+
+
 class SkillSymbols(enum.Enum):
     FLECK = 0
     ROCKRA = 1
