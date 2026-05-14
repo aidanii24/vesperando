@@ -220,13 +220,16 @@ class ArteRandomizer(BaseRandomizer):
         self.statistics['Effects'] += 1
         continue_iter: bool = True
         for _ in range(1, 4):
-            if _ > 1 and continue_iter and self.random.random() > Weights.ARTE_EFFECT_OPPORTUNITY:
+            roll: float = self.random.random()
+            if _ > 1 and continue_iter and roll > Weights.ARTE_EFFECT_OPPORTUNITY:
                 continue_iter = False
 
-            effect: int = self.random.choice(list(enums.ArteEffects)).value
+            effect: int = 0
             parameter: int = 0
             duration: int = 0
             if continue_iter:
+                effect = self.random.choice(list(enums.ArteEffects)).value
+
                 if enums.ArteEffects.has_power(effect):
                     ranges: list[int] = sorted([
                         self.random_from_triangular(1, 50),
@@ -244,8 +247,8 @@ class ArteRandomizer(BaseRandomizer):
 
                 if enums.ArteEffects.has_duration(effect):
                     ranges: list[int] = sorted([
-                        self.random_from_triangular(100, 300),
-                        self.random_from_triangular(100, 1000),
+                        self.random_from_triangular(100, 1200),
+                        self.random_from_triangular(480, 3600)
                     ])
                     duration: int = self.random_from_triangular(*ranges)
 
