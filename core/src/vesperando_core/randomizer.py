@@ -247,7 +247,7 @@ class ArteRandomizer(BaseRandomizer):
                         self.random_from_triangular(100, 300),
                         self.random_from_triangular(100, 1000),
                     ])
-                    parameter: int = self.random_from_triangular(*ranges)
+                    duration: int = self.random_from_triangular(*ranges)
 
             arte[f'status_effect{_}'] = effect
             arte[f'status_effect{_}_parameter'] = parameter
