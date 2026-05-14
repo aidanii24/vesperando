@@ -78,8 +78,21 @@ class ArteEffects(enum.Enum):
     LUCK_UP = 15
 
     @classmethod
-    def is_by_power(cls, effect) -> bool:
-        powered_effects: Sequence[int] = [1, 2, 4, 5, 6, 7, 13, 15]
+    def has_power(cls, effect: 'ArteEffects' | int | str) -> bool:
+        """
+        Check if ArteEffect uses an Arte Parameter to determine it's power in a scale of 100.
+        """
+        powered_effects: Sequence[int] = [
+            cls.HP_RECOVERY.value,
+            cls.KO_RECOVERY.value,
+            cls.P_ATK_UP.value,
+            cls.M_ATK_UP.value,
+            cls.P_DEF_UP.value,
+            cls.M_DEF_UP.value,
+            cls.TP_RECOVERY.value,
+            cls.REDUCE_DAMAGE.value,
+            cls.LUCK_UP.value,
+        ]
 
         if isinstance(effect, cls):
             return effect.value in powered_effects
@@ -95,8 +108,43 @@ class ArteEffects(enum.Enum):
         return False
 
     @classmethod
-    def is_by_duration(cls, effect) -> bool:
-        timed_effects: Sequence[int] = [9, 10, 14]
+    def has_power_raw(cls, effect: 'ArteEffects' | int | str) -> bool:
+        """
+        Check if ArteEffect uses an Arte Parameter to determine it's power.
+        """
+        powered_effects: Sequence[int] = [
+            cls.IRON_STANCE.value,
+            cls.INVULNERABILITY.value,
+        ]
+
+        if isinstance(effect, cls):
+            return effect.value in powered_effects
+        elif isinstance(effect, int):
+            return effect in powered_effects
+        elif isinstance(effect, str):
+            try:
+                validity: bool = cls[effect].value in powered_effects
+                return validity
+            except AttributeError:
+                return False
+
+        return False
+
+    @classmethod
+    def has_duration(cls, effect: 'ArteEffects' | int | str) -> bool:
+        """
+        Check if ArteEffect has a duration parameter.
+        """
+        timed_effects: Sequence[int] = [
+            cls.P_ATK_UP.value,
+            cls.M_ATK_UP.value,
+            cls.P_DEF_UP.value,
+            cls.M_DEF_UP.value,
+            cls.IRON_STANCE.value,
+            cls.INVULNERABILITY.value,
+            cls.IMBUE_ELEMENT.value,
+            cls.REDUCE_DAMAGE.value,
+        ]
 
         if isinstance(effect, cls):
             return effect.value in timed_effects
@@ -234,10 +282,10 @@ class SearchPointType(enum.Enum):
 
 class TargetType(enum.Enum):
     ENEMY = 0
-    ENEMIES_ONLY = 1
+    ENEMIES_MULTI = 1
     ALLY = 2
-    AREA = 3
-    ALL_ENEMIES = 4
+    ALLY_MULTI = 3
+    ENEMIES_ONLY = 4
     ALL_ALLIES = 5
     SELF = 6
     ALLIES_ONLY = 7

@@ -222,30 +222,36 @@ class ArteRandomizer(BaseRandomizer):
         for _ in range(1, 4):
             if _ > 1 and continue_iter and self.random.random() > Weights.ARTE_EFFECT_OPPORTUNITY:
                 continue_iter = False
-                arte[f'status_effect{_}'] = 0
-                arte[f'status_effect{_}_parameter'] = 0
-
-                continue
 
             effect: int = self.random.choice(list(enums.ArteEffects)).value
             parameter: int = 0
-            if enums.ArteEffects.is_by_power(effect):
-                ranges: list[int] = sorted([
-                    self.random_from_triangular(1, 50),
-                    self.random_from_triangular(1, 200),
-                ])
-                parameter: int = self.random_from_triangular(*ranges)
-            elif enums.ArteEffects.is_by_duration(effect):
-                ranges: list[int] = sorted([
-                    self.random_from_triangular(100, 300),
-                    self.random_from_triangular(100, 1000),
-                ])
-                parameter: int = self.random_from_triangular(*ranges)
-            elif effect == enums.ArteEffects.IMBUE_ELEMENT.value:
-                parameter: int = self.random.randint(0, 5)
+            duration: int = 0
+            if continue_iter:
+                if enums.ArteEffects.has_power(effect):
+                    ranges: list[int] = sorted([
+                        self.random_from_triangular(1, 50),
+                        self.random_from_triangular(1, 200),
+                    ])
+                    parameter: int = self.random_from_triangular(*ranges)
+                elif enums.ArteEffects.has_power_raw(effect):
+                    ranges: list[int] = sorted([
+                        self.random_from_triangular(100, 1000, 'max'),
+                        self.random_from_triangular(600, 1000),
+                    ])
+                    parameter: int = self.random_from_triangular(*ranges, mode='max')
+                elif effect == enums.ArteEffects.IMBUE_ELEMENT.value:
+                    parameter: int = self.random.randint(0, 5)
+
+                if enums.ArteEffects.has_duration(effect):
+                    ranges: list[int] = sorted([
+                        self.random_from_triangular(100, 300),
+                        self.random_from_triangular(100, 1000),
+                    ])
+                    parameter: int = self.random_from_triangular(*ranges)
 
             arte[f'status_effect{_}'] = effect
             arte[f'status_effect{_}_parameter'] = parameter
+            arte[f'status_effect{_}_duration'] = duration
 
     def randomize_power(self, arte):
         self.statistics['Power'] += 1
@@ -296,7 +302,7 @@ class ArteRandomizer(BaseRandomizer):
 
         eligible_types: list[int] = [
             enums.TargetType.ALLY.value,
-            enums.TargetType.AREA.value,
+            enums.TargetType.ALLY_MULTI.value,
             enums.TargetType.ALL_ALLIES.value,
             enums.TargetType.ALLIES_ONLY.value,
         ]
@@ -304,7 +310,13 @@ class ArteRandomizer(BaseRandomizer):
         if not arte['power']:
             eligible_types.append(enums.TargetType.SELF.value)
 
-        arte['target_type'] = self.random.choice(eligible_types)
+        # If an arte already uses these target types, only give it a small chance to be changes
+        if target_type in eligible_types and self.random.random() > Weights.ARTE_TARGET_OPPORTUNITY:
+            return
+
+        distribution: list[int] = Weights.ARTE_TARGET_DISTRIBUTION[:len(eligible_types)]
+
+        arte['target_type'] = self.random.choices(eligible_types, distribution)[0]
 
     def randomize_evolutions(self, arte, user):
         candidates: set = self.placed[user] - {arte['id']}
@@ -415,6 +427,9 @@ class ArteRandomizer(BaseRandomizer):
         tp_full_ratio: str = f"{self.statistics['TP Cost (Full Random)']:>4}/{self.statistics['TP Cost']}"
         cast_time_ratio: str = f"{self.statistics['Cast Time']:>4}/{self.statistics['Artes']}"
         fatal_strike_ratio: str = f"{self.statistics['Fatal Strikes']:>4}/{self.statistics['Artes']}"
+        element_ratio: str = f"{self.statistics['Elements']:>4}/{self.statistics['Artes']}"
+        effects_ratio: str = f"{self.statistics['Effects']:>4}/{self.statistics['Artes']}"
+        power_ratio: str = f"{self.statistics['Power']:>4}/{self.statistics['Artes']}"
         evolution_ratio: str = f"{self.statistics['Evolutions']:>4}/{self.statistics['Artes']}"
         learn_condition_ratio: str = f"{self.statistics['Learn Conditions']:>4}/{self.statistics['Artes']}"
 
@@ -427,6 +442,9 @@ class ArteRandomizer(BaseRandomizer):
         tp_full_percentage: float = safe_divide(self.statistics['TP Cost (Full Random)'], self.statistics['TP Cost'])
         cast_time_percentage: float = safe_divide(self.statistics['Cast Time'], self.statistics['Artes'])
         fatal_strike_percentage: float = safe_divide(self.statistics['Fatal Strikes'], self.statistics['Artes'])
+        element_percentage: float = safe_divide(self.statistics['Elements'], self.statistics['Artes'])
+        effects_percentage: float = safe_divide(self.statistics['Effects'], self.statistics['Artes'])
+        power_percentage: float = safe_divide(self.statistics['Power'], self.statistics['Artes'])
         evolution_percentage: float = safe_divide(self.statistics['Evolutions'], self.statistics['Artes'])
         learn_condition_percentage: float = safe_divide(self.statistics['Learn Conditions'], self.statistics['Artes'])
 
@@ -436,6 +454,9 @@ class ArteRandomizer(BaseRandomizer):
         logger.info(f"{"":>6}{"> TP Cost (Full Random):":<28}{tp_full_ratio:<12}{tp_full_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Cast Time:":<21}{cast_time_ratio:<12}{cast_time_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Fatal Strikes:":<21}{fatal_strike_ratio:<12}{fatal_strike_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Elements:":<21}{element_ratio:<12}{element_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Effects:":<21}{effects_ratio:<12}{effects_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Power:":<21}{power_ratio:<12}{power_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Evolutions:":<21}{evolution_ratio:<12}{evolution_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Learn Conditions:":<21}{learn_condition_ratio:<12}{learn_condition_percentage:.2f}%")
         logger.info("")
