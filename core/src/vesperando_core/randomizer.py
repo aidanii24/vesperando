@@ -640,11 +640,18 @@ class ItemRandomizer(BaseRandomizer):
         self.skills_by_char = data['skills_by_char']
         self.options = ItemOptions(options)
 
+        self.ELEMENTAL_PROPERTIES: Sequence[str] = [
+            "fire_elemental", "water_elemental", "earth_elemental", "wind_elemental",
+            "light_elemental", "dark_elemental"
+        ]
+
         self.statistics: dict = {
             'Items': 0,
             'Prices': 0,
             'Prices (Multiplier)': 0,
             'Prices (Million Random)': 0,
+            'Elements': 0,
+            'Synthesis': 0,
             'Skills': 0,
         }
 
@@ -697,6 +704,11 @@ class ItemRandomizer(BaseRandomizer):
 
             # Weapon Properties
             if enums.ItemCategory.is_weapon(data.get('category', 0)):
+                # Element
+                if self.random.random() <= Weights.ITEM_ELEMENT_OPPORTUNITY:
+                    self.randomize_element(item)
+
+                # Skills
                 skills_candidates: set[int] = set(skill for char in users
                                                   for skill in self.skills_by_char[char]
                                                   if char in self.skills_by_char)
@@ -712,7 +724,6 @@ class ItemRandomizer(BaseRandomizer):
                     for u in users:
                         set_skills_per_char[u] -= skills_candidates
 
-                # Skills
                 continue_iter: bool = True
                 for i, opp in enumerate(Weights.ITEM_SKILL_OPPORTUNITIES):
                     roll: float = self.random.random() if i + 1 > self.options.weapon_skills_min else -1
@@ -752,6 +763,25 @@ class ItemRandomizer(BaseRandomizer):
                         item[f'skill{i + 1}_lp'] = 0
 
                         continue_iter = False
+
+    def randomize_element(self, item):
+        self.statistics['Elements'] += 1
+
+        element_count: int = self.random.choices(
+            [0, 1, 2, 3, 4],
+            Weights.ITEM_WEAPON_ELEMENT_COUNT_DISTRIBUTION,
+            k=1
+        )[0]
+        elements: list[str] = self.random.choices(
+            self.ELEMENTAL_PROPERTIES,
+            Weights.ITEM_WEAPON_ELEMENT_DISTRIBUTION,
+            k=8
+        )[:element_count]
+
+        for element in self.ELEMENTAL_PROPERTIES:
+            if element not in item: continue
+            if element in elements: item[element] = 1
+            else: item[element] = 0
 
     def report(self):
         if sys.stdout.encoding == "utf-8":

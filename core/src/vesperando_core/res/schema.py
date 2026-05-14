@@ -93,6 +93,12 @@ class Items(Patch):
     schema: set = {
         'id',
         'buy_price',
+        'fire_elemental',
+        'water_elemental',
+        'earth_elemental',
+        'wind_elemental',
+        'light_elemental',
+        'dark_elemental',
         'skill1',
         'skill1_lp',
         'skill2',

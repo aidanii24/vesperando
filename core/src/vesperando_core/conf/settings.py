@@ -128,6 +128,22 @@ class Weights:
     ITEM_CANDIDACY = 0.05
     ITEM_PRICE = 0.95
     ITEM_PRICE_MULTIPLIER = 0.99
+    ITEM_ELEMENT_OPPORTUNITY = 0.67
+    ITEM_WEAPON_ELEMENT_COUNT_DISTRIBUTION: tuple = (
+        0.5,
+        0.35,
+        0.1,
+        0.025,
+        0.025,
+    )
+    ITEM_WEAPON_ELEMENT_DISTRIBUTION: tuple = (
+        0.25,
+        0.14,
+        0.14,
+        0.21,
+        0.14,
+        0.10,
+    )
     ITEM_SKILL_OPPORTUNITIES: tuple = (
         0.96,
         0.875,

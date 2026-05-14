@@ -207,6 +207,13 @@ class PatchSpoiler:
         report_list: list = []
         for item in [*patch['base'].values()]:
             entry: list = [self.item_name_table[item['id']], item['buy_price']]
+            elements: list = []
+            for e in self.ELEMENTS:
+                if item.get(e, 0):
+                    elements.append(e.capitalize().rsplit("_")[0])
+
+            entry.append(', '.join(elements))
+
             for _ in range(1, 4):
                 if item[f'skill{_}']:
                     entry.extend([self.skill_name_table[item[f'skill{_}']], item[f'skill{_}_lp']])
@@ -215,8 +222,10 @@ class PatchSpoiler:
 
             report_list.append(entry)
 
-        field_names: list[str] = ["Item", "Price", "Skill 1", "Skill 1 LP", "Skill 2", "Skill 2 LP",
-                                  "Skill 3", "Skill 3 LP", ]
+        field_names: list[str] = [
+            "Item", "Price", "Elements",
+            "Skill 1", "Skill 1 LP", "Skill 2", "Skill 2 LP", "Skill 3", "Skill 3 LP",
+        ]
 
         report: Table = Table("ITEMS")
         report.set_row_values(0, field_names)
