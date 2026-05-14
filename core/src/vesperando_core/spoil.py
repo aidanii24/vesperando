@@ -144,7 +144,7 @@ class PatchSpoiler:
 
             details: list = [
                 self.arte_name_table[arte['id']],
-                arte["power"],
+                arte['power'],
                 arte['tp_cost'],
                 arte['cast_time'] if arte['cast_time'] else "N/A",
                 ", ".join(elements),
@@ -152,8 +152,10 @@ class PatchSpoiler:
                 *learn_conditions,
                 *evolve_conditions,
                 *effects,
+                f"{arte['physical_attack_mod']}%",
+                f"{arte['magic_attack_mod']}%",
+                * [f"{v}%" for p, v in arte.items() if "_power" in p],
                 enums.FatalStrikeType(arte['fatal_strike_type']).name,
-                * [f"{v}%" for p, v in arte.items() if "_power" in p]
             ]
 
             report_list.append(details)
@@ -170,6 +172,7 @@ class PatchSpoiler:
                                   "Global Effect 1", "Global Effect 1 Parameter", "Global Effect 1 Duration",
                                   "Global Effect 2", "Global Effect 2 Parameter", "Global Effect 2 Duration",
                                   "Global Effect 3", "Global Effect 3 Parameter", "Global Effect 3 Duration",
+                                  "Physical Attack Modifier", "Magic Attack Modifier",
                                   *[p.replace("_", " ").title() for p in arte.keys() if "_power" in p],
                                   "Fatal Strike Type"]
 
