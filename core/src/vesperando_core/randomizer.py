@@ -278,55 +278,39 @@ class ArteRandomizer(BaseRandomizer):
                 3000
             ))
 
-            # Check if primarily a physical arte, magic arte, or a neutral/special arte
-            # Change randomization accordingly
             atype: int = arte.get('arte_type', 0)
-
             if self.random.random() <= Weights.ARTE_POWER_MOD_OPPORTUNITY:
-                first_min: int = 0
-                first_max: int = 100
-                second_min: int = 50
-                second_max: int = 100
-                mode: Literal['min', 'max'] = 'max'
-                if enums.ArteTypes.is_physical(atype):
-                    first_min = self.random.randint(30, 100)
-                    second_min = self.random.randint(80, 100)
-                elif enums.ArteTypes.is_magic(atype):
-                    first_max = self.random.randint(30, 80)
-                    second_min = self.random.randint(0, 50)
-                    mode = 'min'
-
                 ranges: list[int] = sorted([
-                    self.random_from_triangular(first_min, first_max, mode),
-                    self.random_from_triangular(second_min, second_max, mode),
+                    self.random_from_triangular(10, 100),
+                    self.random_from_triangular(50, 100),
                 ])
-                arte['physical_attack_mod'] = self.random_from_triangular(*ranges, mode=mode)
+                mod: int = self.random_from_triangular(*ranges, mode='max')
+                mod = max(mod, 100 - mod)
 
-            if self.random.random() <= Weights.ARTE_POWER_MOD_OPPORTUNITY:
-                first_min: int = 0
-                first_max: int = 100
-                second_min: int = 50
-                second_max: int = 100
-                mode: Literal['min', 'max'] = 'max'
-                if enums.ArteTypes.is_magic(atype):
-                    first_min = self.random.randint(30, 100)
-                    second_min = self.random.randint(80, 100)
-                elif enums.ArteTypes.is_physical(atype):
-                    first_max = self.random.randint(30, 80)
-                    second_min = self.random.randint(0, 50)
-                    mode = 'min'
+                sub_mod: int = 100 - mod
+                if self.random.random() < Weights.ARTE_POWER_MOD_MISTYPE_OPPORTUNITY:
+                    sub_mod = self.random_from_triangular(sub_mod, 100)
 
-                ranges: list[int] = sorted([
-                    self.random_from_triangular(first_min, first_max, mode),
-                    self.random_from_triangular(second_min, second_max, mode),
-                ])
-                arte['magic_attack_mod'] = self.random_from_triangular(*ranges, mode=mode)
+                is_physical: bool = enums.ArteTypes.is_physical(atype)
+                is_magic: bool = enums.ArteTypes.is_magic(atype)
+                if is_physical == is_magic:
+                    if self.random.random() < 0.51:
+                        is_physical = True
+                    else:
+                        is_physical = False
+
+                if is_physical:
+                    arte['physical_attack_mod'] = mod
+                    arte['magic_attack_mod'] = sub_mod
+                else:
+                    arte['physical_attack_mod'] = sub_mod
+                    arte['magic_attack_mod'] = mod
 
             for prop in self.POWER_PROPERTIES:
                 if prop not in arte: continue
                 if arte[prop] == 0: continue
 
-                arte[prop] = (self.random_from_triangular(0, 200) + arte[prop]) // 2
+                arte[prop] = (self.random_from_triangular(0, 200, 'max') + arte[prop]) // 2
 
     def randomize_element(self, arte):
         self.statistics['Elements'] += 1
