@@ -640,6 +640,8 @@ class ItemRandomizer(BaseRandomizer):
         self.skills_by_char = data['skills_by_char']
         self.options = ItemOptions(options)
 
+        self.set_skills_per_char: dict[int, set] = {c.value: set() for c in enums.Characters}
+
         self.ELEMENTAL_PROPERTIES: Sequence[str] = [
             "fire_elemental", "water_elemental", "earth_elemental", "wind_elemental",
             "light_elemental", "dark_elemental"
@@ -661,7 +663,6 @@ class ItemRandomizer(BaseRandomizer):
         }
 
     def randomize(self):
-        set_skills_per_char: dict[int, set] = {c.value: set() for c in enums.Characters}
         for iid, item in self.candidates['base'].items():
             # Candidacy
             is_candidate: bool = self.random.random() > Weights.ITEM_CANDIDACY
@@ -709,60 +710,7 @@ class ItemRandomizer(BaseRandomizer):
                     self.randomize_element(item)
 
                 # Skills
-                skills_candidates: set[int] = set(skill for char in users
-                                                  for skill in self.skills_by_char[char]
-                                                  if char in self.skills_by_char)
-                skills_candidates.intersection_update(*[self.skills_by_char[char] for char in users])
-
-                skills_set: set[int] = skills_candidates.difference(*[set_skills_per_char[s] for s in users])
-
-                ## Get all valid skill candidates that are not already set
-                if abs(len(skills_candidates) - len(skills_set)) > 3:
-                    skills_candidates -= skills_set
-                ## If there are not enough candidates left, reset the skills set list for the involved characters
-                else:
-                    for u in users:
-                        set_skills_per_char[u] -= skills_candidates
-
-                continue_iter: bool = True
-                for i, opp in enumerate(Weights.ITEM_SKILL_OPPORTUNITIES):
-                    roll: float = self.random.random() if i + 1 > self.options.weapon_skills_min else -1
-                    if continue_iter and roll <= opp:
-                        self.statistics['Skills'] += 1
-
-                        skill: int = item.get(f'skill{i + 1}', 0)
-                        lp: int = item.get(f'skill{i + 1}_lp', 0)
-
-                        if is_candidate or (not is_candidate and not skill):
-                            skill = self.random.choice([*skills_candidates])
-                            item[f'skill{i + 1}'] = skill
-                            skills_candidates.discard(skill)
-
-                            if self.random.random() < Weights.ITEM_SKILL_LP:
-                                lp = self.random_from_triangular(
-                                    self.options.weapon_skill_lp_ratio_min,
-                                    self.options.weapon_skill_lp_ratio_max,
-                                    'max'
-                                )
-                                lp = round(lp, -1)
-                            elif lp <= 0 or self.random.random() > Weights.ITEM_SKILL_LP:
-                                lp = 100
-
-                        item[f'skill{i + 1}_lp'] = max(
-                            min(int(
-                                lp * self.options.weapon_skill_lp_ratio_mod),
-                                self.options.weapon_skill_lp_ratio_max
-                            ),
-                            self.options.weapon_skill_lp_ratio_min
-                        )
-
-                        if i + 1 >= self.options.weapon_skills_max:
-                            continue_iter = False
-                    else:
-                        item[f'skill{i + 1}'] = 0
-                        item[f'skill{i + 1}_lp'] = 0
-
-                        continue_iter = False
+                self.randomize_skills(item, users, is_candidate)
 
     def randomize_element(self, item):
         self.statistics['Elements'] += 1
@@ -782,6 +730,62 @@ class ItemRandomizer(BaseRandomizer):
             if element not in item: continue
             if element in elements: item[element] = 1
             else: item[element] = 0
+
+    def randomize_skills(self, item, users: list[int], is_candidate: bool):
+        skills_candidates: set[int] = set(skill for char in users
+                                          for skill in self.skills_by_char[char]
+                                          if char in self.skills_by_char)
+        skills_candidates.intersection_update(*[self.skills_by_char[char] for char in users])
+
+        skills_set: set[int] = skills_candidates.difference(*[self.set_skills_per_char[s] for s in users])
+
+        ## Get all valid skill candidates that are not already set
+        if abs(len(skills_candidates) - len(skills_set)) > 3:
+            skills_candidates -= skills_set
+        ## If there are not enough candidates left, reset the skills set list for the involved characters
+        else:
+            for u in users:
+                self.set_skills_per_char[u] -= skills_candidates
+
+        continue_iter: bool = True
+        for i, opp in enumerate(Weights.ITEM_SKILL_OPPORTUNITIES):
+            roll: float = self.random.random() if i + 1 > self.options.weapon_skills_min else -1
+            if continue_iter and roll <= opp:
+                self.statistics['Skills'] += 1
+
+                skill: int = item.get(f'skill{i + 1}', 0)
+                lp: int = item.get(f'skill{i + 1}_lp', 0)
+
+                if is_candidate or (not is_candidate and not skill):
+                    skill = self.random.choice([*skills_candidates])
+                    item[f'skill{i + 1}'] = skill
+                    skills_candidates.discard(skill)
+
+                    if self.random.random() < Weights.ITEM_SKILL_LP:
+                        lp = self.random_from_triangular(
+                            self.options.weapon_skill_lp_ratio_min,
+                            self.options.weapon_skill_lp_ratio_max,
+                            'max'
+                        )
+                        lp = round(lp, -1)
+                    elif lp <= 0 or self.random.random() > Weights.ITEM_SKILL_LP:
+                        lp = 100
+
+                item[f'skill{i + 1}_lp'] = max(
+                    min(int(
+                        lp * self.options.weapon_skill_lp_ratio_mod),
+                        self.options.weapon_skill_lp_ratio_max
+                    ),
+                    self.options.weapon_skill_lp_ratio_min
+                )
+
+                if i + 1 >= self.options.weapon_skills_max:
+                    continue_iter = False
+            else:
+                item[f'skill{i + 1}'] = 0
+                item[f'skill{i + 1}_lp'] = 0
+
+                continue_iter = False
 
     def report(self):
         if sys.stdout.encoding == "utf-8":

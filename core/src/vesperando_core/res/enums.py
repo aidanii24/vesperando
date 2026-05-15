@@ -310,6 +310,23 @@ class ItemCategory(enum.Enum):
         if not cls.is_valid(category): return False
 
         if isinstance(category, cls):
+            return 4 < category.value < 7
+        elif isinstance(category, int):
+            return 4 < category < 7
+        elif isinstance(category, str):
+            try:
+                validity = 4 < cls[category].value < 7
+                return validity
+            except AttributeError:
+                return False
+
+        return False
+
+    @classmethod
+    def is_equipment(cls, category):
+        if not cls.is_valid(category): return False
+
+        if isinstance(category, cls):
             return 2 < category.value < 5
         elif isinstance(category, int):
             return 2 < category < 5
