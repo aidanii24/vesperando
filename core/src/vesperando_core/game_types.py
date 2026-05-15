@@ -287,7 +287,7 @@ class ItemEntry(ctypes.BigEndianStructure):
         ("battle_use_type", ctypes.c_uint32),
         ("phys_attack", ctypes.c_uint32),
         ("magic_attack", ctypes.c_uint32),
-        ("phy_defense", ctypes.c_uint32),
+        ("phys_defense", ctypes.c_uint32),
         ("magic_defense", ctypes.c_uint32),
         ("tp_heal", ctypes.c_uint32),
         ("luck", ctypes.c_uint32),
