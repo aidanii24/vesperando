@@ -135,13 +135,32 @@ class Weights:
         0.1,
         0.025,
         0.025,
+        0,
+        0,
     )
     ITEM_WEAPON_ELEMENT_DISTRIBUTION: tuple = (
         0.25,
-        0.14,
-        0.14,
+        0.15,
+        0.15,
         0.21,
         0.14,
+        0.10,
+    )
+    ITEM_EQUIPMENT_ELEMENT_COUNT_DISTRIBUTION: tuple = (
+        0.2,
+        0.1,
+        0.2,
+        0.1,
+        0.2,
+        0.1,
+        0.1
+    )
+    ITEM_EQUIPMENT_ELEMENT_DISTRIBUTION: tuple = (
+        0.22,
+        0.20,
+        0.18,
+        0.18,
+        0.12,
         0.10,
     )
     ITEM_SKILL_OPPORTUNITIES: tuple = (

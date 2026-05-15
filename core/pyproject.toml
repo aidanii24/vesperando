@@ -10,6 +10,7 @@ license-files = ["LICENSE*"]
 dependencies = [
     "altgraph==0.17.5",
     "lxml==6.0.2",
+    "numpy==2.4.4",
     "odfdo==3.17.6",
     "packaging==25.0",
     "pip-autoremove==0.10.0",

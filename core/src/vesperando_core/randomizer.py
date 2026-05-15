@@ -10,6 +10,8 @@ import time
 import sys
 import os
 
+import numpy as np
+
 from vesperando_core.res.models.options import MainOptionsDefault
 from vesperando_core.conf.settings import Paths, Extensions, Weights
 from vesperando_core.res import enums, schema
@@ -320,11 +322,12 @@ class ArteRandomizer(BaseRandomizer):
             Weights.ARTE_ELEMENT_COUNT_DISTRIBUTION,
             k=1
         )[0]
-        elements: list[str] = self.random.choices(
+        elements: list[str] = np.random.choice(
             self.ELEMENTAL_PROPERTIES,
-            Weights.ARTE_ELEMENT_DISTRIBUTION,
-            k=8
-        )[:element_count]
+            size=element_count,
+            replace=False,
+            p=[*Weights.ARTE_ELEMENT_DISTRIBUTION],
+        )
 
         for element in self.ELEMENTAL_PROPERTIES:
             if element not in arte: continue
@@ -707,24 +710,37 @@ class ItemRandomizer(BaseRandomizer):
             if enums.ItemCategory.is_weapon(data.get('category', 0)):
                 # Element
                 if self.random.random() <= Weights.ITEM_ELEMENT_OPPORTUNITY:
-                    self.randomize_element(item)
+                    self.randomize_element(
+                        item,
+                        [*Weights.ITEM_WEAPON_ELEMENT_COUNT_DISTRIBUTION],
+                        [*Weights.ITEM_WEAPON_ELEMENT_DISTRIBUTION]
+                    )
 
                 # Skills
                 self.randomize_skills(item, users, is_candidate)
+            elif enums.ItemCategory.is_equipment(data.get('category', 0)):
+                # Element
+                if self.random.random() <= Weights.ITEM_ELEMENT_OPPORTUNITY:
+                    self.randomize_element(
+                        item,
+                        [*Weights.ITEM_EQUIPMENT_ELEMENT_COUNT_DISTRIBUTION],
+                        [*Weights.ITEM_EQUIPMENT_ELEMENT_DISTRIBUTION]
+                    )
 
-    def randomize_element(self, item):
+    def randomize_element(self, item, count_weights: list, element_weights: list):
         self.statistics['Elements'] += 1
 
         element_count: int = self.random.choices(
-            [0, 1, 2, 3, 4],
-            Weights.ITEM_WEAPON_ELEMENT_COUNT_DISTRIBUTION,
+            [0, 1, 2, 3, 4, 5, 6],
+            count_weights,
             k=1
         )[0]
-        elements: list[str] = self.random.choices(
+        elements: list[str] = np.random.choice(
             self.ELEMENTAL_PROPERTIES,
-            Weights.ITEM_WEAPON_ELEMENT_DISTRIBUTION,
-            k=8
-        )[:element_count]
+            size=element_count,
+            replace=False,
+            p=element_weights,
+        )
 
         for element in self.ELEMENTAL_PROPERTIES:
             if element not in item: continue
