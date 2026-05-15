@@ -718,7 +718,7 @@ class ItemRandomizer(BaseRandomizer):
 
                 # Skills
                 self.randomize_skills(item, users, is_candidate)
-            elif enums.ItemCategory.is_equipment(data.get('category', 0)):
+            elif enums.ItemCategory.is_wearable(data.get('category', 0)):
                 # Element
                 if self.random.random() <= Weights.ITEM_ELEMENT_OPPORTUNITY:
                     self.randomize_element(
@@ -735,12 +735,19 @@ class ItemRandomizer(BaseRandomizer):
             count_weights,
             k=1
         )[0]
+        print(count_weights)
+        if count_weights[-1] == 0:
+            print("COUNT", element_count)
+            assert element_count < 5
         elements: list[str] = np.random.choice(
             self.ELEMENTAL_PROPERTIES,
             size=element_count,
             replace=False,
             p=element_weights,
         )
+        if count_weights[-1] == 0:
+            print("ELEMENTS ", len(elements))
+            assert len(elements) < 5
 
         for element in self.ELEMENTAL_PROPERTIES:
             if element not in item: continue
