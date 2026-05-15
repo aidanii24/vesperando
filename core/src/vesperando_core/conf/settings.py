@@ -163,6 +163,20 @@ class Weights:
         0.12,
         0.10,
     )
+    ITEM_STATS_OPPORTUNITY: float = 0.78
+    ITEM_STATS_MATCH: float = 0.2
+    ITEM_STATS_SUB_ZERO: float = 0.42
+    ITEM_STATS_RELATED = 0.12    # Randomize main stat counterpart
+    ITEM_STATS_AUX = 0.06   # Randomize other stats (e.g. Agility)
+    ITEM_STATS_AUX_COUNT_DISTRIBUTION: tuple = (
+        0.55,
+        0.40,
+        0.05
+    )
+    ITEM_STATS_AUX_DISTRIBUTION: tuple = (
+        0.9,
+        0.1
+    )
     ITEM_SKILL_OPPORTUNITIES: tuple = (
         0.96,
         0.875,

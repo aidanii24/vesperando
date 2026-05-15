@@ -716,8 +716,29 @@ class ItemRandomizer(BaseRandomizer):
                         [*Weights.ITEM_WEAPON_ELEMENT_DISTRIBUTION]
                     )
 
+                # Stats
+                if self.random.random() <= Weights.ITEM_STATS_OPPORTUNITY:
+                    if item.get('category', 0) == enums.ItemCategory.MAIN:
+                        ## Attack
+                        self.randomize_stat_pair(item, data, 'phys_attack', 'magic_attack', 1200)
+
+                        ## Defense
+                        if self.random.random() <= Weights.ITEM_STATS_RELATED:
+                            self.randomize_stat_pair(item, data, 'phys_defense', 'magic_defense', 150)
+                    else:
+                        ## Defense
+                        self.randomize_stat_pair(item, data, 'phys_defense', 'magic_defense', 900)
+
+                        ## Attack
+                        if self.random.random() <= Weights.ITEM_STATS_RELATED:
+                            self.randomize_stat_pair(item, data, 'phys_attack', 'magic_attack', 200)
+
+                    ## Others
+                    if self.random.random() <= Weights.ITEM_STATS_AUX:
+                        self.randomize_aux_stats(item)
                 # Skills
                 self.randomize_skills(item, users, is_candidate)
+            # Wearables Properties
             elif enums.ItemCategory.is_wearable(data.get('category', 0)):
                 # Element
                 if self.random.random() <= Weights.ITEM_ELEMENT_OPPORTUNITY:
@@ -727,6 +748,20 @@ class ItemRandomizer(BaseRandomizer):
                         [*Weights.ITEM_EQUIPMENT_ELEMENT_DISTRIBUTION]
                     )
 
+                # Stats
+                if self.random.random() <= Weights.ITEM_STATS_OPPORTUNITY:
+                    if item.get('category', 0) != enums.ItemCategory.ACCESSORY:
+                        ## Defense
+                        self.randomize_stat_pair(item, data, 'phys_defense', 'magic_defense', 900)
+
+                        ## Attack
+                        if self.random.random() <= Weights.ITEM_STATS_RELATED:
+                            self.randomize_stat_pair(item, data, 'phys_attack', 'magic_attack', 200)
+
+                    ## Others
+                    if self.random.random() <= Weights.ITEM_STATS_AUX:
+                        self.randomize_aux_stats(item)
+
     def randomize_element(self, item, count_weights: list, element_weights: list):
         self.statistics['Elements'] += 1
 
@@ -735,24 +770,50 @@ class ItemRandomizer(BaseRandomizer):
             count_weights,
             k=1
         )[0]
-        print(count_weights)
-        if count_weights[-1] == 0:
-            print("COUNT", element_count)
-            assert element_count < 5
         elements: list[str] = np.random.choice(
             self.ELEMENTAL_PROPERTIES,
             size=element_count,
             replace=False,
             p=element_weights,
         )
-        if count_weights[-1] == 0:
-            print("ELEMENTS ", len(elements))
-            assert len(elements) < 5
 
         for element in self.ELEMENTAL_PROPERTIES:
             if element not in item: continue
             if element in elements: item[element] = 1
             else: item[element] = 0
+
+    def randomize_aux_stats(self, item):
+        stat_counts = self.random.choices(
+            [0, 1, 2],
+            weights=[*Weights.ITEM_STATS_AUX_COUNT_DISTRIBUTION],
+            k=1
+        )[0]
+        if not stat_counts: return
+
+        stats: list[int] = np.random.choice(
+            [0, 1],
+            size=stat_counts,
+            p=[*Weights.ITEM_STATS_AUX_DISTRIBUTION],
+            replace=False
+        ) if stat_counts == 1 else [0, 1]
+        if 0 in stats:
+            ranges: list[int] = sorted([
+                self.random_from_triangular(0, 300),
+                self.random_from_triangular(0, 100)
+            ])
+            base: int = self.random_from_triangular(*ranges)
+            item['tp_heal'], item['agility'] = base, base
+        else:
+            item['tp_heal'], item['agility'] = 0, 0
+        if 1 in stats:
+            ranges: list[int] = sorted([
+                self.random_from_triangular(0, 300),
+                self.random_from_triangular(0, 100)
+            ])
+            base: int = self.random_from_triangular(*ranges)
+            item['luck'] = 0
+        else:
+            item['luck'] = 0
 
     def randomize_skills(self, item, users: list[int], is_candidate: bool):
         skills_candidates: set[int] = set(skill for char in users
@@ -809,6 +870,40 @@ class ItemRandomizer(BaseRandomizer):
                 item[f'skill{i + 1}_lp'] = 0
 
                 continue_iter = False
+
+    def randomize_stat_pair(self, item, data, first: str, second: str, max_value: int):
+        main_stat: str = first
+        sub_stat: str = second
+        is_physical_main: int = 0
+        if data.get(first) > data.get(second):
+            is_physical_main = 1
+        elif data.get(first) == data.get(second):
+            is_physical_main = 2
+        else:
+            main_stat = second
+            sub_stat = first
+
+        item[main_stat], item[sub_stat] = self.get_random_stat_pair(max_value, is_physical_main)
+
+    def get_random_stat_pair(self, max_value: int, is_first_main: int) -> tuple[int, int]:
+        power_ranges: list = sorted([
+            self.random_from_triangular(1, max_value),
+            self.random_from_triangular(1, math.ceil(max_value * 0.78), 'max'),
+        ])
+        main_power: int = self.random_from_triangular(*power_ranges, mode='max')
+
+        sub_power_multiplier: float = 1.0
+        if is_first_main < 2 and self.random.random() > Weights.ITEM_STATS_MATCH:
+            if self.random.random() > Weights.ITEM_STATS_SUB_ZERO:
+                multiplier_ranges: list = sorted([
+                    self.random_from_triangular(1, 100, 'max'),
+                    self.random_from_triangular(75, 100),
+                ])
+                sub_power_multiplier = self.random_from_triangular(*power_ranges, mode='max') * 0.01
+            else:
+                sub_power_multiplier = 0.0
+
+        return main_power, math.floor(main_power * sub_power_multiplier)
 
     def report(self):
         if sys.stdout.encoding == "utf-8":
