@@ -796,11 +796,9 @@ class ItemRandomizer(BaseRandomizer):
                     ])
                     new_price = max(int(base * self.random_from_triangular(*ranges) / 100), 5)
                     buy_price = new_price // 5 * 5
-                    print("MULTI", buy_price)
                 else:
                     self.statistics['Prices (Million Random)'] += 1
                     buy_price = self.randomize_buy_price_full()
-                    print("MILLION RANDOM", buy_price)
         else:
             buy_price = self.randomize_buy_price_full()
 

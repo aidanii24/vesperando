@@ -156,11 +156,11 @@ class Weights:
     ITEM_EQUIPMENT_ELEMENT_COUNT_DISTRIBUTION: tuple = (
         0.2,
         0.1,
-        0.2,
+        0.3,
+        0.05,
         0.1,
-        0.2,
-        0.1,
-        0.1
+        0.025,
+        0.025
     )
     ITEM_EQUIPMENT_ELEMENT_DISTRIBUTION: tuple = (
         0.22,
