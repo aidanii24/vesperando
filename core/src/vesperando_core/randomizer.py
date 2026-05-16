@@ -640,6 +640,7 @@ class ItemRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
         self.random = random_obj
         self.items_data = data['items_data']
+        self.common_items = data['common_items']
         self.skills_by_char = data['skills_by_char']
         self.options = ItemOptions(options)
 
@@ -762,6 +763,12 @@ class ItemRandomizer(BaseRandomizer):
                     if self.random.random() <= Weights.ITEM_STATS_AUX:
                         self.randomize_aux_stats(item)
 
+        # Run a second time for the synthesis randomization
+        ## This is so that Synth Price will be based on the randomized base Price of the items
+        for iid, item in self.candidates['base'].items():
+            if self.random.random() <= Weights.ITEM_SYNTHESIS_OPPORTUNITY:
+                self.randomize_synthesis(item)
+
     def randomize_element(self, item, count_weights: list, element_weights: list):
         self.statistics['Elements'] += 1
 
@@ -811,11 +818,11 @@ class ItemRandomizer(BaseRandomizer):
                 self.random_from_triangular(0, 100)
             ])
             base: int = self.random_from_triangular(*ranges)
-            item['luck'] = 0
+            item['luck'] = base
         else:
             item['luck'] = 0
 
-    def randomize_skills(self, item, users: list[int], is_candidate: bool):
+    def randomize_skills(self, item: dict, users: list[int], is_candidate: bool):
         skills_candidates: set[int] = set(skill for char in users
                                           for skill in self.skills_by_char[char]
                                           if char in self.skills_by_char)
@@ -871,6 +878,77 @@ class ItemRandomizer(BaseRandomizer):
 
                 continue_iter = False
 
+    def randomize_synthesis(self, item: dict):
+        self.statistics['Synthesis'] += 1
+
+        continue_iter: bool = True
+        prev_synth_level: int = 0
+        total_recipes: int = 0
+        for c in range(1, 4):
+            if continue_iter: continue_iter = self.random.random() < Weights.ITEM_SYNTHESIS_COUNT_DISTRIBUTION[c - 1]
+
+            level: int = 0
+            cost: int = 0
+            materials: list[int] = []
+            material_amounts: list[int] = []
+
+            if continue_iter:
+                total_recipes = c
+
+                # Synth Level
+                if prev_synth_level < 17:
+                    level = self.random_from_triangular(prev_synth_level, 17)
+                else:
+                    level = 17
+
+                # Synth Materials and Material Count
+                material_count: int = self.random.choices(
+                    [1, 2, 3, 4, 5, 6],
+                    weights=Weights.ITEM_SYNTHESIS_MATERIAL_COUNT_DISTRIBUTION,
+                    k=1
+                )[0]
+                materials = sorted(self.random.sample(
+                    self.common_items,
+                    material_count
+                ))
+                for m in materials:
+                    category: int = self.items_data[m].get('category', 0)
+                    if category == enums.ItemCategory.VALUABLES:
+                        material_amounts.append(1)
+                        cost += self.items_data[m].get(
+                            'buy_price',
+                            self.random_from_triangular(1000, 10000)
+                        )
+                        continue
+
+                    is_abundant: bool = enums.ItemCategory.is_abundant(category)
+                    if is_abundant or self.random.random() <= Weights.ITEM_SYNTHESIS_NON_ABUNDANT_COUNT_FULL_SHUFFLE:
+                        ranges: list[int] = sorted([
+                            self.random_from_triangular(0, 15),
+                            self.random_from_triangular(0, 15),
+                        ])
+                        material_amounts.append(self.random_from_triangular(*ranges))
+                    else:
+                        material_amounts.append(self.random_from_triangular(1, 3))
+
+                cost = math.floor(
+                    cost * (self.random_from_triangular(50, 300) * 0.01) / len(materials)
+                    * cost * (self.random_from_triangular(50, 300, 'max') * 0.01) / 2
+                )
+
+            item[f'synth{c}_level'] = level
+            item[f'synth{c}_cost'] = cost
+            item[f'synth{c}_material_size'] = len(materials)
+            for m in range(1, 7):
+                if m > len(materials):
+                    item[f'synth{c}_material{m}'] = 0
+                    item[f'synth{c}_material{m}_amount'] = 0
+                else:
+                    item[f'synth{c}_material{m}'] = materials[m - 1]
+                    item[f'synth{c}_material{m}_amount'] = material_amounts[m - 1]
+
+        item['synth_size'] = total_recipes
+
     def randomize_stat_pair(self, item, data, first: str, second: str, max_value: int):
         main_stat: str = first
         sub_stat: str = second
@@ -899,7 +977,7 @@ class ItemRandomizer(BaseRandomizer):
                     self.random_from_triangular(1, 100, 'max'),
                     self.random_from_triangular(75, 100),
                 ])
-                sub_power_multiplier = self.random_from_triangular(*power_ranges, mode='max') * 0.01
+                sub_power_multiplier = self.random_from_triangular(*multiplier_ranges, mode='max') * 0.01
             else:
                 sub_power_multiplier = 0.0
 
@@ -1627,6 +1705,7 @@ class BasicRandomizerProcedure:
             logger.info("> Randomizing Items")
             data: dict = {
                 'items_data': self.items_data_table,
+                'common_items': self.common_items,
                 'skills_by_char': self.skills_by_char,
             }
 

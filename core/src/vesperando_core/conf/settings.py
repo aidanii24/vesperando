@@ -183,6 +183,21 @@ class Weights:
         0.61
     )
     ITEM_SKILL_LP = 0.1
+    ITEM_SYNTHESIS_OPPORTUNITY: float = 0.68
+    ITEM_SYNTHESIS_NON_ABUNDANT_COUNT_FULL_SHUFFLE: float = 0.224
+    ITEM_SYNTHESIS_COUNT_DISTRIBUTION: tuple[float] = (
+        0.85,
+        0.1,
+        0.05,
+    )
+    ITEM_SYNTHESIS_MATERIAL_COUNT_DISTRIBUTION: tuple[float] = (
+        0.33,
+        0.32,
+        0.260,
+        0.066,
+        0.018,
+        0.006,
+    )
     SHOP_CANDIDACY = 0.1
     SHOP_CANDIDACY_REPEAT = 0.75
     SHOP_CANDIDACY_CONSUMABLE = 0.7
