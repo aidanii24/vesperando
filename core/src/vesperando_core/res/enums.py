@@ -327,12 +327,12 @@ class ItemCategory(enum.Enum):
         if not cls.is_valid(category): return False
 
         if isinstance(category, cls):
-            return 4 < category.value < 7
+            return 4 < category.value < 8
         elif isinstance(category, int):
-            return 4 < category < 7
+            return 4 < category < 8
         elif isinstance(category, str):
             try:
-                validity = 4 < cls[category].value < 7
+                validity = 4 < cls[category].value < 8
                 return validity
             except AttributeError:
                 return False
