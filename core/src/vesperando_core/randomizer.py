@@ -646,6 +646,9 @@ class ItemRandomizer(BaseRandomizer):
 
         self.set_skills_per_char: dict[int, set] = {c.value: set() for c in enums.Characters}
 
+        self.MAIN_STATS: Sequence[str] = [
+            'phys_attack', 'magic_attack' 'phys_defense', 'magic_defense'
+        ]
         self.ELEMENTAL_PROPERTIES: Sequence[str] = [
             "fire_elemental", "water_elemental", "earth_elemental", "wind_elemental",
             "light_elemental", "dark_elemental"
@@ -657,6 +660,7 @@ class ItemRandomizer(BaseRandomizer):
             'Prices (Multiplier)': 0,
             'Prices (Million Random)': 0,
             'Elements': 0,
+            'Stats': 0,
             'Synthesis': 0,
             'Skills': 0,
         }
@@ -719,20 +723,29 @@ class ItemRandomizer(BaseRandomizer):
 
                 # Stats
                 if self.random.random() <= Weights.ITEM_STATS_OPPORTUNITY:
+                    self.statistics['Stats'] += 1
                     if item.get('category', 0) == enums.ItemCategory.MAIN:
                         ## Attack
                         self.randomize_stat_pair(item, data, 'phys_attack', 'magic_attack', 1200)
 
                         ## Defense
                         if self.random.random() <= Weights.ITEM_STATS_RELATED:
-                            self.randomize_stat_pair(item, data, 'phys_defense', 'magic_defense', 150)
+                            self.randomize_stat_pair(
+                                item,
+                                data,
+                                'phys_defense',
+                                'magic_defense',
+                                150
+                            )
                     else:
-                        ## Defense
-                        self.randomize_stat_pair(item, data, 'phys_defense', 'magic_defense', 900)
-
                         ## Attack
-                        if self.random.random() <= Weights.ITEM_STATS_RELATED:
-                            self.randomize_stat_pair(item, data, 'phys_attack', 'magic_attack', 200)
+                        self.randomize_stat_pair(item, data, 'phys_attack', 'magic_attack', 150)
+
+                        ## Defense
+                        if self.random.random() <= Weights.ITEM_STATS_RELATED * 3:
+                            self.randomize_stat_pair(
+                                item, data, 'phys_defense', 'magic_defense', 150
+                            )
 
                     ## Others
                     if self.random.random() <= Weights.ITEM_STATS_AUX:
@@ -751,13 +764,18 @@ class ItemRandomizer(BaseRandomizer):
 
                 # Stats
                 if self.random.random() <= Weights.ITEM_STATS_OPPORTUNITY:
+                    self.statistics['Stats'] += 1
                     if item.get('category', 0) != enums.ItemCategory.ACCESSORY:
                         ## Defense
                         self.randomize_stat_pair(item, data, 'phys_defense', 'magic_defense', 900)
 
                         ## Attack
                         if self.random.random() <= Weights.ITEM_STATS_RELATED:
-                            self.randomize_stat_pair(item, data, 'phys_attack', 'magic_attack', 200)
+                            self.randomize_stat_pair(
+                                item, data, 'phys_attack', 'magic_attack', 200
+                            )
+                    else:
+                        self.randomize_main_stats(item)
 
                     ## Others
                     if self.random.random() <= Weights.ITEM_STATS_AUX:
@@ -788,6 +806,20 @@ class ItemRandomizer(BaseRandomizer):
             if element not in item: continue
             if element in elements: item[element] = 1
             else: item[element] = 0
+
+    def randomize_main_stats(self, item: dict) -> None:
+        props_count: int = self.random.choices(
+            [0, 1, 2, 3, 4],
+            weights=Weights.ITEM_ACC_STATS_COUNT_DISTRIBUTION,
+            k=1
+        )[0]
+        props: list[str] = self.random.sample([*self.MAIN_STATS], props_count)
+
+        for stat in self.MAIN_STATS:
+            if not props or stat not in props:
+                item[stat] = 0
+            else:
+             item[stat] = self.random_from_triangular(0, 100)
 
     def randomize_aux_stats(self, item):
         stat_counts = self.random.choices(

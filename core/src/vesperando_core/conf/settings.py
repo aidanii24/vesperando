@@ -167,6 +167,13 @@ class Weights:
     ITEM_STATS_MATCH: float = 0.2
     ITEM_STATS_SUB_ZERO: float = 0.42
     ITEM_STATS_RELATED = 0.12    # Randomize main stat counterpart
+    ITEM_ACC_STATS_COUNT_DISTRIBUTION: tuple = (
+        0.35,
+        0.57,
+        0.06,
+        0.01,
+        0.01
+    )
     ITEM_STATS_AUX = 0.06   # Randomize other stats (e.g. Agility)
     ITEM_STATS_AUX_COUNT_DISTRIBUTION: tuple = (
         0.55,
