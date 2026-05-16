@@ -686,31 +686,6 @@ class ItemRandomizer(BaseRandomizer):
                 if data['character_usable'] & character.bitflag() > 0:
                     users.append(character.value)
 
-            # Buy Price
-            buy_price: int = item.get('buy_price', 0)
-            if buy_price:
-                if is_candidate and self.random.random() <= Weights.ITEM_PRICE:
-                    self.statistics['Prices'] += 1
-                    use_multiplier: bool = self.random.random() <= Weights.ITEM_PRICE_MULTIPLIER
-
-                    if use_multiplier:
-                        self.statistics['Prices (Multiplier)'] += 1
-                        ranges = sorted([
-                            self.random_from_triangular(25, 100),
-                            self.random_from_triangular(25, 500)
-                        ])
-                        base = max(int(item['buy_price'] * self.random_from_triangular(*ranges) / 100), 5)
-                        buy_price = base // 5 * 5
-                    else:
-                        self.statistics['Prices (Million Random)'] += 1
-                        base = self.random_from_triangular(25, 1000000)
-                        buy_price = base // 5 * 5
-            else:
-                base = self.random_from_triangular(25, 1000000)
-                buy_price = base // 5 * 5
-
-            item['buy_price'] = int(buy_price * self.options.price_mod)
-
             # Weapon Properties
             if enums.ItemCategory.is_weapon(data.get('category', 0)):
                 # Element
@@ -767,7 +742,7 @@ class ItemRandomizer(BaseRandomizer):
                     self.statistics['Stats'] += 1
                     if item.get('category', 0) != enums.ItemCategory.ACCESSORY:
                         ## Defense
-                        self.randomize_stat_pair(item, data, 'phys_defense', 'magic_defense', 900)
+                        self.randomize_stat_pair(item, data, 'phys_defense', 'magic_defense', 500)
 
                         ## Attack
                         if self.random.random() <= Weights.ITEM_STATS_RELATED:
@@ -781,11 +756,59 @@ class ItemRandomizer(BaseRandomizer):
                     if self.random.random() <= Weights.ITEM_STATS_AUX:
                         self.randomize_aux_stats(item)
 
+            # Buy Price
+            self.randomize_buy_price(item, data, is_candidate)
+
         # Run a second time for the synthesis randomization
         ## This is so that Synth Price will be based on the randomized base Price of the items
         for iid, item in self.candidates['base'].items():
             if self.random.random() <= Weights.ITEM_SYNTHESIS_OPPORTUNITY:
                 self.randomize_synthesis(item)
+
+    def randomize_buy_price(self, item: dict, data: dict, is_candidate: bool) -> None:
+        buy_price: int = item.get('buy_price', 0)
+
+        use_multiplier: bool = self.random.random() <= Weights.ITEM_PRICE_MULTIPLIER
+        if buy_price and is_candidate:
+            if is_candidate and self.random.random() <= Weights.ITEM_PRICE:
+                self.statistics['Prices'] += 1
+
+                category: int = data.get('category', 0)
+                match category:
+                    case enums.ItemCategory.MAIN.value:
+                        base: int = math.floor(self.get_value_from_stats(item, category) * 100)
+                    case enums.ItemCategory.SUB.value:
+                        base: int = math.floor(self.get_value_from_stats(item, category) / 500 * 65000)
+                    case enums.ItemCategory.HEAD.value | enums.ItemCategory.BODY.value:
+                        base: int = math.floor(self.get_value_from_stats(item, category) / 150 * 50000)
+                    case enums.ItemCategory.ACCESSORY.value:
+                        base: int = math.floor(self.get_value_from_stats(item, category) / 51 * 50000)
+                        if not base:
+                            base = buy_price
+                    case _:
+                        base: int = buy_price
+
+                if use_multiplier:
+                    self.statistics['Prices (Multiplier)'] += 1
+                    ranges = sorted([
+                        self.random_from_triangular(25, 100),
+                        self.random_from_triangular(25, 500)
+                    ])
+                    new_price = max(int(base * self.random_from_triangular(*ranges) / 100), 5)
+                    buy_price = new_price // 5 * 5
+                    print("MULTI", buy_price)
+                else:
+                    self.statistics['Prices (Million Random)'] += 1
+                    buy_price = self.randomize_buy_price_full()
+                    print("MILLION RANDOM", buy_price)
+        else:
+            buy_price = self.randomize_buy_price_full()
+
+        item['buy_price'] = int(buy_price * self.options.price_mod)
+
+    def randomize_buy_price_full(self):
+        new_price = self.random_from_triangular(25, 100000)
+        return new_price // 5 * 5
 
     def randomize_element(self, item, count_weights: list, element_weights: list):
         self.statistics['Elements'] += 1
@@ -980,6 +1003,47 @@ class ItemRandomizer(BaseRandomizer):
                     item[f'synth{c}_material{m}_amount'] = material_amounts[m - 1]
 
         item['synth_size'] = total_recipes
+
+    @staticmethod
+    def get_value_from_stats(item: dict, category) -> int:
+        stat_value: float = 0
+
+        main_mod: float = round(1 / 6, 2)
+        sub_mod: float = 1 / 6
+        related_mod: float = 1 / 6
+        aux_mod: float = 1 / 6
+
+        if enums.ItemCategory.is_weapon(category):
+            main, sub = (sorted([item.get('phys_attack', 0), item.get('magic_attack', 0)]))
+            relateds: list[int] = [item.get('phys_defense', 0), item.get('magic_defense', 0)]
+
+            aux_mod = Weights.ITEM_PRICE_NON_ACC_AUX_STAT_VALUE
+            if category == enums.ItemCategory.SUB.value:
+                main_mod = Weights.ITEM_PRICE_MAIN_STAT_PAIR_MAIN_VALUE
+                sub_mod = Weights.ITEM_PRICE_MAIN_STAT_PAIR_SUB_VALUE
+                related_mod = Weights.ITEM_PRICE_MAIN_RELATED_STAT_VALUE
+            else:
+                main_mod = Weights.ITEM_PRICE_SUB_STAT_PAIR_MAIN_VALUE
+                sub_mod = Weights.ITEM_PRICE_SUB_STAT_PAIR_SUB_VALUE
+                related_mod = Weights.ITEM_PRICE_SUB_RELATED_STAT_VALUE
+        else:
+            main, sub = (sorted([item.get('phys_defense', 0), item.get('magic_defense', 0)]))
+            relateds: list[int] = [item.get('phys_attack', 0), item.get('magic_attack', 0)]
+
+            if category == enums.ItemCategory.HEAD.value or category == enums.ItemCategory.BODY.value:
+                main_mod = Weights.ITEM_PRICE_MAIN_STAT_PAIR_MAIN_VALUE
+                sub_mod = Weights.ITEM_PRICE_MAIN_STAT_PAIR_SUB_VALUE
+                related_mod = Weights.ITEM_PRICE_MAIN_RELATED_STAT_VALUE
+                aux_mod = Weights.ITEM_PRICE_NON_ACC_AUX_STAT_VALUE
+
+        stat_value += main * main_mod
+        stat_value += sub * sub_mod
+        stat_value += sum([r * related_mod for r in relateds])
+        stat_value += item['luck'] * aux_mod
+        stat_value += ((item['agility'] << 8) & 0xFFFF) * aux_mod
+
+        print("< ", stat_value)
+        return math.ceil(stat_value)
 
     def randomize_stat_pair(self, item, data, first: str, second: str, max_value: int):
         main_stat: str = first
