@@ -86,11 +86,11 @@ class Weights:
     ARTE_POWER_MOD_MISTYPE_OPPORTUNITY: float = 0.15
     ARTE_TARGET_OPPORTUNITY: float = 0.1
     ARTE_TARGET_DISTRIBUTION: tuple = (
+        0.7,
         0.5,
-        0.4,
         0.05,
-        0.025,
-        0.525,
+        0.15,
+        0.1,
     )
     ARTE_ELEMENT_OPPORTUNITY: float = 0.25
     ARTE_ELEMENT_COUNT_DISTRIBUTION: tuple = (
