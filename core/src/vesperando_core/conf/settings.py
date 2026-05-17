@@ -75,10 +75,33 @@ class Weights:
         (0.75, 0.05),
         (0.5, 0.5)
     )
+    ARTE_EFFECT_COUNT_DISTRIBUTION: float = (
+        0.1,
+        0.5,
+        0.25,
+        0.15,
+    )
     ARTE_EFFECT_OPPORTUNITY: float = 0.185
     ARTE_EFFECT_OPPORTUNITY_MULTI: float = 0.37
     ARTE_EFFECT_NEXT_OPPORTUNITY: float = 0.21
     ARTE_EFFECT_ONLY_OPPORTUNITY: float = 0.18
+    ARTE_EFFECT_DISTRIBUTION: tuple = (
+        0.17,
+        0.01,
+        0.06,
+        0.12,
+        0.12,
+        0.12,
+        0.12,
+        0.01,
+        0.06,
+        0.01,
+        0.05,
+        0.02,
+        0.06,
+        0.05,
+        0.02,
+    )
     ARTE_POWER_OPPORTUNITY: float = 0.4
     ARTE_POWER_MU: float = 243.60
     ARTE_POWER_SIGMA: float = 280.62

@@ -228,18 +228,27 @@ class ArteRandomizer(BaseRandomizer):
 
         usable_outside_battle: bool = False
         continue_iter: bool = True
-        for _ in range(1, 4):
-            roll: float = self.random.random()
-            if _ > 1 and continue_iter and roll > Weights.ARTE_EFFECT_OPPORTUNITY:
-                continue_iter = False
 
+        effect_count = self.random.choices(
+            [0, 1, 2, 3],
+            [*Weights.ARTE_EFFECT_COUNT_DISTRIBUTION],
+            k=1
+        )[0]
+        effects: list = np.random.choice(
+            list(enums.ArteEffects),
+            size=effect_count,
+            replace=False,
+            p=Weights.ARTE_EFFECT_DISTRIBUTION
+        )
+
+        is_usable_outside_battle: bool = False
+        for e in range(1, 4):
             effect: int = 0
             parameter: int = 0
             duration: int = 0
-            if continue_iter:
-                effect = self.random.choice(list(enums.ArteEffects)).value
-                if enums.ArteEffects.usable_outside_battle(effect):
-                    usable_outside_battle = True
+
+            if e <= len(effects):
+                effect = effects[e - 1].value
 
                 if enums.ArteEffects.has_power(effect):
                     ranges: list[int] = sorted([
@@ -263,11 +272,14 @@ class ArteRandomizer(BaseRandomizer):
                     ])
                     duration: int = self.random_from_triangular(*ranges)
 
-            arte[f'status_effect{_}'] = effect
-            arte[f'status_effect{_}_parameter'] = parameter
-            arte[f'status_effect{_}_duration'] = duration
+                if not is_usable_outside_battle:
+                    is_usable_outside_battle = enums.ArteEffects.usable_outside_battle(effect)
 
-        arte[f'is_usable_outside_battle'] = int(usable_outside_battle)
+            arte[f'status_effect{e}'] = effect
+            arte[f'status_effect{e}_parameter'] = parameter
+            arte[f'status_effect{e}_duration'] = duration
+
+        arte[f'is_usable_outside_battle'] = is_usable_outside_battle
 
     def randomize_power(self, arte):
         self.statistics['Power'] += 1
