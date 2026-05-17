@@ -640,8 +640,10 @@ class ItemRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict):
         self.random = random_obj
         self.items_data = data['items_data']
-        self.common_items = data['common_items']
         self.skills_by_char = data['skills_by_char']
+        self.consumable_items = []
+        self.material_items = []
+        self.equipment_items = []
         self.options = ItemOptions(options)
 
         self.set_skills_per_char: dict[int, set] = {c.value: set() for c in enums.Characters}
@@ -665,7 +667,15 @@ class ItemRandomizer(BaseRandomizer):
             'Skills': 0,
         }
 
-        candidates = {iid: item for iid, item in self.items_data.items() if iid > 0}
+        candidates: dict = {}
+        for iid, item in self.items_data.items():
+            if iid: candidates[iid] = item
+
+            category = item['category']
+            if category == enums.ItemCategory.CONSUMABLE.value: self.consumable_items.append(iid)
+            elif category == enums.ItemCategory.MATERIALS.value: self.material_items.append(iid)
+            elif enums.ItemCategory.is_equipment(category): self.equipment_items.append(iid)
+
         self.candidates = {
             'base': schema.Items.extract(candidates)
         }
@@ -763,7 +773,7 @@ class ItemRandomizer(BaseRandomizer):
         ## This is so that Synth Price will be based on the randomized base Price of the items
         for iid, item in self.candidates['base'].items():
             if self.random.random() <= Weights.ITEM_SYNTHESIS_OPPORTUNITY:
-                self.randomize_synthesis(item)
+                self.randomize_synthesis(item, self.items_data[iid])
 
     def randomize_buy_price(self, item: dict, data: dict, is_candidate: bool) -> None:
         buy_price: int = item.get('buy_price', 0)
@@ -931,8 +941,10 @@ class ItemRandomizer(BaseRandomizer):
 
                 continue_iter = False
 
-    def randomize_synthesis(self, item: dict):
+    def randomize_synthesis(self, item: dict, data: dict):
         self.statistics['Synthesis'] += 1
+
+        category: int = data.get('category', 0)
 
         continue_iter: bool = True
         prev_synth_level: int = 0
@@ -960,8 +972,17 @@ class ItemRandomizer(BaseRandomizer):
                     weights=Weights.ITEM_SYNTHESIS_MATERIAL_COUNT_DISTRIBUTION,
                     k=1
                 )[0]
+
+                material_candidates: list = [*self.material_items]
+                if (category == enums.ItemCategory.CONSUMABLE or
+                    self.random.random() <= Weights.ITEM_SYNTHESIS_CONSUMABLE_AS_MATERIAL):
+                    material_candidates.extend(self.consumable_items)
+                if enums.ItemCategory.is_equipment(category):
+                    print('EQUIP!')
+                    material_candidates.extend(self.equipment_items)
+
                 materials = sorted(self.random.sample(
-                    self.common_items,
+                    material_candidates,
                     material_count
                 ))
                 for m in materials:
@@ -974,20 +995,29 @@ class ItemRandomizer(BaseRandomizer):
                         )
                         continue
 
-                    cost += self.items_data[m].get('buy_price', self.random_from_triangular(100, 5000))
                     is_abundant: bool = enums.ItemCategory.is_abundant(category)
                     if is_abundant or self.random.random() <= Weights.ITEM_SYNTHESIS_NON_ABUNDANT_COUNT_FULL_SHUFFLE:
                         ranges: list[int] = sorted([
-                            self.random_from_triangular(0, 15),
-                            self.random_from_triangular(0, 15),
+                            self.random_from_triangular(1, 15),
+                            self.random_from_triangular(1, 15),
                         ])
-                        material_amounts.append(self.random_from_triangular(*ranges))
+                        amount = (self.random_from_triangular(*ranges))
                     else:
-                        material_amounts.append(self.random_from_triangular(1, 3))
+                        amount = self.random_from_triangular(1, 3)
+
+                    material_amounts.append(amount)
+
+                    base_cost = self.items_data[m].get(
+                        'buy_price',
+                        self.random_from_triangular(100, 5000)
+                    )
+                    base_cost *= (1 + (amount * 0.1))
+                    cost += base_cost
 
                 cost = math.floor(
-                    cost * (self.random_from_triangular(50, 300) * 0.01) / len(materials)
+                    math.ceil(cost * (self.random_from_triangular(50, 300) * 0.01)) / len(materials)
                 )
+                if not cost: cost = self.random_from_triangular(100, 100000)
 
             item[f'synth{c}_level'] = level
             item[f'synth{c}_cost'] = cost
