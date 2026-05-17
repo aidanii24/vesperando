@@ -88,9 +88,9 @@ class Weights:
     ARTE_TARGET_DISTRIBUTION: tuple = (
         0.5,
         0.4,
-        0.15,
-        0.1,
-        0.5
+        0.05,
+        0.025,
+        0.525,
     )
     ARTE_ELEMENT_OPPORTUNITY: float = 0.25
     ARTE_ELEMENT_COUNT_DISTRIBUTION: tuple = (

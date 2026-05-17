@@ -396,6 +396,15 @@ class TargetType(enum.Enum):
     SELF = 6
     ALLIES_ONLY = 7
 
+    @classmethod
+    def get_ally_targetables(cls) -> list['TargetType']:
+        return [
+            cls.ALLY,
+            cls.ALLY_MULTI,
+            cls.ALL_ALLIES,
+            cls.ALLIES_ONLY,
+        ]
+
 
 class PCParamSlot(enum.Enum):
     INVALID = 0x0

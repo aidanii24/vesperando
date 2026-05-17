@@ -341,23 +341,17 @@ class ArteRandomizer(BaseRandomizer):
         # or if the original target type is self
         if not arte['status_effect1'] or target_type == enums.TargetType.SELF.value: return
 
-        eligible_types: list[int] = [
-            enums.TargetType.ALLY.value,
-            enums.TargetType.ALLY_MULTI.value,
-            enums.TargetType.ALL_ALLIES.value,
-            enums.TargetType.ALLIES_ONLY.value,
-        ]
-
+        eligible_types: list[enums.TargetType] = enums.TargetType.get_ally_targetables()
         if not arte['power']:
-            eligible_types.append(enums.TargetType.SELF.value)
+            eligible_types.append(enums.TargetType.SELF)
 
-        # If an arte already uses these target types, only give it a small chance to be changes
+        # If an arte already uses these target types, only give it a small chance to be changed
         if target_type in eligible_types and self.random.random() > Weights.ARTE_TARGET_OPPORTUNITY:
             return
 
         distribution: list[int] = Weights.ARTE_TARGET_DISTRIBUTION[:len(eligible_types)]
 
-        arte['target_type'] = self.random.choices(eligible_types, distribution)[0]
+        arte['target_type'] = self.random.choices(eligible_types, distribution)[0].value
 
     def randomize_evolutions(self, arte, user):
         candidates: set = self.placed[user] - {arte['id']}
