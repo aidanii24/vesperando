@@ -17,7 +17,7 @@ class PatchSpoiler:
 
     spoiler: dict
 
-    def __init__(self):
+    def __init__(self, original_data: dict):
         self.ELEMENTS: list = [
             'fire_elemental',
             'water_elemental',
@@ -37,6 +37,8 @@ class PatchSpoiler:
         self.search_names= data['search']['FIELD']
         self.shop_name_table = data['shops']
         self.scenario_name_table = data['scenario']
+
+        self.item_to_category = original_data['item_to_category']
 
         self.spoiler = {}
 
@@ -207,6 +209,8 @@ class PatchSpoiler:
         report_list: list = []
         for item in [*patch['base'].values()]:
             entry: list = [self.item_name_table[item['id']], item['buy_price']]
+
+            # Elements
             elements: list = []
             for e in self.ELEMENTS:
                 if item.get(e, 0):
@@ -214,22 +218,77 @@ class PatchSpoiler:
 
             entry.append(', '.join(elements))
 
+            # Stats
+            category = self.item_to_category[item['id']]
+            if enums.ItemCategory.is_weapon(category) or enums.ItemCategory.is_wearable(category):
+                entry.extend([
+                    item['phys_attack'],
+                    item['magic_attack'],
+                    item['phys_defense'],
+                    item['magic_defense'],
+                    item['luck'],
+                    item['agility']
+                ])
+            else:
+                entry.extend(["" for _ in range(6)])
+
+            # Skills
             for _ in range(1, 4):
                 if item[f'skill{_}']:
                     entry.extend([self.skill_name_table[item[f'skill{_}']], item[f'skill{_}_lp']])
                 else:
                     entry.extend(["", ""])
 
+            # Synthesis
+            for i in range(1, 4):
+                if not item[f'synth{i}_level']:
+                    entry.extend(["" for _ in range(14)])
+                    continue
+
+                entry.extend([item[f'synth{i}_level'], item[f'synth{i}_cost']])
+
+                for m in range(1, 7):
+                    if not item[f'synth{i}_material{m}']:
+                        entry.extend(["", ""])
+                        continue
+
+                    entry.extend([
+                        self.item_name_table[item[f'synth{i}_material{m}']],
+                        item[f'synth{i}_material{m}_amount']]
+                    )
+
             report_list.append(entry)
 
         field_names: list[str] = [
             "Item", "Price", "Elements",
             "Skill 1", "Skill 1 LP", "Skill 2", "Skill 2 LP", "Skill 3", "Skill 3 LP",
+            "Physical Attack", "Magic Attack", "Physical Defense", "Magic Defense", "Luck", "Agility",
+            "Synth Recipe 1 Level", "Synth Recipe 1 Price",
+            "Synth Recipe 1 Material 1", "Synth Recipe 1 Material 1 Amount",
+            "Synth Recipe 1 Material 2", "Synth Recipe 1 Material 2 Amount",
+            "Synth Recipe 1 Material 3", "Synth Recipe 1 Material 3 Amount",
+            "Synth Recipe 1 Material 4", "Synth Recipe 1 Material 4 Amount",
+            "Synth Recipe 1 Material 5", "Synth Recipe 1 Material 5 Amount",
+            "Synth Recipe 1 Material 6", "Synth Recipe 1 Material 6 Amount",
+            "Synth Recipe 2 Level", "Synth Recipe 2 Price",
+            "Synth Recipe 2 Material 1", "Synth Recipe 2 Material 1 Amount",
+            "Synth Recipe 2 Material 2", "Synth Recipe 2 Material 2 Amount",
+            "Synth Recipe 2 Material 3", "Synth Recipe 2 Material 3 Amount",
+            "Synth Recipe 2 Material 4", "Synth Recipe 2 Material 4 Amount",
+            "Synth Recipe 2 Material 5", "Synth Recipe 2 Material 5 Amount",
+            "Synth Recipe 2 Material 6", "Synth Recipe 2 Material 6 Amount",
+            "Synth Recipe 3 Level", "Synth Recipe 3 Price",
+            "Synth Recipe 3 Material 1", "Synth Recipe 3 Material 1 Amount",
+            "Synth Recipe 3 Material 2", "Synth Recipe 3 Material 2 Amount",
+            "Synth Recipe 3 Material 3", "Synth Recipe 3 Material 3 Amount",
+            "Synth Recipe 3 Material 4", "Synth Recipe 3 Material 4 Amount",
+            "Synth Recipe 3 Material 5", "Synth Recipe 3 Material 5 Amount",
+            "Synth Recipe 3 Material 6", "Synth Recipe 3 Material 6 Amount",
         ]
 
         report: Table = Table("ITEMS")
         report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
+        for i, row in enumerate(report_list[:-10]):
             report.set_row_values(i + 1, row)
 
         return report
@@ -382,8 +441,3 @@ class PatchSpoiler:
                 return [gald_amount, "GALD"]
 
         return ['Unknown Event']
-
-
-
-if __name__ == '__main__':
-    spoiler = PatchSpoiler()

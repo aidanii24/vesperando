@@ -127,7 +127,7 @@ class Items(Patch):
         'synth1_material5_amount',
         'synth1_material6',
         'synth1_material6_amount',
-        'synth2_level'
+        'synth2_level',
         'synth2_cost',
         'synth2_material_size',
         'synth2_material1',

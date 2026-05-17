@@ -1040,7 +1040,6 @@ class ItemRandomizer(BaseRandomizer):
         stat_value += item['luck'] * aux_mod
         stat_value += ((item['agility'] << 8) & 0xFFFF) * aux_mod
 
-        print("< ", stat_value)
         return math.ceil(stat_value)
 
     def randomize_stat_pair(self, item, data, first: str, second: str, max_value: int):
@@ -1873,7 +1872,7 @@ class BasicRandomizerProcedure:
             start_time = time.time()
             logger.info(f"\n> Generating Spoiler Sheet")
 
-            spoiler = PatchSpoiler()
+            spoiler = PatchSpoiler({'item_to_category': self.item_to_category})
             spoiler.write_spreadsheet(patch_data, self.report_output)
 
             end_time = time.time()
