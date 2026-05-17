@@ -974,6 +974,7 @@ class ItemRandomizer(BaseRandomizer):
                         )
                         continue
 
+                    cost += self.items_data[m].get('buy_price', self.random_from_triangular(100, 5000))
                     is_abundant: bool = enums.ItemCategory.is_abundant(category)
                     if is_abundant or self.random.random() <= Weights.ITEM_SYNTHESIS_NON_ABUNDANT_COUNT_FULL_SHUFFLE:
                         ranges: list[int] = sorted([
@@ -986,7 +987,6 @@ class ItemRandomizer(BaseRandomizer):
 
                 cost = math.floor(
                     cost * (self.random_from_triangular(50, 300) * 0.01) / len(materials)
-                    * cost * (self.random_from_triangular(50, 300, 'max') * 0.01) / 2
                 )
 
             item[f'synth{c}_level'] = level
