@@ -146,7 +146,7 @@ class PatchSpoiler:
                 self.arte_name_table[arte['id']],
                 arte['power'],
                 arte['tp_cost'],
-                arte['cast_time'] if arte['cast_time'] else "N/A",
+                arte['cast_time'] if arte['cast_time'] else "",
                 ", ".join(elements),
                 enums.TargetType(arte['target_type']).name.replace("_", " ").title(),
                 *learn_conditions,

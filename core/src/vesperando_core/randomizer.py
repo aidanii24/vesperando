@@ -107,17 +107,6 @@ class ArteRandomizer(BaseRandomizer):
 
             is_preplaced: bool = arte['id'] in self.preplaced.get(user, [])
 
-            # TP Cost
-            tp: int = arte.get('tp_cost', 0)
-            if is_candidate and self.random.random() <= Weights.ARTE_TP_COST:
-                tp = self.randomize_tp_cost(arte)
-
-            arte['tp_cost'] = min(max(int(tp * self.options.tp_mod), self.options.tp_min), self.options.tp_max)
-
-            # Cast Time
-            if is_candidate and arte['cast_time'] > 0 and self.random.random() <= Weights.ARTE_CAST_TIME:
-                self.randomize_cast_time(arte)
-
             # Fatal Strike
             ## Respect Keep Azure Edge FS option. This is required as the Fatal Strike tutorial assumes
             ## Azure Edge's original FS Type, and will softlock the game when it gets changes.
@@ -188,20 +177,35 @@ class ArteRandomizer(BaseRandomizer):
                             self.options.learn_arte_usage_max
                         )
 
+
+            value: float = max(min(self.get_value_from_props(arte) / 700, 1), 0.1)
+            # TP Cost
+            tp: int = arte.get('tp_cost', 0)
+            if is_candidate and self.random.random() <= Weights.ARTE_TP_COST:
+                tp = self.randomize_tp_cost(value)
+
+            arte['tp_cost'] = min(max(int(tp * self.options.tp_mod), self.options.tp_min),
+                                  self.options.tp_max)
+
+            # Cast Time
+            if is_candidate and arte['cast_time'] > 0 and self.random.random() <= Weights.ARTE_CAST_TIME:
+                self.randomize_cast_time(arte, value)
+
             ## Add to 'preplaced' to signify it is available to be used as requirement
             self.placed.setdefault(user, set()).add(arte['id'])
 
-    def randomize_tp_cost(self, arte):
+    def randomize_tp_cost(self, value: float) -> int:
         self.statistics['TP Cost'] += 1
         use_multiplier: bool = self.random.random() <= Weights.ARTE_TP_COST_MULTIPLIER
 
+        initial_cost: float = math.ceil(value * self.options.tp_max)
         if use_multiplier:
             self.statistics['TP Cost (Multiplier)'] += 1
             ranges = sorted([
                 self.random_from_triangular(25, 100),
                 self.random_from_triangular(25, 300)
             ])
-            base = int(arte['tp_cost'] * self.random_from_triangular(*ranges) / 100)
+            base = int(initial_cost * self.random_from_triangular(*ranges) / 100)
             tp_cost = base // 5 * 5
         else:
             self.statistics['TP Cost (Full Random)'] += 1
@@ -210,9 +214,10 @@ class ArteRandomizer(BaseRandomizer):
 
         return tp_cost
 
-    def randomize_cast_time(self, arte):
+    def randomize_cast_time(self, arte:dict, value: float) -> None:
         self.statistics['Cast Time'] += 1
-        arte['cast_time'] = math.ceil(int(arte['cast_time']) * self.random.randrange(10, 200) * 0.01)
+        base_time: int = math.ceil(math.ceil(value * 300) + arte.get('cast_time', 10) / 2)
+        arte['cast_time'] = math.ceil(base_time * self.random.randrange(10, 200) * 0.01)
 
     def randomize_fatal_strike(self, arte):
         self.statistics['Fatal Strikes'] += 1
@@ -449,6 +454,25 @@ class ArteRandomizer(BaseRandomizer):
             for _ in range(1, 5):
                 arte[f'evolve_condition{_}'] = 0
                 arte[f'evolve_parameter{_}'] = 0
+
+    @staticmethod
+    def get_value_from_props(arte: dict) -> float:
+        value: float = arte['power']
+        effect_values: list[float] = [0]
+        for e in range(1, 4):
+            effect: int = arte.get(f'status_effect{e}', 0)
+            if not effect: break
+
+            if enums.ArteEffects.has_power(effect):
+                effect_values.append(arte.get(f'status_effect{e}_parameter', 0) / 1000)
+            elif enums.ArteEffects.has_duration(effect):
+                effect_values.append(arte.get(f'status_effect{e}_duration', 0) / 2000)
+            else:
+                effect_values.append(1)
+
+        if not effect_values: return int(value)
+
+        return value + (sum(effect_values) / 3) / 2
 
     def report(self):
         if sys.stdout.encoding == "utf-8":

@@ -100,8 +100,8 @@ class Weights:
     )
     ARTE_ELEMENT_DISTRIBUTION: tuple = (
         0.27,
-        0.14,
-        0.14,
+        0.15,
+        0.15,
         0.23,
         0.14,
         0.06,
