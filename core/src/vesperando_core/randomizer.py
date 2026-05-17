@@ -996,7 +996,6 @@ class ItemRandomizer(BaseRandomizer):
                     self.random.random() <= Weights.ITEM_SYNTHESIS_CONSUMABLE_AS_MATERIAL):
                     material_candidates.extend(self.consumable_items)
                 if enums.ItemCategory.is_equipment(category):
-                    print('EQUIP!')
                     material_candidates.extend(self.equipment_items)
 
                 materials = sorted(self.random.sample(
@@ -1136,6 +1135,9 @@ class ItemRandomizer(BaseRandomizer):
         prices_ratio: str = f"{self.statistics['Prices']:>4}/{self.statistics['Items']}"
         prices_multiplier_ratio: str = f"{self.statistics['Prices (Multiplier)']:>4}/{self.statistics['Prices']}"
         prices_million_ratio: str = f"{self.statistics['Prices (Million Random)']:>4}/{self.statistics['Prices']}"
+        elements_ratio: str = f"{self.statistics['Elements']:>4}/{self.statistics['Items']}"
+        stats_ratio: str = f"{self.statistics['Stats']:>4}/{self.statistics['Items']}"
+        synth_ratio: str = f"{self.statistics['Synthesis']:>4}/{self.statistics['Items']}"
         skills_ratio: str = f"{self.statistics['Skills']:>4}/{self.statistics['Items']}"
 
         items_percentage: float = safe_divide(self.statistics['Items'], base_total)
@@ -1148,6 +1150,9 @@ class ItemRandomizer(BaseRandomizer):
             self.statistics['Prices (Million Random)'],
             self.statistics['Prices']
         )
+        elements_percentage: float = safe_divide(self.statistics['Elements'], self.statistics['Items'])
+        stats_percentage: float = safe_divide(self.statistics['Stats'], self.statistics['Items'])
+        synth_percentage: float = safe_divide(self.statistics['Synthesis'], self.statistics['Items'])
         skills_percentage: float = safe_divide(self.statistics['Skills'], self.statistics['Items'])
 
         logger.info(f"{"":>4}{"> Candidates:":<21}{items_ratio:<12}{items_percentage:.2f}%")
@@ -1158,6 +1163,9 @@ class ItemRandomizer(BaseRandomizer):
         logger.info(
             f"{"":>6}{"> Prices (Million Random):":<28}{prices_million_ratio:<12}{prices_million_percentage:.2f}%"
         )
+        logger.info(f"{"":>4}{"> Elements:":<21}{elements_ratio:<12}{elements_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Stats:":<21}{stats_ratio:<12}{stats_percentage:.2f}%")
+        logger.info(f"{"":>4}{"> Synthesis:":<21}{synth_ratio:<12}{synth_percentage:.2f}%")
         logger.info(f"{"":>4}{"> Skills:":<21}{skills_ratio:<12}{skills_percentage:.2f}%")
         logger.info("")
 

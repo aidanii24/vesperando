@@ -19,7 +19,7 @@ def test_generate():
         except Exception as e: print(f"[TEST] Failed to remove {filename}")
 
     print("[TEST] Running Application")
-    args: list[str] = ["generate", *sys.argv[1:], "-s"]
+    args: list[str] = ["generate", *sys.argv[1:]]
     print(f"> vesperando_cli", *args)
 
     runner = CliRunner()
