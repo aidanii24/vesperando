@@ -356,8 +356,6 @@ class GamePatcher:
 
     @staticmethod
     def patch_search_points(target: str, patches: dict):
-        assert os.path.isfile(target), f"Expected file {target}, but it does not exist."
-
         header_size: int = ctypes.sizeof(gtypes.SearchPointHeader)
         content_size: int = ctypes.sizeof(gtypes.SearchPointContentEntry)
         item_size: int = ctypes.sizeof(gtypes.SearchPointItemEntry)
@@ -452,6 +450,20 @@ class GamePatcher:
             mm.seek(0)
             header.file_size = mm.size()
             mm.write(bytearray(header))
+
+    @staticmethod
+    def patch_npc_items(target: str) -> None:
+        with open(target, 'r+b') as f:
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
+            mm.seek(0x68)
+
+            while mm.tell() < 0x9BC:
+                print("<", hex(mm.tell()))
+                mm.write(int(0).to_bytes(4, byteorder="little"))
+                mm.seek(0x0C, 1)
+
+            mm.flush()
+            mm.close()
 
 
 class PatchError(Exception):

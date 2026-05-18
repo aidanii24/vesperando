@@ -178,6 +178,19 @@ class GamePatchProcedure:
             self.packer.compress_data(decomp_path + ".dec", search_path)
             self.packer.pack_map(search_room)
 
+            material_data_file: str = "NPC"
+            material_dir: str = os.path.join(base_dir, material_data_file)
+            material_path: str = os.path.join(material_dir, f"{material_data_file}.dec.ext", "0004")
+            material_dec: str = os.path.join(material_dir, "0004")
+
+            self.packer.extract_map(material_data_file)
+            self.packer.decompress_data(material_path, material_dec)
+
+            self.patcher.patch_npc_items(material_dec + ".dec")
+
+            self.packer.compress_data(material_dec + ".dec", material_path)
+            self.packer.pack_map(material_data_file)
+
         self.packer.copy_to_output('npc')
 
     def restore(self):
