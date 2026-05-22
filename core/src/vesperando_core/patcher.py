@@ -104,14 +104,18 @@ class GamePatcher:
             mm.close()
 
     def patch_items(self, item_patches: dict):
-        target: str = os.path.join(self.build_dir, "item", "ITEM.DAT")
-        assert os.path.isfile(target), f"Expected file {target}, but it does not exist."
+        iwd: str = os.path.join(self.build_dir, "item")
+        item_file: str = os.path.join(iwd, "ITEM.DAT")
+        sort_file: str = os.path.join(iwd, "ITEMSORT.DAT")
 
         if 'base' in item_patches:
-            self.patch_items_base(target, item_patches['base'])
+            self.patch_items_base(item_file, item_patches['base'])
+            self.generate_item_sort(sort_file, item_patches['base'])
 
         if 'custom' in item_patches:
-            self.patch_items_custom(target, item_patches['custom'])
+            self.patch_items_custom(item_file, item_patches['custom'])
+
+
 
     @staticmethod
     def patch_items_base(target_file: str, item_patches: dict):
@@ -144,6 +148,49 @@ class GamePatcher:
 
     def patch_items_custom(self, target_file: str, item_patches: dict):
         pass
+
+    @staticmethod
+    def generate_item_sort(target_file: str, item_patches: dict):
+        props: list = ['id', 'phys_attack', 'magic_attack', 'phys_defense', 'magic_defense']
+        id_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[0], 0), reverse=True)]
+        pa_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[1], 0), reverse=True)]
+        ma_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[2], 0), reverse=True)]
+        md_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[4], 0), reverse=True)]
+        pd_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[3], 0), reverse=True)]
+        # for item in pa_sort:
+        #     print(f"{pa_sort.index(item)} | {item}: {item_patches.get(item, {}).get(props[1], 0)}")
+
+        count: int = len(id_sort)
+        size: int = (count * 11 * 0x4) + 4
+
+        with open(target_file, 'w+b') as f:
+            f.truncate(0xF000)
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
+
+            # Write Header
+            mm.write(count.to_bytes(4, byteorder="big"))
+
+            # Write Entries
+            for index, item in enumerate(id_sort):
+                # Entry Number
+                mm.write(index.to_bytes(4, byteorder="big"))
+                # Item ID
+                mm.write(item.to_bytes(4, byteorder="big"))
+                # ID Sort
+                mm.write(index.to_bytes(4, byteorder="big"))
+                # Phys Attack Sort
+                mm.write(pa_sort.index(item).to_bytes(4, byteorder="big"))
+                # Phys Defense Sort
+                mm.write(pd_sort.index(item).to_bytes(4, byteorder="big"))
+                # Magic Attack Sort
+                mm.write(ma_sort.index(item).to_bytes(4, byteorder="big"))
+                # Magic Defense Sort
+                mm.write(md_sort.index(item).to_bytes(4, byteorder="big"))
+                # Padding
+                mm.write(b'\x00' * 0x4 * 0x4)
+
+            mm.flush()
+            mm.close()
 
     def patch_shops(self, shop_patches: dict, lang: str = "ENG"):
         target: str = os.path.join(self.build_dir, "language", f".{lang}.dec", "0.dec")
