@@ -176,8 +176,6 @@ class GamePatcher:
                 mm.write(index.to_bytes(4, byteorder="big"))
                 # Item ID
                 mm.write(item.to_bytes(4, byteorder="big"))
-                # ID Sort
-                mm.write(index.to_bytes(4, byteorder="big"))
                 # Phys Attack Sort
                 mm.write(pa_sort.index(item).to_bytes(4, byteorder="big"))
                 # Phys Defense Sort
@@ -186,6 +184,8 @@ class GamePatcher:
                 mm.write(ma_sort.index(item).to_bytes(4, byteorder="big"))
                 # Magic Defense Sort
                 mm.write(md_sort.index(item).to_bytes(4, byteorder="big"))
+                # Unknown/Unused; duplicate entry number just in case
+                mm.write(index.to_bytes(4, byteorder="big"))
                 # Padding
                 mm.write(b'\x00' * 0x4 * 0x4)
 
