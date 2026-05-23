@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from rich.progress import Progress, track
 from enum import IntEnum
 import datetime
 import logging
@@ -88,43 +89,84 @@ class GamePatchProcedure:
         self.packer.unpack_btl()
 
         if 'artes' in self.patch_data:
-            logger.info("> Patching Artes")
-            self.packer.extract_artes()
-            self.patcher.patch_artes(self.patch_data['artes'])
-            self.packer.pack_artes()
+            with Progress() as progress:
+                patch_progress = progress.add_task(
+                    f"{"> Artes":<32}",
+                    total=len(self.patch_data['artes']) + 2
+                )
+
+                self.packer.extract_artes()
+                progress.update(patch_progress, advance=1)
+
+                self.patcher.patch_artes(self.patch_data['artes'], lambda: progress.update(patch_progress, advance=1))
+
+                self.packer.pack_artes()
+                progress.update(patch_progress, advance=1)
 
         if 'skills' in self.patch_data:
-            logger.info("> Patching Skills")
-            self.packer.extract_skills()
-            self.patcher.patch_skills(self.patch_data['skills'])
-            self.packer.pack_skills()
+            with Progress() as progress:
+                patch_progress = progress.add_task(
+                    f"{"> Skills":<32}",
+                    total=len(self.patch_data['skills']) + 2
+                )
+
+                self.packer.extract_skills()
+                progress.update(patch_progress, advance=1)
+
+                self.patcher.patch_skills(self.patch_data['skills'], lambda: progress.update(patch_progress, advance=1))
+
+                self.packer.pack_skills()
+                progress.update(patch_progress, advance=1)
 
         self.packer.pack_btl()
 
     def patch_items(self):
-        logger.info("> Patching Items")
-        self.packer.unpack_item()
-        self.patcher.patch_items(self.patch_data['items'])
-        self.packer.copy_to_output('item')
+        with Progress() as progress:
+            patch_progress = progress.add_task(
+                f"{"> Items":<32}",
+                total=sum(len(v) * 2 for v in self.patch_data['items']) + 2
+            )
+
+            self.packer.unpack_item()
+            progress.update(patch_progress, advance=1)
+
+            self.patcher.patch_items(self.patch_data['items'], lambda: progress.update(patch_progress, advance=1))
+
+            self.packer.copy_to_output('item')
+            progress.update(patch_progress, advance=1)
 
     def patch_scenario(self):
         self.packer.extract_scenario()
 
         if 'shops' in self.patch_data:
-            logger.info("> Patching Shops")
             self.packer.decompress_scenario('0')
-            self.patcher.patch_shops(self.patch_data['shops'])
+
+            self.patcher.patch_shops(
+                self.patch_data['shops'],
+                prog_track=lambda s: track(s, description=f"{"> Shops":<32}")
+            )
 
         if 'events' in self.patch_data:
-            logger.info("> Patching Events")
-            files: list = [*self.patch_data['events'].keys()]
+            with Progress() as progress:
+                files: list = [*self.patch_data['events'].keys()]
 
-            dec_queue = files.copy()
-            if 0 in dec_queue and 'shops' in self.patch_data: dec_queue.remove(0)
-            for file in dec_queue:
-                self.packer.decompress_scenario(str(file))
+                dec_queue = files.copy()
+                if 0 in dec_queue and 'shops' in self.patch_data: dec_queue.remove(0)
 
-            self.patcher.patch_events(self.patch_data['events'], threads=self.threads)
+                patch_progress = progress.add_task(
+                    f"{"> Events":<32}",
+                    total=(len(dec_queue) * 2)
+                )
+
+                for file in dec_queue:
+                    self.packer.decompress_scenario(str(file))
+                    progress.update(patch_progress, advance=1)
+
+                self.patcher.patch_events(
+                    self.patch_data['events'],
+                    threads=self.threads,
+                    prog_update=lambda: progress.update(patch_progress, advance=1)
+                )
 
         self.packer.pack_scenario()
 
@@ -133,63 +175,84 @@ class GamePatchProcedure:
 
         base_dir: str = os.path.join(self.packer.build_dir, "maps")
         if 'chests' in self.patch_data:
-            logger.info("> Patching Chests")
+            with Progress() as progress:
+                patch_progress = progress.add_task(
+                    f"{"> Chests":<32}",
+                    total=len(self.patch_data['chests'].keys())
+                )
 
-            def _extract_job(room: str, chest_path: str, dec_path: str):
-                self.packer.extract_map(room)
-                self.packer.decompress_data(chest_path, dec_path)
+                def _extract_job(room: str, chest_path: str, dec_path: str):
+                    self.packer.extract_map(room)
+                    self.packer.decompress_data(chest_path, dec_path)
 
-            def _pack_job(room: str, chest_path: str, dec_path: str):
-                self.packer.compress_data(dec_path, chest_path)
-                self.packer.pack_map(room)
+                def _pack_job(room: str, chest_path: str, dec_path: str):
+                    self.packer.compress_data(dec_path, chest_path)
+                    self.packer.pack_map(room)
 
-            with ThreadPoolExecutor(max_workers=self.threads) as executor:
-                for area in self.patch_data['chests'].keys():
-                    work_dir: str = os.path.join(base_dir, area)
-                    chest: str = os.path.join(work_dir, area + ".dec.ext", "0004")
-                    decomp_path: str = os.path.join(work_dir, "0004")
+                    progress.update(patch_progress, advance=1)
 
-                    executor.submit(_extract_job, area, chest, decomp_path)
+                with ThreadPoolExecutor(max_workers=self.threads) as executor:
+                    for area in self.patch_data['chests'].keys():
+                        work_dir: str = os.path.join(base_dir, area)
+                        chest: str = os.path.join(work_dir, area + ".dec.ext", "0004")
+                        decomp_path: str = os.path.join(work_dir, "0004")
 
-            with ThreadPoolExecutor(max_workers=self.threads) as executor:
-                for area, chests in self.patch_data['chests'].items():
-                    executor.submit(self.patcher.patch_chests, area, chests)
+                        executor.submit(_extract_job, area, chest, decomp_path)
 
-            with ThreadPoolExecutor(max_workers=self.threads) as executor:
-                for area in self.patch_data['chests'].keys():
-                    work_dir: str = os.path.join(base_dir, area)
-                    dec_data: str = os.path.join(work_dir, "0004.dec")
-                    chest_data: str = os.path.join(work_dir, area + ".dec.ext", "0004")
+                with ThreadPoolExecutor(max_workers=self.threads) as executor:
+                    for area, chests in self.patch_data['chests'].items():
+                        executor.submit(self.patcher.patch_chests, area, chests)
 
-                    executor.submit(_pack_job, area, chest_data, dec_data)
+                with ThreadPoolExecutor(max_workers=self.threads) as executor:
+                    for area in self.patch_data['chests'].keys():
+                        work_dir: str = os.path.join(base_dir, area)
+                        dec_data: str = os.path.join(work_dir, "0004.dec")
+                        chest_data: str = os.path.join(work_dir, area + ".dec.ext", "0004")
+
+                        executor.submit(_pack_job, area, chest_data, dec_data)
 
         if 'search' in self.patch_data:
-            logger.info("> Patching Search Points")
-            search_room: str = "FIELD"
-            work_dir: str = os.path.join(base_dir, search_room)
-            search_path: str = os.path.join(work_dir, f"{search_room}.dec.ext", "0005")
-            decomp_path: str = os.path.join(work_dir, "0005")
+            with Progress() as progress:
+                total_progress: int = sum(
+                    len(self.patch_data['search'][k]) for k in ['definitions', 'contents', 'items']
+                )
 
-            self.packer.extract_map(search_room)
-            self.packer.decompress_data(search_path, decomp_path)
+                patch_progress = progress.add_task(
+                    f"{"> Search Points":<32}",
+                    total=total_progress + 1,
+                )
 
-            self.patcher.patch_search_points(decomp_path + ".dec", self.patch_data['search'])
+                search_room: str = "FIELD"
+                work_dir: str = os.path.join(base_dir, search_room)
+                search_path: str = os.path.join(work_dir, f"{search_room}.dec.ext", "0005")
+                decomp_path: str = os.path.join(work_dir, "0005")
 
-            self.packer.compress_data(decomp_path + ".dec", search_path)
-            self.packer.pack_map(search_room)
+                self.packer.extract_map(search_room)
+                self.packer.decompress_data(search_path, decomp_path)
 
-            material_data_file: str = "NPC"
-            material_dir: str = os.path.join(base_dir, material_data_file)
-            material_path: str = os.path.join(material_dir, f"{material_data_file}.dec.ext", "0004")
-            material_dec: str = os.path.join(material_dir, "0004")
+                self.patcher.patch_search_points(
+                    decomp_path + ".dec",
+                    self.patch_data['search'],
+                    lambda: progress.update(patch_progress, advance=1)
+                )
 
-            self.packer.extract_map(material_data_file)
-            self.packer.decompress_data(material_path, material_dec)
+                self.packer.compress_data(decomp_path + ".dec", search_path)
+                self.packer.pack_map(search_room)
 
-            self.patcher.patch_npc_items(material_dec + ".dec")
+                material_data_file: str = "NPC"
+                material_dir: str = os.path.join(base_dir, material_data_file)
+                material_path: str = os.path.join(material_dir, f"{material_data_file}.dec.ext", "0004")
+                material_dec: str = os.path.join(material_dir, "0004")
 
-            self.packer.compress_data(material_dec + ".dec", material_path)
-            self.packer.pack_map(material_data_file)
+                self.packer.extract_map(material_data_file)
+                self.packer.decompress_data(material_path, material_dec)
+
+                self.patcher.patch_npc_items(material_dec + ".dec")
+
+                self.packer.compress_data(material_dec + ".dec", material_path)
+                self.packer.pack_map(material_data_file)
+
+                progress.update(patch_progress, advance=1)
 
         self.packer.copy_to_output('npc')
 

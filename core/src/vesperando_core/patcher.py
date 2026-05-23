@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from typing import Callable
 import ctypes
 import mmap
 import json
@@ -10,14 +11,13 @@ from vesperando_core.conf.settings import Paths
 from vesperando_core.utils import keys_to_int
 
 
-
 class GamePatcher:
     build_dir: str = Paths.BUILD_DIR
 
     def __init__(self, patcher_id: str):
         self.build_dir = os.path.join(self.build_dir, patcher_id)
 
-    def patch_artes(self, arte_patches: dict):
+    def patch_artes(self, arte_patches: dict, prog_update: Callable):
         target: str = os.path.join(self.build_dir, "BTL_PACK", "0004.ext", "ALL.0000")
 
         with open(Paths.STATIC_PATH.joinpath("artes.json")) as f:
@@ -65,12 +65,14 @@ class GamePatcher:
                     del patched_data[arte_entry]
                 else:
                     mm.seek(next_entry - 8, 1)
+
                 count += 1
+                prog_update()
 
             mm.flush()
             mm.close()
 
-    def patch_skills(self, skill_patches: dict):
+    def patch_skills(self, skill_patches: dict, prog_update: Callable):
         target: str = os.path.join(self.build_dir, "BTL_PACK", "0010.ext", "ALL.0000")
 
         patches = {int(key): value for key, value in skill_patches.items()}
@@ -100,25 +102,25 @@ class GamePatcher:
                 skills_data: gtypes.SkillsEntry = gtypes.SkillsEntry(*patch.values())
                 mm.write(bytearray(skills_data))
 
+                prog_update()
+
             mm.flush()
             mm.close()
 
-    def patch_items(self, item_patches: dict):
+    def patch_items(self, item_patches: dict, prog_update: Callable):
         iwd: str = os.path.join(self.build_dir, "item")
         item_file: str = os.path.join(iwd, "ITEM.DAT")
         sort_file: str = os.path.join(iwd, "ITEMSORT.DAT")
 
         if 'base' in item_patches:
-            self.patch_items_base(item_file, item_patches['base'])
-            self.generate_item_sort(sort_file, item_patches['base'])
+            self.patch_items_base(item_file, item_patches['base'], prog_update)
+            self.generate_item_sort(sort_file, item_patches['base'], prog_update)
 
         if 'custom' in item_patches:
             self.patch_items_custom(item_file, item_patches['custom'])
 
-
-
     @staticmethod
-    def patch_items_base(target_file: str, item_patches: dict):
+    def patch_items_base(target_file: str, item_patches: dict, prog_update: Callable):
         patches: dict[int, dict] = {int(key): value for key, value in item_patches.items()}
 
         with open(Paths.STATIC_PATH.joinpath("items.json")) as f:
@@ -143,6 +145,8 @@ class GamePatcher:
                 items_data = gtypes.ItemEntry(**patch)
                 mm.write(bytearray(items_data))
 
+                prog_update()
+
             mm.flush()
             mm.close()
 
@@ -150,7 +154,7 @@ class GamePatcher:
         pass
 
     @staticmethod
-    def generate_item_sort(target_file: str, item_patches: dict):
+    def generate_item_sort(target_file: str, item_patches: dict, prog_update: Callable):
         props: list = ['id', 'phys_attack', 'magic_attack', 'phys_defense', 'magic_defense']
         id_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[0], 0), reverse=True)]
         pa_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[1], 0), reverse=True)]
@@ -188,10 +192,12 @@ class GamePatcher:
                 # Padding
                 mm.write(b'\x00' * 0x4 * 0x4)
 
+                prog_update()
+
             mm.flush()
             mm.close()
 
-    def patch_shops(self, shop_patches: dict, lang: str = "ENG"):
+    def patch_shops(self, shop_patches: dict, lang: str = "ENG", prog_track: Callable = None):
         target: str = os.path.join(self.build_dir, "language", f".{lang}.dec", "0.dec")
         assert os.path.isfile(target), f"Expected file {target}, but it does not exist."
 
@@ -202,10 +208,10 @@ class GamePatcher:
             if 'uniques' in shop_patches:
                 patches['uniques'] = shop_patches['uniques']
 
-            self.patch_shops_precise(target, patches)
+            self.patch_shops_precise(target, patches, prog_track)
 
     @staticmethod
-    def patch_shops_precise(target_file: str, patches: dict):
+    def patch_shops_precise(target_file: str, patches: dict, prog_track: Callable = None):
         with open(Paths.STATIC_PATH.joinpath("shop.json")) as f:
             original_data = json.load(f, object_hook=keys_to_int)
 
@@ -242,7 +248,7 @@ class GamePatcher:
             mm.seek(item_start)
 
             count: int = 0
-            for shop, items in shop_items.items():
+            for shop, items in prog_track(shop_items.items()):
                 if count >= item_count: break
                 for item in items:
                     shop_entry_data = gtypes.ShopItemEntry(shop, item)
@@ -253,15 +259,22 @@ class GamePatcher:
             mm.flush()
             mm.close()
 
-    def patch_events(self, patches: dict, lang: str = "ENG", threads: int = 8):
+    def patch_events(self, patches: dict, lang: str = "ENG", threads: int = 8, prog_update: Callable = None):
         with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
             original_data = json.load(f, object_hook=keys_to_int)
 
         with ThreadPoolExecutor(max_workers=threads) as executor:
             for scenario, events in patches.items():
-                executor.submit(self.patch_scenario, f"{scenario}.dec", events, original_data[scenario], lang)
+                executor.submit(
+                    self.patch_scenario,
+                    f"{scenario}.dec",
+                    events,
+                    original_data[scenario],
+                    lang,
+                    prog_update
+                )
 
-    def patch_scenario(self, target_file, patches, reference, lang: str = 'ENG'):
+    def patch_scenario(self, target_file, patches, reference, lang: str = 'ENG', prog_update: Callable = None):
         target: str = os.path.join(self.build_dir, "language", f".{lang}.dec", target_file)
         with open(target, 'r+b') as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
@@ -307,6 +320,8 @@ class GamePatcher:
             mm.flush()
             mm.close()
             f.close()
+
+        prog_update()
 
     @staticmethod
     def patch_learn_arte_skill(mm: mmap.mmap, address: int, properties: dict):
@@ -401,7 +416,7 @@ class GamePatcher:
             mm.close()
 
     @staticmethod
-    def patch_search_points(target: str, patches: dict):
+    def patch_search_points(target: str, patches: dict, prog_update: Callable):
         header_size: int = ctypes.sizeof(gtypes.SearchPointHeader)
         content_size: int = ctypes.sizeof(gtypes.SearchPointContentEntry)
         item_size: int = ctypes.sizeof(gtypes.SearchPointItemEntry)
@@ -475,6 +490,8 @@ class GamePatcher:
 
                 last_content_index += definition['content_range']
 
+                prog_update()
+
             mm.seek(header.content_start)
             last_item_index: int = 0
             for content in contents:
@@ -483,12 +500,16 @@ class GamePatcher:
 
                 last_item_index += content['item_range']
 
+                prog_update()
+
             header.content_entries = len(contents)
             header.item_entries = len(items)
             header.item_start = mm.tell()
             for item in items:
                 item_data = gtypes.SearchPointItemEntry(*item.values())
                 mm.write(bytearray(item_data))
+
+                prog_update()
 
             header.entry_end = mm.tell()
             mm.write("dummy\x00".encode())
@@ -504,7 +525,6 @@ class GamePatcher:
             mm.seek(0x68)
 
             while mm.tell() < 0x9BC:
-                print("<", hex(mm.tell()))
                 mm.write(int(0).to_bytes(4, byteorder="little"))
                 mm.seek(0x0C, 1)
 
