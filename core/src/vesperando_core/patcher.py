@@ -162,7 +162,7 @@ class GamePatcher:
         size: int = (count * 11 * 0x4) + 4
 
         with open(target_file, 'w+b') as f:
-            f.truncate(0xF000)
+            f.truncate(size)
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
 
             # Write Header
