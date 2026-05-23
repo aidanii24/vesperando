@@ -157,8 +157,6 @@ class GamePatcher:
         ma_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[2], 0), reverse=True)]
         md_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[4], 0), reverse=True)]
         pd_sort: list = [0, *sorted(item_patches, key=lambda i: item_patches.get(i, {}).get(props[3], 0), reverse=True)]
-        # for item in pa_sort:
-        #     print(f"{pa_sort.index(item)} | {item}: {item_patches.get(item, {}).get(props[1], 0)}")
 
         count: int = len(id_sort)
         size: int = (count * 11 * 0x4) + 4
@@ -171,19 +169,20 @@ class GamePatcher:
             mm.write(count.to_bytes(4, byteorder="big"))
 
             # Write Entries
-            for index, item in enumerate(id_sort):
+            for index in range(count):
                 # Entry Number
                 mm.write(index.to_bytes(4, byteorder="big"))
-                # Item ID
-                mm.write(item.to_bytes(4, byteorder="big"))
+                # Item ID Check
+                ## Use of this prop is unknown; just use items from ID SOrt
+                mm.write(id_sort[index].to_bytes(4, byteorder="big"))
                 # Phys Attack Sort
-                mm.write(pa_sort.index(item).to_bytes(4, byteorder="big"))
+                mm.write(pa_sort[index].to_bytes(4, byteorder="big"))
                 # Phys Defense Sort
-                mm.write(pd_sort.index(item).to_bytes(4, byteorder="big"))
+                mm.write(pd_sort[index].to_bytes(4, byteorder="big"))
                 # Magic Attack Sort
-                mm.write(ma_sort.index(item).to_bytes(4, byteorder="big"))
+                mm.write(ma_sort[index].to_bytes(4, byteorder="big"))
                 # Magic Defense Sort
-                mm.write(md_sort.index(item).to_bytes(4, byteorder="big"))
+                mm.write(md_sort[index].to_bytes(4, byteorder="big"))
                 # Unknown/Unused; duplicate entry number just in case
                 mm.write(index.to_bytes(4, byteorder="big"))
                 # Padding
