@@ -415,6 +415,21 @@ class GamePatcher:
             mm.flush()
             mm.close()
 
+    def patch_battle_events(self):
+        target: str = os.path.join(self.build_dir, "BTL_PACK", "0006.ext", "ALL.0000")
+        with open(target, 'r+b') as f:
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
+
+            mm.seek(0x10)
+
+            while mm.tell() < 0x517BC:
+                mm.seek(0x10, 1)
+                mm.write(b"\x00" * 4)
+                mm.seek(0xC8, 1)
+
+            mm.flush()
+            mm.close()
+
     @staticmethod
     def patch_search_points(target: str, patches: dict, prog_update: Callable):
         header_size: int = ctypes.sizeof(gtypes.SearchPointHeader)

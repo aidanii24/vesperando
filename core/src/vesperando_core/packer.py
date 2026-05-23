@@ -152,6 +152,10 @@ class GamePatchPacker:
 
         fps4.extract(path, manifest_dir=os.path.join(self.manifest_dir, "0004.json"))
 
+    def extract_battle_events(self):
+        path: str = os.path.join(self.build_dir, "BTL_PACK", "0006")
+        fps4.extract(path, manifest_dir=os.path.join(self.manifest_dir, "0006.json"))
+
     def extract_skills(self):
         path: str = os.path.join(self.build_dir, "BTL_PACK", "0010")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
@@ -251,6 +255,10 @@ class GamePatchPacker:
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
 
         fps4.pack_from_manifest(os.path.join(self.build_dir, "BTL_PACK", "0004"), path)
+
+    def pack_battle_events(self):
+        path: str = os.path.join(self.manifest_dir, "0006.json")
+        fps4.pack_from_manifest(os.path.join(self.build_dir, "BTL_PACK", "0006"), path)
 
     def pack_skills(self):
         path: str = os.path.join(self.manifest_dir, "0010.json")
