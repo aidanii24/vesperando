@@ -235,7 +235,17 @@ def spoil(patch_file):
     start_time = time.time()
     logger.info(f"\n> Generating Spoiler Sheet")
 
-    spoiler = spoiling.PatchSpoiler()
+    # Load Item to Category data required for events spoiling
+    items_data_table: dict = {}
+    item_to_category: dict = {}
+    with open(Paths.STATIC_PATH.joinpath("items.json")) as f:
+        items_data_table = json.load(f, object_hook=utils.keys_to_int)
+        f.close()
+
+    for iid, item in items_data_table.items():
+        item_to_category[item['id']] = item['category']
+
+    spoiler = spoiling.PatchSpoiler({'item_to_category': item_to_category})
     spoiler.write_spreadsheet(patch_data, report_output)
 
     end_time = time.time()
