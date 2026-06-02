@@ -4,9 +4,11 @@ import os.path
 import sys
 
 
-def events_to_json(filename: str, output: str = ""):
+def events_to_json(mf: str, vf: str, output: str = ""):
     entries: dict = {}
-    with open(filename) as f:
+    with open(mf) as f:
+        entries['main'] = {}
+
         reader = csv.DictReader(f)
         reader.fieldnames = [field[:1].lower() + field[1:] for field in reader.fieldnames]
 
@@ -24,18 +26,31 @@ def events_to_json(filename: str, output: str = ""):
                 entries.setdefault(current_file, {})
                 continue
 
+            entries['main'].setdefault(current_file, {})
+
             entry = {k: int(v, 0) for k, v in row.items() if v and k != "address"}
-            entries[current_file][address] = entry
+            entries['main'][current_file][address] = entry
+
+    if os.path.exists(vf):
+        with open(vf) as f:
+            entries['var'] = {}
+
+            reader = csv.DictReader(f)
+            for row in reader:
+                file, address = row.values()
+                entries['var'][file] = [address]
 
     if not output or not os.path.isdir(os.path.dirname(output)):
-        path = os.path.dirname(filename)
-        basename = os.path.basename(filename).rsplit(".", 1)[0] + ".json"
+        path = os.path.dirname(mf)
+        basename = os.path.basename(mf).rsplit(".", 1)[0] + ".json"
         output = os.path.join(path, basename)
 
     with open(output, "w") as f:
         json.dump(entries, f)
         f.flush()
         f.close()
+
+    print("Output written to {}".format(output))
 
 
 if __name__ == '__main__':
@@ -44,7 +59,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     target = sys.argv[1]
-    file = sys.argv[2]
+    main_file = sys.argv[2]
+    var_file = sys.argv[3]
 
     if target == "events":
-        events_to_json(file)
+        events_to_json(main_file, var_file)

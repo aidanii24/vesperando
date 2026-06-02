@@ -269,7 +269,7 @@ class GamePatcher:
                     self.patch_scenario,
                     f"{scenario}.dec",
                     events,
-                    original_data[scenario],
+                    original_data['main'].get(scenario, events),
                     lang,
                     prog_update
                 )
@@ -280,9 +280,10 @@ class GamePatcher:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
 
             skip_events: set = set()
-
+            print(target_file)
             for address, properties in reference.items():
                 if address in skip_events: continue
+                print(address, properties)
 
                 if address in patches: properties.update(patches[address])
 
@@ -316,6 +317,8 @@ class GamePatcher:
                         self.patch_equip_item(mm, address, properties)
                     case 39:
                         self.patch_add_gald(mm, address, properties)
+                    case 100:
+                        self.patch_battle(mm, address)
 
             mm.flush()
             mm.close()
@@ -371,6 +374,11 @@ class GamePatcher:
         mm.seek(address)
         mm.write(int.to_bytes(properties['metadata'], 2, 'little', signed=False))
 
+    @staticmethod
+    def patch_battle(mm: mmap.mmap, address: int):
+        mm.seek(address)
+        mm.write(b'\x00' * 4)
+
     def patch_chests(self, target_file: str, patches: dict):
         path: str = os.path.join(self.build_dir, "maps", target_file, "0004.dec")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
@@ -411,22 +419,6 @@ class GamePatcher:
 
                 # Correct position in case a chest/item is missing from the patch data
                 position += chest['item_count'] * item_size
-
-            mm.flush()
-            mm.close()
-
-    def patch_battle_events(self):
-        target: str = os.path.join(self.build_dir, "BTL_PACK", "0018.ext", "ALL.0000")
-        with open(target, 'r+b') as f:
-            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
-
-            mm.seek(0x10)
-
-            while mm.tell() < 0x6AC:
-                mm.seek(0xC, 1)
-                string_offset: int = int.from_bytes(mm.read(4), byteorder="little")
-                mm.seek(-4, 1)
-                mm.write(b"\x00" * 4 * 6)
 
             mm.flush()
             mm.close()

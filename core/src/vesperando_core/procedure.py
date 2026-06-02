@@ -87,11 +87,6 @@ class GamePatchProcedure:
     def patch_btl(self):
         self.packer.unpack_btl()
 
-        # Patch Battle Events
-        self.packer.extract_battle_events()
-        self.patcher.patch_battle_events()
-        self.packer.pack_battle_events()
-
         if 'artes' in self.patch_data:
             with Progress() as progress:
                 patch_progress = progress.add_task(
@@ -150,27 +145,37 @@ class GamePatchProcedure:
                 prog_track=lambda s: track(s, description=f"{"> Shops":<32}")
             )
 
+        # Get Events that will be patched regardless
+        event_files: list = []
+        events_data: dict = {}
+        with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
+            events_data_table = json.load(f, object_hook=utils.keys_to_int)
+            for file, addr in events_data_table['var'].items():
+                event_files.append(file)
+                for a in addr:
+                    events_data[file] = {int(a, 0): {'type': 100}}
+
         if 'events' in self.patch_data:
             with Progress() as progress:
-                files: list = [*self.patch_data['events'].keys()]
+                event_files.extend([*self.patch_data['events'].keys()])
+                if 0 in event_files and 'shops' in self.patch_data: event_files.remove(0)
 
-                dec_queue = files.copy()
-                if 0 in dec_queue and 'shops' in self.patch_data: dec_queue.remove(0)
+                events_data.update(self.patch_data['events'])
 
-                patch_progress = progress.add_task(
-                    f"{"> Events":<32}",
-                    total=(len(dec_queue) * 2)
-                )
+        patch_progress = progress.add_task(
+            f"{"> Events":<32}",
+            total=(len(event_files) * 2)
+        )
 
-                for file in dec_queue:
-                    self.packer.decompress_scenario(str(file))
-                    progress.update(patch_progress, advance=1)
+        for file in event_files:
+            self.packer.decompress_scenario(str(file))
+            progress.update(patch_progress, advance=1)
 
-                self.patcher.patch_events(
-                    self.patch_data['events'],
-                    threads=self.threads,
-                    prog_update=lambda: progress.update(patch_progress, advance=1)
-                )
+        self.patcher.patch_events(
+            events_data,
+            threads=self.threads,
+            prog_update=lambda: progress.update(patch_progress, advance=1)
+        )
 
         self.packer.pack_scenario()
 

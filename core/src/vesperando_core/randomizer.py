@@ -1782,7 +1782,7 @@ class BasicRandomizerProcedure:
             'skills': {},
             'valuables': [],
         }
-        for events in self.events_data_table.values():
+        for events in self.events_data_table['main'].values():
             for properties in events.values():
                 event_type: int = properties.get('type', 0)
                 target: int = properties.get('target', 0)
@@ -1816,7 +1816,7 @@ class BasicRandomizerProcedure:
 
         if not targets or 'events' in targets:
             data: dict = {
-                'events_data': self.events_data_table,
+                'events_data': self.events_data_table['main'],
                 'artes_by_char': self.artes_by_char,
                 'skills_by_char': self.skills_by_char,
                 'items_data': self.items_data_table,
