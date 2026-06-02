@@ -56,8 +56,7 @@ class GamePatchProcedure:
             logger.info(f"\n{">":>4} Threads: {self.threads}")
         logger.info("")
 
-        if 'artes' in self.patch_data or 'skills' in self.patch_data:
-            self.patch_btl()
+        self.patch_btl()
 
         if 'items' in self.patch_data:
             self.patch_items()
@@ -87,6 +86,11 @@ class GamePatchProcedure:
 
     def patch_btl(self):
         self.packer.unpack_btl()
+
+        # Patch Battle Events
+        self.packer.extract_battle_events()
+        self.patcher.patch_battle_events()
+        self.packer.pack_battle_events()
 
         if 'artes' in self.patch_data:
             with Progress() as progress:
