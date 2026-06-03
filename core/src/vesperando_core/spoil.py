@@ -1,6 +1,7 @@
 import json
 
-from odfdo import Document, Table, Row
+from openpyxl import Workbook
+from openpyxl.styles import Font, NamedStyle, DEFAULT_FONT
 
 from vesperando_core.conf.settings import Paths
 from vesperando_core.res import enums, sort
@@ -42,37 +43,58 @@ class PatchSpoiler:
 
         self.spoiler = {}
 
+        self.header_style: NamedStyle = NamedStyle("Header")
+        self.header_style.font = Font(name='', sz=12, bold=True)
+
     def write_spreadsheet(self, patch: dict, output):
-        reports: list[Table] = []
+        wb: Workbook = Workbook()
+        wb.remove(wb.active)
 
         if 'artes' in patch:
-            reports.append(self.spoil_artes(patch['artes']))
+            self.spoil_artes(wb, patch['artes'])
 
         if 'skills' in patch:
-            reports.append(self.spoil_skills(patch['skills']))
+            self.spoil_skills(wb, patch['skills'])
 
         if 'items' in patch:
-            reports.append(self.spoil_items(patch['items']))
+            self.spoil_items(wb, patch['items'])
 
         if 'shops' in patch:
-            reports.append(self.spoil_shops(patch['shops']))
+            self.spoil_shops(wb, patch['shops'])
 
         if 'chests' in patch:
-            reports.append(self.spoil_chests(patch['chests']))
+            self.spoil_chests(wb, patch['chests'])
 
         if 'search' in patch:
-            reports.append(self.spoil_search(patch['search']))
+            self.spoil_search(wb, patch['search'])
 
         if 'events' in patch:
-            reports.append(self.spoil_events(patch['events']))
+            self.spoil_events(wb, patch['events'])
 
-        spoiler_sheet: Document = Document("spreadsheet")
-        spoiler_sheet.body.clear()
-        spoiler_sheet.body.extend(reports)
-        spoiler_sheet.save(output)
+        DEFAULT_FONT.name = ''
+        DEFAULT_FONT.sz = 12
+        wb.save(output)
 
-    def spoil_artes(self, patch: dict) -> Table:
-        report_list: list = []
+    def spoil_artes(self, wb: Workbook, patch: dict):
+        sheet = wb.create_sheet("Artes")
+
+        field_names: list[str] = ["Arte", "Power", "TP", "Cast Time", "Elements", "Target Type",
+                                  "Learn Condition 1", "Learn Parameter 1", "Learn Meta 1",
+                                  "Learn Condition 2", "Learn Parameter 2", "Learn Meta 2",
+                                  "Learn Condition 3", "Learn Parameter 3", "Learn Meta 3",
+                                  "Evolves From",
+                                  "Evolve Condition 1", "Evolve Parameter 1",
+                                  "Evolve Condition 2", "Evolve Parameter 2",
+                                  "Evolve Condition 3", "Evolve Parameter 3",
+                                  "Evolve Condition 4", "Evolve Parameter 4",
+                                  "Global Effect 1", "Global Effect 1 Parameter", "Global Effect 1 Duration",
+                                  "Global Effect 2", "Global Effect 2 Parameter", "Global Effect 2 Duration",
+                                  "Global Effect 3", "Global Effect 3 Parameter", "Global Effect 3 Duration",
+                                  "Physical Attack Modifier", "Magic Attack Modifier",
+                                  *[p.replace("_", " ").title() for p in [*patch.values()][0].keys() if "_power" in p],
+                                  "Fatal Strike Type"]
+        sheet.append(field_names)
+
         for arte in [*patch.values()]:
             elements: list = []
             for e in self.ELEMENTS:
@@ -158,35 +180,19 @@ class PatchSpoiler:
                 enums.FatalStrikeType(arte['fatal_strike_type']).name,
             ]
 
-            report_list.append(details)
+            sheet.append(details)
 
-        field_names: list[str] = ["Arte", "Power", "TP", "Cast Time", "Elements", "Target Type",
-                                  "Learn Condition 1", "Learn Parameter 1", "Learn Meta 1",
-                                  "Learn Condition 2", "Learn Parameter 2", "Learn Meta 2",
-                                  "Learn Condition 3", "Learn Parameter 3", "Learn Meta 3",
-                                  "Evolves From",
-                                  "Evolve Condition 1", "Evolve Parameter 1",
-                                  "Evolve Condition 2", "Evolve Parameter 2",
-                                  "Evolve Condition 3", "Evolve Parameter 3",
-                                  "Evolve Condition 4", "Evolve Parameter 4",
-                                  "Global Effect 1", "Global Effect 1 Parameter", "Global Effect 1 Duration",
-                                  "Global Effect 2", "Global Effect 2 Parameter", "Global Effect 2 Duration",
-                                  "Global Effect 3", "Global Effect 3 Parameter", "Global Effect 3 Duration",
-                                  "Physical Attack Modifier", "Magic Attack Modifier",
-                                  *[p.replace("_", " ").title() for p in arte.keys() if "_power" in p],
-                                  "Fatal Strike Type"]
+        self.format_sheet_headers(sheet, ['A', '1'], "B2")
 
-        report: Table = Table("ARTES")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
+    def spoil_skills(self, wb: Workbook, patch: dict):
+        sheet = wb.create_sheet("Skills")
 
-        return report
+        sheet.append([
+            "Skill", "SP", "LP", "Symbol", "Symbol Weight", "Parameter 1", "Parameter 2", "Parameter 3", "Equippable"
+        ])
 
-    def spoil_skills(self, patch: dict) -> Table:
-        report_list: list = []
         for skill in [*patch.values()]:
-            report_list.append([
+            sheet.append([
                 self.skill_name_table[skill['id']],
                 skill['sp_cost'], skill['lp_cost'],
                 enums.SkillSymbols(skill['symbol']).name,
@@ -194,19 +200,37 @@ class PatchSpoiler:
                 skill['symbol_weight'], 'Yes' if skill['is_equippable'] else 'No'
             ])
 
-        field_names: list[str] = [
-            "Skill", "SP", "LP", "Symbol", "Symbol Weight", "Parameter 1", "Parameter 2", "Parameter 3", "Equippable"
-        ]
+        self.format_sheet_headers(sheet, ['A', '1'], "B2")
 
-        report: Table = Table("SKILLS")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
+    def spoil_items(self, wb: Workbook, patch: dict):
+        sheet = wb.create_sheet("Items")
+        sheet.append([
+            "Item", "Price", "Elements",
+            "Skill 1", "Skill 1 LP", "Skill 2", "Skill 2 LP", "Skill 3", "Skill 3 LP",
+            "Physical Attack", "Magic Attack", "Physical Defense", "Magic Defense", "Luck", "Agility",
+            "Synth Recipe 1 Level", "Synth Recipe 1 Price",
+            "Synth Recipe 1 Material 1", "Synth Recipe 1 Material 1 Amount",
+            "Synth Recipe 1 Material 2", "Synth Recipe 1 Material 2 Amount",
+            "Synth Recipe 1 Material 3", "Synth Recipe 1 Material 3 Amount",
+            "Synth Recipe 1 Material 4", "Synth Recipe 1 Material 4 Amount",
+            "Synth Recipe 1 Material 5", "Synth Recipe 1 Material 5 Amount",
+            "Synth Recipe 1 Material 6", "Synth Recipe 1 Material 6 Amount",
+            "Synth Recipe 2 Level", "Synth Recipe 2 Price",
+            "Synth Recipe 2 Material 1", "Synth Recipe 2 Material 1 Amount",
+            "Synth Recipe 2 Material 2", "Synth Recipe 2 Material 2 Amount",
+            "Synth Recipe 2 Material 3", "Synth Recipe 2 Material 3 Amount",
+            "Synth Recipe 2 Material 4", "Synth Recipe 2 Material 4 Amount",
+            "Synth Recipe 2 Material 5", "Synth Recipe 2 Material 5 Amount",
+            "Synth Recipe 2 Material 6", "Synth Recipe 2 Material 6 Amount",
+            "Synth Recipe 3 Level", "Synth Recipe 3 Price",
+            "Synth Recipe 3 Material 1", "Synth Recipe 3 Material 1 Amount",
+            "Synth Recipe 3 Material 2", "Synth Recipe 3 Material 2 Amount",
+            "Synth Recipe 3 Material 3", "Synth Recipe 3 Material 3 Amount",
+            "Synth Recipe 3 Material 4", "Synth Recipe 3 Material 4 Amount",
+            "Synth Recipe 3 Material 5", "Synth Recipe 3 Material 5 Amount",
+            "Synth Recipe 3 Material 6", "Synth Recipe 3 Material 6 Amount",
+        ])
 
-        return report
-
-    def spoil_items(self, patch: dict) -> Table:
-        report_list: list = []
         for item in [*patch['base'].values()]:
             entry: list = [self.item_name_table[item['id']], item['buy_price']]
 
@@ -257,43 +281,13 @@ class PatchSpoiler:
                         item[f'synth{i}_material{m}_amount']]
                     )
 
-            report_list.append(entry)
+            sheet.append(entry)
 
-        field_names: list[str] = [
-            "Item", "Price", "Elements",
-            "Skill 1", "Skill 1 LP", "Skill 2", "Skill 2 LP", "Skill 3", "Skill 3 LP",
-            "Physical Attack", "Magic Attack", "Physical Defense", "Magic Defense", "Luck", "Agility",
-            "Synth Recipe 1 Level", "Synth Recipe 1 Price",
-            "Synth Recipe 1 Material 1", "Synth Recipe 1 Material 1 Amount",
-            "Synth Recipe 1 Material 2", "Synth Recipe 1 Material 2 Amount",
-            "Synth Recipe 1 Material 3", "Synth Recipe 1 Material 3 Amount",
-            "Synth Recipe 1 Material 4", "Synth Recipe 1 Material 4 Amount",
-            "Synth Recipe 1 Material 5", "Synth Recipe 1 Material 5 Amount",
-            "Synth Recipe 1 Material 6", "Synth Recipe 1 Material 6 Amount",
-            "Synth Recipe 2 Level", "Synth Recipe 2 Price",
-            "Synth Recipe 2 Material 1", "Synth Recipe 2 Material 1 Amount",
-            "Synth Recipe 2 Material 2", "Synth Recipe 2 Material 2 Amount",
-            "Synth Recipe 2 Material 3", "Synth Recipe 2 Material 3 Amount",
-            "Synth Recipe 2 Material 4", "Synth Recipe 2 Material 4 Amount",
-            "Synth Recipe 2 Material 5", "Synth Recipe 2 Material 5 Amount",
-            "Synth Recipe 2 Material 6", "Synth Recipe 2 Material 6 Amount",
-            "Synth Recipe 3 Level", "Synth Recipe 3 Price",
-            "Synth Recipe 3 Material 1", "Synth Recipe 3 Material 1 Amount",
-            "Synth Recipe 3 Material 2", "Synth Recipe 3 Material 2 Amount",
-            "Synth Recipe 3 Material 3", "Synth Recipe 3 Material 3 Amount",
-            "Synth Recipe 3 Material 4", "Synth Recipe 3 Material 4 Amount",
-            "Synth Recipe 3 Material 5", "Synth Recipe 3 Material 5 Amount",
-            "Synth Recipe 3 Material 6", "Synth Recipe 3 Material 6 Amount",
-        ]
+        self.format_sheet_headers(sheet, ['A', '1'], "B2")
 
-        report: Table = Table("ITEMS")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list[:-10]):
-            report.set_row_values(i + 1, row)
+    def spoil_shops(self, wb: Workbook, patch: dict):
+        sheet = wb.create_sheet("Shops")
 
-        return report
-
-    def spoil_shops(self, patch: dict) -> Table:
         processed_groups: set[int] = set()
 
         items_by_shop: dict = {}
@@ -313,41 +307,36 @@ class PatchSpoiler:
 
         max_count += 1
 
-        report: Table = Table("SHOPS")
-
-        for _ in range(max_count):
-            report.append_row(Row(len(items_by_shop.keys())))
-
-        count: int = 0
-        for shop, items in items_by_shop.items():
+        for col, (shop, items) in enumerate(items_by_shop.items()):
             if shop < 7: continue
-            report.set_column_values(count, [self.shop_name_table[shop],
-                                             *[self.item_name_table[i] for i in items],
-                                             *["" for _ in range(max_count - (len(items) + 1))]])
-            count += 1
+            details: list = [
+                self.shop_name_table[shop],
+                *[self.item_name_table[i] for i in items],
+                *["" for _ in range(max_count - (len(items) + 1))]
+            ]
 
-        return report
+            for row, detail in enumerate(details):
+                cell = sheet.cell(row=row+1, column=col+1)
+                cell.value = detail
 
-    def spoil_chests(self, patch: dict) -> Table:
-        report_list = []
+        self.format_sheet_headers(sheet, ['1'], "A2")
+
+    def spoil_chests(self, wb: Workbook, patch: dict):
+        sheet = wb.create_sheet("Chests")
+        sheet.append(["Chest", "Item", "Amount"])
         for area, chests in sorted(patch.items()):
-            report_list.append([self.map_name_table.get(area, area)])
+            sheet.append([self.map_name_table.get(area, area)])
             for chest, details in chests.items():
-                report_list.append([(self.map_name_table.get(chest, chest))])
+                sheet.append([(self.map_name_table.get(chest, chest))])
                 for content in details['items']:
-                    report_list.append(["", self.resolve_chest_item_name(content['item_id']), content['amount']])
+                    sheet.append(["", self.resolve_chest_item_name(content['item_id']), content['amount']])
 
-        field_names: list[str] = ["Chest", "Item", "Amount"]
+        self.format_sheet_headers(sheet, ['A', '1'], "B2")
 
-        report: Table = Table("CHESTS")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
+    def spoil_search(self, wb: Workbook, patch: dict):
+        sheet = wb.create_sheet("Search Points")
+        sheet.append(["Search Point", "Item", "Amount"])
 
-        return report
-
-    def spoil_search(self, patch: dict) -> Table:
-        report_list: list = []
         last_cont_idx: int = 0
         last_itm_idx: int = 0
         for i, definition in enumerate(patch['definitions']):
@@ -356,35 +345,31 @@ class PatchSpoiler:
             for content in patch['contents'][last_cont_idx:next_cont_end]:
                 item_ranges.append(content['item_range'])
 
-            report_list.append([self.search_names[i], enums.SearchPointType(definition['type']).name])
+            sheet.append([self.search_names[i], enums.SearchPointType(definition['type']).name])
             for idx, r in enumerate(item_ranges):
-                report_list.append([f"Item Pool #{idx}",
+                sheet.append([f"Item Pool #{idx}",
                                     self.item_name_table[patch['items'][last_itm_idx]['id']],
                                     patch['items'][last_itm_idx]['count']])
                 last_itm_idx += 1
                 if r < 2: continue
 
                 for count in range(r - 1):
-                    report_list.append(["",
+                    sheet.append(["",
                                         self.item_name_table[patch['items'][last_itm_idx]['id']],
                                         patch['items'][last_itm_idx]['count']])
                     last_itm_idx += 1
 
             last_cont_idx = next_cont_end
 
-        field_names: list[str] = ["Search Point", "Item", "Amount"]
+        self.format_sheet_headers(sheet, ['A', '1'], "B2")
 
-        report: Table = Table("SEARCH POINTS")
-        report.set_row_values(0, field_names)
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
+    def spoil_events(self, wb: Workbook, patch: dict):
+        sheet = wb.create_sheet("Events")
 
-        return report
-
-    def spoil_events(self, patch: dict) -> Table:
-        report_list: list = []
         for file, events in patch.items():
-            report_list.append([self.resolve_scenario_name(file)])
+            sheet.append([self.resolve_scenario_name(file)])
+            cell = sheet.cell(row=len(sheet['a']), column=1)
+            cell.style = self.header_style
 
             def get_sort(e) -> tuple:
                 md: int = e.get('metadata', 0)
@@ -395,14 +380,9 @@ class PatchSpoiler:
                         equip_slot,
                         e.get('target', 999))
             for event in sorted(events.values(), key=get_sort):
-                report_list.append(self.resolve_event_name(event))
+                sheet.append(self.resolve_event_name(event))
 
-        report: Table = Table("EVENTS")
-        report.set_row_values(0, ["EVENTS"])
-        for i, row in enumerate(report_list):
-            report.set_row_values(i + 1, row)
-
-        return report
+        self.format_sheet_headers(sheet)
 
     def resolve_chest_item_name(self, item_id: int) -> str:
         if item_id == 0xFFFFFFFE:
@@ -441,3 +421,14 @@ class PatchSpoiler:
                 return [gald_amount, "GALD"]
 
         return ['Unknown Event']
+
+    def format_sheet_headers(self, sheet, headers: list[str] = None, frozen: str = ''):
+        if type(headers) is not list:
+            headers = []
+
+        for h in headers:
+            for cell in sheet[h]:
+                cell.style = self.header_style
+
+        if frozen:
+            sheet.freeze_panes = frozen

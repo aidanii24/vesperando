@@ -228,7 +228,7 @@ def spoil(patch_file):
 
     file_data: dict = json.load(open(file_path), object_hook=utils.keys_to_int)
     patch_data: dict = dict(item for item in [*file_data.items()][4:])
-    report_output: str = os.path.join(os.path.dirname(file_path), f"tovde-spoiler-{datetime_id}.ods")
+    report_output: str = os.path.join(os.path.dirname(file_path), f"tovde-spoiler-{datetime_id}.xlsx")
 
     logger.info(f"Spoil {os.path.basename(file_path)}")
 

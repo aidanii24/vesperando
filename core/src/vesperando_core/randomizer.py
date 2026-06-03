@@ -1689,7 +1689,7 @@ class BasicRandomizerProcedure:
 
     identifier: str = "randomizer"
     patch_output: str = os.path.join(Paths.PATCHES_DIR, f"randomizer.{Extensions.BASIC_PATCH}")
-    report_output: str = os.path.join(Paths.PATCHES_DIR, "tovde-spoiler.ods")
+    report_output: str = os.path.join(Paths.PATCHES_DIR, "tovde-spoiler.xlsx")
 
     def __init__(self, targets: list[str], identifier: str = "", seed = random.randint(1, 0xFFFFFFFF)):
         self.seed = uuid.uuid1().int
@@ -1699,7 +1699,7 @@ class BasicRandomizerProcedure:
         self.date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S-%f")
         self.identifier = f"{self.name}-{self.date}"
         self.patch_output = os.path.join(Paths.PATCHES_DIR, f"{self.identifier}{Extensions.BASIC_PATCH}")
-        self.report_output = os.path.join(Paths.PATCHES_DIR, f"tovde-spoiler-{self.identifier}.ods")
+        self.report_output = os.path.join(Paths.PATCHES_DIR, f"tovde-spoiler-{self.identifier}.xlsx")
 
         if not targets or {'artes', 'events'}.intersection(targets):
             self.load_artes_data()
