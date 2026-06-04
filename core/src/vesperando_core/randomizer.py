@@ -12,6 +12,7 @@ import os
 
 import numpy as np
 
+from vesperando_core import data as game_data
 from vesperando_core.res.models.options import MainOptionsDefault
 from vesperando_core.conf.settings import Paths, Extensions, Weights
 from vesperando_core.res import enums, schema
@@ -63,9 +64,9 @@ class ArteOptions:
 class ArteRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, options: dict) -> None:
         self.random = random_obj
-        self.artes_data = data['artes_data']
-        self.artes_by_char = data['artes_by_char']
-        self.skills_by_char = data['skills_by_char']
+        self.artes_data = game_data.get_artes_data()
+        self.artes_by_char = game_data.get_artes_by_char()
+        self.skills_by_char = game_data.get_skills_by_char()
         self.preplaced = data['preplaced']
         self.placed = {c: set(a) for c, a in data['preplaced'].items()}
         self.options = ArteOptions(options)
@@ -226,8 +227,8 @@ class ArteRandomizer(BaseRandomizer):
     def randomize_effect(self, arte):
         self.statistics['Effects'] += 1
 
-        usable_outside_battle: bool = False
-        continue_iter: bool = True
+        # usable_outside_battle: bool = False
+        # continue_iter: bool = True
 
         effect_count = self.random.choices(
             [0, 1, 2, 3],
@@ -544,9 +545,9 @@ class SkillOptions:
 
 
 class SkillRandomizer(BaseRandomizer):
-    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+    def __init__(self, random_obj: random.Random, options: dict):
         self.random = random_obj
-        self.skills_data = data['skills_data']
+        self.skills_data = game_data.get_skills_data()
         self.options = SkillOptions(options)
 
         self.statistics: dict = {
@@ -667,10 +668,10 @@ class ItemOptions:
 
 
 class ItemRandomizer(BaseRandomizer):
-    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+    def __init__(self, random_obj: random.Random, options: dict):
         self.random = random_obj
-        self.items_data = data['items_data']
-        self.skills_by_char = data['skills_by_char']
+        self.items_data = game_data.get_items_data()
+        self.skills_by_char = game_data.get_skills_by_char()
         self.consumable_items = []
         self.material_items = []
         self.equipment_items = []
@@ -1186,9 +1187,9 @@ class ShopRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, _options: dict):
         self.random = random_obj
         self.shop_data = data['shop_data']
-        self.item_to_category = data['item_to_category']
-        self.item_by_category = data['item_by_category']
-        self.common_items = data['common_items']
+        self.item_to_category = game_data.get_item_to_category()
+        self.items_by_category = game_data.get_items_by_category()
+        self.common_items = game_data.get_common_items()
 
         self.statistics: dict = {
             'Items': 0,
@@ -1263,7 +1264,7 @@ class ShopRandomizer(BaseRandomizer):
         if self.random.random() >= candidacy_chance:
             self.statistics['Items'] += 1
             category: int = self.item_to_category[item]
-            category_candidates: set[int] = set(self.item_by_category[category]).difference(blacklist)
+            category_candidates: set[int] = set(self.items_by_category[category]).difference(blacklist)
             if category_candidates and self.random.random() <= same_category_chance:
                 self.statistics['Same Category'] += 1
                 new_item: int = self.random.choice([*category_candidates])
@@ -1298,9 +1299,9 @@ class ChestRandomizer(BaseRandomizer):
     def __init__(self, random_obj: random.Random, data: dict, _options: dict):
         self.random = random_obj
         self.chest_data = data['chest_data']
-        self.item_to_category = data['item_to_category']
-        self.item_by_category = data['item_by_category']
-        self.eligible_items = data['common_items'] + tuple([self.GALD_ID])
+        self.item_to_category = game_data.get_item_to_category()
+        self.item_by_category = game_data.get_items_by_category()
+        self.eligible_items = game_data.get_common_items() + tuple([self.GALD_ID])
 
         self.statistics: dict = {
             'Chests': 0,
@@ -1419,11 +1420,11 @@ class SearchPointOptions:
 
 
 class SearchPointRandomizer(BaseRandomizer):
-    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+    def __init__(self, random_obj: random.Random, options: dict):
         self.random = random_obj
-        self.item_to_category = data['item_to_category']
-        self.item_by_category = data['item_by_category']
-        self.common_items = data['common_items']
+        self.item_to_category = game_data.get_item_to_category()
+        self.item_by_category = game_data.get_items_by_category()
+        self.common_items = game_data.get_common_items()
         self.abundant_items = set(item for c in {2, 8, 9} for item in self.item_by_category[c])
         self.options = SearchPointOptions(options)
 
@@ -1442,7 +1443,7 @@ class SearchPointRandomizer(BaseRandomizer):
         }
 
     def randomize(self):
-        # We offset back by the two duplicate definitons present in Vanilla
+        # We offset back by the two duplicate definitions present in Vanilla
         definition_count = 88
 
         definition_types: list[int] = [d.value for d in enums.SearchPointType]
@@ -1508,14 +1509,14 @@ class SearchPointRandomizer(BaseRandomizer):
         logger.info("")
 
 class EventsRandomizer(BaseRandomizer):
-    def __init__(self, random_obj: random.Random, data: dict, options: dict):
+    def __init__(self, random_obj: random.Random):
         self.random = random_obj
-        self.events_data = data.get('events_data', {})
-        self.artes_by_char = data.get('artes_by_char', {})
-        self.skills_by_char = data.get('skills_by_char', {})
-        self.items_data = data.get('items_data', {})
-        self.item_by_category = data.get('item_by_category', {})
-        self.common_items = data.get('common_items', [])
+        self.events_data = game_data.get_events_data()['main']
+        self.artes_by_char = game_data.get_artes_by_char()
+        self.skills_by_char = game_data.get_skills_by_char()
+        self.items_data = game_data.get_items_data()
+        self.item_by_category = game_data.get_items_by_category()
+        self.common_items = game_data.get_common_items()
         self.base_items = []
         for iid, item in self.items_data.items():
             category: int = item.get('category', 0)
@@ -1659,23 +1660,6 @@ class EventsRandomizer(BaseRandomizer):
         properties['metadata'] = self.random_from_triangular(*sorted([amount_floor, amount_ceil]))
 
 class BasicRandomizerProcedure:
-    artes_data_table: dict
-    skills_data_table: dict
-
-    artes_ids: dict
-    skill_ids: dict
-    item_ids: dict
-
-    artes_by_char: dict[int, list[int]]
-    skills_by_char: dict[int, list[int]]
-
-    items_data_table: dict
-    item_to_category: dict
-    item_by_category: dict
-    common_items: tuple # Any valid non-key and non-DLC item
-
-    events_data_table: dict
-
     seed: int
     random: random.Random
 
@@ -1701,88 +1685,17 @@ class BasicRandomizerProcedure:
         self.patch_output = os.path.join(Paths.PATCHES_DIR, f"{self.identifier}{Extensions.BASIC_PATCH}")
         self.report_output = os.path.join(Paths.PATCHES_DIR, f"tovde-spoiler-{self.identifier}.xlsx")
 
-        if not targets or {'artes', 'events'}.intersection(targets):
-            self.load_artes_data()
-
-        if not targets or {'artes', 'skills', 'items', 'events'}.intersection(targets):
-            self.load_skills_data()
-
-        self.load_items_data()
-        self.load_events_data()
-
         if not os.path.isdir(Paths.PATCHES_DIR):
             os.makedirs(Paths.PATCHES_DIR)
 
-    def load_artes_data(self):
-        with open(Paths.STATIC_PATH.joinpath("artes.json")) as f:
-            artes_data_table = json.load(f, object_hook=keys_to_int)
-
-        properties_table = {}
-        artes_by_char = {}
-        for arte in artes_data_table['entries']:
-            properties_table[int(arte['id'])] = arte
-
-            # We get all the valid artes for randomization here as well, conforming to these conditions:
-            ##  a. Must be only used by a playable character
-            ##  b. Must not be a special arte type (This filters out Fatal Strikes, Overlimits and Skill)
-            ##  c. Must have a TP Cost (This filters out variations of artes if any)
-            only_used_by_playable: bool = any(0 < chara < 10 for chara in arte['character_ids'])
-            if not only_used_by_playable: continue
-            for char in arte['character_ids']:
-                # Check if arte is not special (Fatal Strike, Overlimit or Skill)
-                if enums.ArteTypes.is_normal(arte['arte_type']): continue
-                # Check if arte has TP Cost
-                if arte['tp_cost'] <= 0: continue
-
-                artes_by_char.setdefault(char, []).append(arte['id'])
-
-        self.artes_data_table = properties_table
-        self.artes_by_char = artes_by_char
-
-    def load_skills_data(self):
-        with open(Paths.STATIC_PATH.joinpath("skills.json")) as f:
-            skills_data_table = json.load(f, object_hook=keys_to_int)
-
-        self.skills_data_table = {int(sid): skill for sid, skill in skills_data_table['entries'].items()}
-
-        skills_by_char = {}
-        for sid, data in self.skills_data_table.items():
-            character_usable = data.get('character_usable', 0)
-            if not character_usable: continue
-
-            for character in enums.Characters:
-                if character.bitflag() & character_usable:
-                    skills_by_char.setdefault(character.value, []).append(sid)
-
-        self.skills_by_char = skills_by_char
-
-    def load_items_data(self):
-        with open(Paths.STATIC_PATH.joinpath("items.json")) as f:
-            self.items_data_table = json.load(f, object_hook=keys_to_int)
-
-        self.item_by_category = {}
-        self.item_to_category = {}
-        self.common_items = tuple()
-
-        for iid, item in self.items_data_table.items():
-            self.item_by_category.setdefault(item['category'], []).append(item['id'])
-            self.item_to_category[item['id']] = item['category']
-
-        self.common_items = tuple([item for category, items in self.item_by_category.items()
-                                   for item in items
-                                   if enums.ItemCategory.is_common(category)])
-
-    def load_events_data(self):
-        with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
-            self.events_data_table = json.load(f, object_hook=keys_to_int)
-
-    def get_preplaced_events(self):
+    @staticmethod
+    def get_preplaced_events():
         preplaced_events = {
             'artes': {},
             'skills': {},
             'valuables': [],
         }
-        for events in self.events_data_table['main'].values():
+        for events in game_data.get_events_data()['main'].values():
             for properties in events.values():
                 event_type: int = properties.get('type', 0)
                 target: int = properties.get('target', 0)
@@ -1793,7 +1706,7 @@ class BasicRandomizerProcedure:
                     case 20:
                         preplaced_events['skills'].setdefault(character, []).append(target)
                     case 30:
-                        item_category: int = self.item_to_category.get(target, 0)
+                        item_category: int = game_data.get_item_to_category().get(target, 0)
                         if item_category == enums.ItemCategory.VALUABLES.value:
                             preplaced_events['valuables'].append(target)
 
@@ -1815,17 +1728,8 @@ class BasicRandomizerProcedure:
         start_time: float = time.time()
 
         if not targets or 'events' in targets:
-            data: dict = {
-                'events_data': self.events_data_table['main'],
-                'artes_by_char': self.artes_by_char,
-                'skills_by_char': self.skills_by_char,
-                'items_data': self.items_data_table,
-                'item_by_category': self.item_by_category,
-                'common_items': self.common_items,
-            }
-
             logger.info("> Randomizing Events")
-            self.events_randomizer = EventsRandomizer(self.random, data, options.get('events', {}))
+            self.events_randomizer = EventsRandomizer(self.random)
             self.events_randomizer.randomize()
 
             patch_data['events'] = self.events_randomizer.fetch()
@@ -1836,9 +1740,6 @@ class BasicRandomizerProcedure:
 
         if not targets or 'artes' in targets:
             data: dict = {
-                'artes_data': self.artes_data_table,
-                'artes_by_char': self.artes_by_char,
-                'skills_by_char': self.skills_by_char,
                 'preplaced': preplaced['artes']
             }
 
@@ -1851,12 +1752,8 @@ class BasicRandomizerProcedure:
             self.arte_randomizer.report()
 
         if not targets or 'skills' in targets:
-            data: dict = {
-                'skills_data': self.skills_data_table,
-            }
-
             logger.info("> Randomizing Skills")
-            self.skill_randomizer = SkillRandomizer(self.random, data, options.get('skills', {}))
+            self.skill_randomizer = SkillRandomizer(self.random, options.get('skills', {}))
             self.skill_randomizer.randomize()
 
             patch_data['skills'] = self.skill_randomizer.fetch()
@@ -1864,13 +1761,8 @@ class BasicRandomizerProcedure:
 
         if not targets or 'items' in targets:
             logger.info("> Randomizing Items")
-            data: dict = {
-                'items_data': self.items_data_table,
-                'common_items': self.common_items,
-                'skills_by_char': self.skills_by_char,
-            }
 
-            self.item_randomizer = ItemRandomizer(self.random, data, options.get('items', {}))
+            self.item_randomizer = ItemRandomizer(self.random, options.get('items', {}))
             self.item_randomizer.randomize()
 
             patch_data['items'] = self.item_randomizer.fetch()
@@ -1882,9 +1774,6 @@ class BasicRandomizerProcedure:
 
             data: dict = {
                 'shop_data': shop_data,
-                'item_to_category': self.item_to_category,
-                'item_by_category': self.item_by_category,
-                'common_items': self.common_items,
             }
 
             logger.info("> Randomizing Shops")
@@ -1900,9 +1789,6 @@ class BasicRandomizerProcedure:
 
             data: dict = {
                 'chest_data': chest_data,
-                'item_to_category': self.item_to_category,
-                'item_by_category': self.item_by_category,
-                'common_items': self.common_items,
             }
 
             logger.info("> Randomizing Chests")
@@ -1913,14 +1799,8 @@ class BasicRandomizerProcedure:
             self.chest_randomizer.report()
 
         if not targets or 'search' in targets:
-            data: dict = {
-                'item_to_category': self.item_to_category,
-                'item_by_category': self.item_by_category,
-                'common_items': self.common_items,
-            }
-
             logger.info("> Randomizing Search Points")
-            self.search_point_randomizer = SearchPointRandomizer(self.random, data, options.get('search', {}))
+            self.search_point_randomizer = SearchPointRandomizer(self.random, options.get('search', {}))
             self.search_point_randomizer.randomize()
 
             patch_data['search'] = self.search_point_randomizer.fetch()
@@ -1940,7 +1820,7 @@ class BasicRandomizerProcedure:
             start_time = time.time()
             logger.info(f"\n> Generating Spoiler Sheet")
 
-            spoiler = PatchSpoiler({'item_to_category': self.item_to_category})
+            spoiler = PatchSpoiler()
             spoiler.write_spreadsheet(patch_data, self.report_output)
 
             end_time = time.time()

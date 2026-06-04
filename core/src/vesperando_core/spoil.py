@@ -3,6 +3,7 @@ import json
 from openpyxl import Workbook
 from openpyxl.styles import Font, NamedStyle, DEFAULT_FONT
 
+from vesperando_core import data as game_data
 from vesperando_core.conf.settings import Paths
 from vesperando_core.res import enums, sort
 from vesperando_core.utils import keys_to_int
@@ -18,7 +19,7 @@ class PatchSpoiler:
 
     spoiler: dict
 
-    def __init__(self, original_data: dict):
+    def __init__(self):
         self.ELEMENTS: list = [
             'fire_elemental',
             'water_elemental',
@@ -39,7 +40,7 @@ class PatchSpoiler:
         self.shop_name_table = data['shops']
         self.scenario_name_table = data['scenario']
 
-        self.item_to_category = original_data['item_to_category']
+        self.item_to_category = game_data.get_item_to_category()
 
         self.spoiler = {}
 
