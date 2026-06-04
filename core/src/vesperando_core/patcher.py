@@ -280,10 +280,8 @@ class GamePatcher:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
 
             skip_events: set = set()
-            print(target_file)
             for address, properties in reference.items():
                 if address in skip_events: continue
-                print(address, properties)
 
                 if address in patches: properties.update(patches[address])
 

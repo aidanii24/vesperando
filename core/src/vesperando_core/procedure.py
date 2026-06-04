@@ -85,7 +85,9 @@ class GamePatchProcedure:
             logger.info(f"Patch Output: {self.packer.output_dir}")
 
     def patch_btl(self):
-        self.packer.unpack_btl()
+        with Progress(transient=True) as progress:
+            progress.add_task(f"{"o Unpacking BTL":<32}", total=None)
+            self.packer.unpack_btl()
 
         if 'artes' in self.patch_data:
             with Progress() as progress:
@@ -135,7 +137,9 @@ class GamePatchProcedure:
             progress.update(patch_progress, advance=1)
 
     def patch_scenario(self):
-        self.packer.extract_scenario()
+        with Progress(transient=True) as progress:
+            progress.add_task(f"{"o Unpacking Scenario":<32}", total=None)
+            self.packer.extract_scenario()
 
         if 'shops' in self.patch_data:
             self.packer.decompress_scenario('0')
@@ -156,43 +160,47 @@ class GamePatchProcedure:
                     events_data[file] = {int(a, 0): {'type': 100}}
 
         if 'events' in self.patch_data:
-            with Progress() as progress:
-                event_files.extend([*self.patch_data['events'].keys()])
-                if 0 in event_files and 'shops' in self.patch_data: event_files.remove(0)
+            event_files.extend([*self.patch_data['events'].keys()])
+            if 0 in event_files and 'shops' in self.patch_data: event_files.remove(0)
 
-                events_data.update(self.patch_data['events'])
+            events_data.update(self.patch_data['events'])
 
-        patch_progress = progress.add_task(
-            f"{"> Events":<32}",
-            total=(len(event_files) * 2)
-        )
+        with Progress() as progress:
+            patch_progress = progress.add_task(
+                f"{"> Events":<32}",
+                total=(len(event_files) * 2)
+            )
 
-        for file in event_files:
-            self.packer.decompress_scenario(str(file))
-            progress.update(patch_progress, advance=1)
+            for file in event_files:
+                self.packer.decompress_scenario(str(file))
+                progress.update(patch_progress, advance=1)
 
-        self.patcher.patch_events(
-            events_data,
-            threads=self.threads,
-            prog_update=lambda: progress.update(patch_progress, advance=1)
-        )
+            self.patcher.patch_events(
+                events_data,
+                threads=self.threads,
+                prog_update=lambda: progress.update(patch_progress, advance=1)
+            )
 
         self.packer.pack_scenario()
 
     def patch_npc(self):
-        self.packer.unpack_npc()
+        with Progress(transient=True) as progress:
+            progress.add_task(f"{"o Unpacking NPC":<32}", total=None)
+            self.packer.unpack_npc()
 
         base_dir: str = os.path.join(self.packer.build_dir, "maps")
         if 'chests' in self.patch_data:
             with Progress() as progress:
                 patch_progress = progress.add_task(
                     f"{"> Chests":<32}",
-                    total=len(self.patch_data['chests'].keys())
+                    total=len(self.patch_data['chests'].keys()) * 2
                 )
 
                 def _extract_job(room: str, chest_path: str, dec_path: str):
                     self.packer.extract_map(room)
                     self.packer.decompress_data(chest_path, dec_path)
+
+                    progress.update(patch_progress, advance=1)
 
                 def _pack_job(room: str, chest_path: str, dec_path: str):
                     self.packer.compress_data(dec_path, chest_path)
