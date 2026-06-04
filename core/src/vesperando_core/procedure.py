@@ -61,8 +61,7 @@ class GamePatchProcedure:
         if 'items' in self.patch_data:
             self.patch_items()
 
-        if 'shops' in self.patch_data or 'events' in self.patch_data:
-            self.patch_scenario()
+        self.patch_scenario()
 
         if 'chests' in self.patch_data or 'search' in self.patch_data:
             self.patch_npc()
@@ -137,6 +136,8 @@ class GamePatchProcedure:
             progress.update(patch_progress, advance=1)
 
     def patch_scenario(self):
+        from vesperando_core import data as game_data
+
         with Progress(transient=True) as progress:
             progress.add_task(f"{"o Unpacking Scenario":<32}", total=None)
             self.packer.extract_scenario()
@@ -152,12 +153,10 @@ class GamePatchProcedure:
         # Get Events that will be patched regardless
         event_files: list = []
         events_data: dict = {}
-        with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
-            events_data_table = json.load(f, object_hook=utils.keys_to_int)
-            for file, addr in events_data_table['var'].items():
-                event_files.append(file)
-                for a in addr:
-                    events_data[file] = {int(a, 0): {'type': 100}}
+        for file, addr in game_data.get_events_data()['var'].items():
+            event_files.append(file)
+            for a in addr:
+                events_data[file] = {int(a, 0): {'type': 100}}
 
         if 'events' in self.patch_data:
             event_files.extend([*self.patch_data['events'].keys()])

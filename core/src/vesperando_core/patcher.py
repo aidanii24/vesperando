@@ -260,8 +260,8 @@ class GamePatcher:
             mm.close()
 
     def patch_events(self, patches: dict, lang: str = "ENG", threads: int = 8, prog_update: Callable = None):
-        with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
-            original_data = json.load(f, object_hook=keys_to_int)
+        from vesperando_core import data as game_data
+        original_data = game_data.get_events_data()['main']
 
         with ThreadPoolExecutor(max_workers=threads) as executor:
             for scenario, events in patches.items():
@@ -269,7 +269,7 @@ class GamePatcher:
                     self.patch_scenario,
                     f"{scenario}.dec",
                     events,
-                    original_data['main'].get(scenario, events),
+                    original_data.get(scenario, events),
                     lang,
                     prog_update
                 )
