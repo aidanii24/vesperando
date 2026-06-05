@@ -6,20 +6,14 @@ These tools were created in part for an eventual integration of the game into th
 standalone with the bundled Basic Randomizer.
 # Features
 - Artes Randomization
-  - TP
-  - Cast Time (Magic only)
-  - Learn Conditions
-  - Evolve Conditions (for existing Altered artes only)
 - Skills Randomization
-  - Category
-  - SP Cost
-  - LP Cost
 - Items Randomization
-  - Price
-  - Skills
 - Shops Randomization
 - Chests Randomization
 - Search Point Randomization
+- Events Randomization (Main Story, Arc 1)
+
+For a more comprehensive list of randomization targets, visit the [features](docs/features.md) document.
 
 # Use
 Vesperando is available a command line utility. It is recommended to use a terminal to use this application.
@@ -50,7 +44,7 @@ This will output a patch file that uses the file extension `.vbrp`.
 vesperando_cli generate targets
 ```
 _targets_ can be any of `artes`, `skills`, `items`, `shops`, `chests`, `search` which specifies which aspect of the 
-game should be randomized.
+game should be randomized. _targets_ can also be discarded in favor of _options_. See the [options](docs/options.md) for more information about creating and using options.
 
 | Option            | Description                               |
 |-------------------|-------------------------------------------|
@@ -115,6 +109,10 @@ git clone --recurse-submodules https://github.com/aidanii24/vesperando
 As good practice, please use a virtual environment.
 ```commandline
 python -m venv .venv
+
+source .venv/bin/activate
+# Windows
+# .\venv\Scripts\activate.bat
 ```
 ## External Dependencies
 The following utilities must be available on your system to properly build and install vesperando packages.
@@ -137,13 +135,26 @@ pip install -e cli/
 
 # Build
 Vesperando uses PyInstaller to bundle and create an executable. A `.spec` file is already provided to easily generate a release.
+
+First, ensure that all dependencies are installed.
+```commandline
+python scripts/setup_build.py
+```
+
+Or for a manual setup, use pip, and specify for the `cli` package to include build dependencies.
+```commandline
+pip install -e core/
+pip install -e cli/[build]
+```
+
+Once all dependencies are installed, use PyInstaller to build the executable.
 ```commandline
 pyinstaller vesperando_cli.spec
 ```
 Note that `vesperando_core` will have to build `complib`.
 The binaries will be available in the generated `dist` directory upon a successful build.
 # Roadmap
-- [ ] Event Rewards Patching
+- [x] Event Rewards Patching
 - [ ] Text Patching (string_dic_<lang>.so)
 - [ ] Adding new Icons for in-game use
 - [ ] Implement GUI
