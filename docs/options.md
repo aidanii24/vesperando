@@ -53,14 +53,14 @@ _Shops have no options aside from whether it should be randomized at all_
 _Chests have no options aside from whether it should be randomized at all_
 
 ## Search (Search Points)
-| Property    | Description                                                                                                | Value          | Default  |
-|-------------|------------------------------------------------------------------------------------------------------------|----------------|----------|
-| `items_max` | The maximum amount of items a Search Point pool can be randomized to have                                  | `int` (0, 100) | 30       |
-| `items_min` | The maximum amount of items a Search Point pool can be randomized to have                                  | `int` (0, 100) | 30       |
-| `pools_max` | The maximum amount of pools a Search Point pool can be randomized to have                                  | `int` (0, 100) | 30       |
-| `items_min` | The maximum amount of pools a Search Point pool can be randomized to have                                  | `int` (0, 100) | 30       |
-| `uses_max`  | The maximum amount of time a Search Point can be interacted with before it becomes exhausted and disappear | `int` (0, 100) | 30       |
-| `uses_min`  | The minimum amount of time a Search Point can be interacted with before it becomes exhausted and disappear | `int` (0, 100) | 30       |
+| Property    | Description                                                                                                | Value         | Default |
+|-------------|------------------------------------------------------------------------------------------------------------|---------------|---------|
+| `items_max` | The maximum amount of items a Search Point pool can be randomized to have                                  | `int` (0, 10) | 5       |
+| `items_min` | The maximum amount of items a Search Point pool can be randomized to have                                  | `int` (0, 10) | 1       |
+| `pools_max` | The maximum amount of pools a Search Point pool can be randomized to have                                  | `int` (0, 10) | 5       |
+| `items_min` | The maximum amount of pools a Search Point pool can be randomized to have                                  | `int` (0, 10) | 1       |
+| `uses_max`  | The maximum amount of time a Search Point can be interacted with before it becomes exhausted and disappear | `int` (0, 10) | 5       |
+| `uses_min`  | The minimum amount of time a Search Point can be interacted with before it becomes exhausted and disappear | `int` (0, 10) | 1       |
 
 ## Example
 ```yaml
