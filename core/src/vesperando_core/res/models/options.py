@@ -1,6 +1,7 @@
 from pydantic import BaseModel, model_validator, field_validator
-from typing import Optional, Self
+from typing import Optional, Self, get_args
 
+from vesperando_core.res.models.decorators import ClassProperty
 from vesperando_core.res.models.annotations import (MaxTenThousand, MaxThousand, MaxHundred, MaxTen, Mod, TP, LPRatio,
                                                     WeaponSkillCount)
 
@@ -151,3 +152,20 @@ class MainOptionsDefault(BaseModel):
     shops: Optional[dict] = None
     chests: Optional[dict] = None
     search: Optional[SearchOptions] = SearchOptions()
+
+    @ClassProperty
+    def __comments__(cls) -> dict:
+        comments: dict = {}
+        for k, v in cls.__annotations_cache__.items():
+            t = get_args(v)[0]
+            if not issubclass(t, BaseModel): continue
+
+            for sk, sv in t.__annotations_cache__.items():
+                if sv == bool:
+                    docs = "# Must be either True or False"
+                else:
+                    docs = f"# {sv.__doc__}"
+
+                comments[sk] = docs
+
+        return comments

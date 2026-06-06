@@ -1,4 +1,5 @@
 import pydantic
+import yaml_comments
 import yaml
 import os
 
@@ -10,12 +11,15 @@ class Options:
     @staticmethod
     def generate():
         options = MainOptionsDefault().model_dump()
+        comments = MainOptionsDefault.__comments__
 
         if not (os.path.isdir(Paths.OPTIONS_DIR)):
             os.makedirs(Paths.OPTIONS_DIR)
 
         with open(os.path.join(Paths.OPTIONS_DIR, "options.yaml"), "w") as f:
-            yaml.safe_dump(options, f)
+            print(Paths.OPTIONS_DIR)
+            dumper = yaml_comments.create_dumper(before=comments)
+            yaml.dump(options, f, dumper)
             f.close()
 
         return options
