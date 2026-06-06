@@ -235,16 +235,46 @@ class PatchSpoiler:
         for item in [*patch['base'].values()]:
             entry: list = [self.item_name_table[item['id']], item['buy_price']]
 
+            category = self.item_to_category[item['id']]
+            is_herb = 26 <= item['id'] <= 39
+
             # Elements
             elements: list = []
             for e in self.ELEMENTS:
                 if item.get(e, 0):
                     elements.append(e.capitalize().rsplit("_")[0])
 
-            entry.append(', '.join(elements))
+            if not is_herb:
+                entry.append(', '.join(elements))
+            else:
+                stat_target: str = ""
+                value: int = 0
+                match (item['id']):
+                    case 26 | 27:
+                        value = item['skill1']
+                        stat_target = "Max HP"
+                    case 28 | 29:
+                        value = item['skill1_lp']
+                        stat_target = "Max TP"
+                    case 30 | 31:
+                        value = item['phys_attack_increase']
+                        stat_target = "P. ATK"
+                    case 32 | 33:
+                        value = item['phys_defense_increase']
+                        stat_target = "P. DEF"
+                    case 34 | 35:
+                        value = item['fire_elemental']
+                        stat_target = "M. ATK"
+                    case 36 | 37:
+                        value = item['water_elemental']
+                        stat_target = "M. DEF"
+                    case 38 | 39:
+                        value = item['wind_elemental']
+                        stat_target = "AGL"
+
+                entry.append(f"{"+" if value > 0 else ""}{value} {stat_target}")
 
             # Stats
-            category = self.item_to_category[item['id']]
             if enums.ItemCategory.is_weapon(category) or enums.ItemCategory.is_wearable(category):
                 entry.extend([
                     item['phys_attack'],

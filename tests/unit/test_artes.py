@@ -77,4 +77,4 @@ def arte_from_json():
     print(f"[Rebuilding File] Time taken: {end - start} seconds")
 
 if __name__ == "__main__":
-    arte_from_json()
+    arte_to_json()

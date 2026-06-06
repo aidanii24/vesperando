@@ -792,6 +792,32 @@ class ItemRandomizer(BaseRandomizer):
                     ## Others
                     if self.random.random() <= Weights.ITEM_STATS_AUX:
                         self.randomize_aux_stats(item)
+            # Herbs Properties
+            elif 26 <= iid <= 39:
+                if is_candidate and self.random.random() <= 1000:
+                    max_a: int = 15 if iid <= 29 else 3
+                    max_b: int = 50 if iid <= 39 else 10
+                    ranges: list[int] = sorted([
+                        self.random_from_triangular(1, max_a),
+                        self.random_from_triangular(1, max_b),
+                    ])
+                    value: int = self.random_from_triangular(*ranges)
+
+                    match (data['id']):
+                        case 26 | 27:
+                            item['skill1'] = value
+                        case 28 | 29:
+                            item['skill1_lp'] = value
+                        case 30 | 31:
+                            item['phys_attack_increase'] = value
+                        case 32 | 33:
+                            item['phys_defense_increase'] = value
+                        case 34 | 35:
+                            item['fire_elemental'] = value
+                        case 36 | 37:
+                            item['water_elemental'] = value
+                        case 38 | 39:
+                            item['wind_elemental'] = value
 
             # Buy Price
             self.randomize_buy_price(item, data, is_candidate)
@@ -805,7 +831,14 @@ class ItemRandomizer(BaseRandomizer):
     def randomize_buy_price(self, item: dict, data: dict, is_candidate: bool) -> None:
         buy_price: int = item.get('buy_price', 0)
 
-        use_multiplier: bool = self.random.random() <= Weights.ITEM_PRICE_MULTIPLIER
+        is_herb: bool = 26 <= data['id'] <= 39
+
+        # Herbs
+        if is_herb:
+            use_multiplier = self.random.random() <= Weights.ITEM_PRICE_MULTIPLIER_HERB
+        else:
+            use_multiplier = self.random.random() <= Weights.ITEM_PRICE_MULTIPLIER
+
         if buy_price and is_candidate:
             if is_candidate and self.random.random() <= Weights.ITEM_PRICE:
                 self.statistics['Prices'] += 1
@@ -823,7 +856,8 @@ class ItemRandomizer(BaseRandomizer):
                         if not base:
                             base = buy_price
                     case _:
-                        base: int = buy_price
+                        if is_herb: base: int = 1000
+                        else: base: int = buy_price
 
                 if use_multiplier:
                     self.statistics['Prices (Multiplier)'] += 1

@@ -103,6 +103,8 @@ class Items(Patch):
         'magic_attack',
         'phys_defense',
         'magic_defense',
+        'phys_attack_increase',
+        'phys_defense_increase',
         'tp_heal',
         'luck',
         'agility',

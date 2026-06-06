@@ -151,6 +151,7 @@ class Weights:
     ITEM_CANDIDACY = 0.05
     ITEM_PRICE = 0.95
     ITEM_PRICE_MULTIPLIER = 0.99
+    ITEM_PRICE_MULTIPLIER_HERB = 0.67
     ITEM_PRICE_MAIN_STAT_PAIR_MAIN_VALUE = 0.45
     ITEM_PRICE_MAIN_STAT_PAIR_SUB_VALUE = 0.25
     ITEM_PRICE_MAIN_RELATED_STAT_VALUE = 0.10
@@ -214,6 +215,7 @@ class Weights:
         0.9,
         0.1
     )
+    ITEM_HERB: float = 0.23
     ITEM_SKILL_OPPORTUNITIES: tuple = (
         0.96,
         0.875,
