@@ -1041,6 +1041,9 @@ class ItemRandomizer(BaseRandomizer):
                 if enums.ItemCategory.is_equipment(category):
                     material_candidates.extend(self.equipment_items)
 
+                if item['id'] in material_candidates:
+                    material_candidates.remove(item['id'])
+
                 materials = sorted(self.random.sample(
                     material_candidates,
                     material_count
