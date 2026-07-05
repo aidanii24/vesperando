@@ -17,7 +17,6 @@ class Options:
             os.makedirs(Paths.OPTIONS_DIR)
 
         with open(os.path.join(Paths.OPTIONS_DIR, "options.yaml"), "w") as f:
-            print(Paths.OPTIONS_DIR)
             dumper = yaml_comments.create_dumper(before=comments)
             yaml.dump(options, f, dumper)
             f.close()
