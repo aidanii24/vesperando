@@ -277,8 +277,21 @@ class GamePatchProcedure:
     def patch_strings(self, lang: str = "ENG"):
         self.packer.source_string_dict()
 
-        strings: dict[int, dict] = self.patcher.get_string_targets(self.patch_data)
-        self.patcher.patch_strings(strings)
+        strings: dict[int, dict] = {}
+        with Progress(transient=True) as progress:
+            progress.add_task(f"{"o Preparing Strings":<32}", total=None)
+            strings = self.patcher.get_string_targets(self.patch_data)
+
+        with Progress() as progress:
+            total_progress: int = len(strings)
+
+            patch_progress = progress.add_task(
+                f"{"> Strings":<32}",
+                total=total_progress,
+            )
+
+            track_callback = lambda: progress.update(patch_progress, advance=1)
+            self.patcher.patch_strings(strings, track_callback=track_callback)
 
         self.packer.copy_file_to_output(os.path.join("language", Paths.B_STRING_DICT % lang))
 

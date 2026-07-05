@@ -537,7 +537,10 @@ class GamePatcher:
             mm.flush()
             mm.close()
 
-    def patch_strings(self, string_dict: dict[int, dict], lang: str = "ENG") -> None:
+    def patch_strings(self, string_dict: dict[int, dict], lang: str = "ENG", track_callback: Callable = None) -> None:
+        if not track_callback:
+            track_callback = lambda x: None
+
         str_file = Paths.B_STRING_DICT % lang
         str_path: str = os.path.join(self.build_dir, "language", str_file)
 
@@ -606,6 +609,8 @@ class GamePatcher:
                     else:
                         next_start = len(strings)
                     offset = term - next_start
+
+                track_callback()
 
             if offset < 0:
                 strings = strings[:offset]
