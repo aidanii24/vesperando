@@ -240,6 +240,14 @@ class GamePatchPacker:
 
         complib.decode(target, os.path.join(decompress_dir, file + ".dec"))
 
+    def source_string_dict(self, lang: str = "ENG"):
+        rel: str = Paths.B_STRING_DICT % lang
+
+        src = self.check_vesperia_file(os.path.join(self.game_dir, Paths.LANGUAGE, rel))
+        dest = os.path.join(self.build_dir, "language")
+
+        shutil.copy2(src, dest)
+
     def pack_btl(self):
         path: str = os.path.join(self.manifest_dir, "BTL_PACK.DAT.json")
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
@@ -324,12 +332,17 @@ class GamePatchPacker:
         output: str = os.path.join(output_dir, "scenario_ENG.dat")
         scenario.pack(main, output)
 
-    def copy_to_output(self, dir_name: str, ):
+    def copy_file_to_output(self, pathname: str):
+        target: str = os.path.join(self.build_dir, pathname)
+
+        self.ensure_output_directory()
+        shutil.copy2(target, os.path.join(self.output_dir, "Data64", pathname))
+
+    def copy_dir_to_output(self, dir_name: str, ):
         target: str = os.path.join(self.build_dir, dir_name)
         assert os.path.isdir(target), f"Cannot find {dir_name} in the build directory for the patch."
 
         self.ensure_output_directory()
-
         shutil.copytree(target, os.path.join(self.output_dir, "Data64", dir_name), dirs_exist_ok=True)
 
     def clean(self):

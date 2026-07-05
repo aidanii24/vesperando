@@ -5,8 +5,8 @@ import mmap
 import json
 import os
 
-from vesperando_core import game_types as gtypes
-from vesperando_core.res.enums import EventAction
+from vesperando_core import data, game_types as gtypes
+from vesperando_core.res.enums import EventAction, TargetType, ArteEffects
 from vesperando_core.conf.settings import Paths
 from vesperando_core.utils import keys_to_int
 
@@ -536,6 +536,268 @@ class GamePatcher:
 
             mm.flush()
             mm.close()
+
+    def patch_strings(self, string_dict: dict[int, dict], lang: str = "ENG") -> None:
+        str_file = Paths.B_STRING_DICT % lang
+        str_path: str = os.path.join(self.build_dir, "language", str_file)
+
+        header_size: int = ctypes.sizeof(gtypes.TSSHeader)
+        with open(str_path, "r+b") as f:
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
+
+            header = gtypes.TSSHeader.from_buffer_copy(mm.read(header_size))
+            mm.seek(header.code_start)
+
+            # Get String Entries
+            entries: dict[int, gtypes.TSSStringEntry] = self.get_string_pointers(
+                mm, header.code_start, header.code_length
+            )
+            entries_values: list[gtypes.TSSStringEntry] = [*entries.values()]
+
+            mm.seek(header.text_start)
+            strings: bytearray = bytearray(mm.read(-1))
+
+            offset: int = 0
+            for index, (addr, entry) in enumerate(entries.items()):
+                new_str = string_dict.get(entry.string_id, {})
+
+                str_jpn = new_str.get("JPN", "")
+                str_default = new_str.get(lang, "")
+
+                p_jpn = entry.pointer_jpn + offset
+
+                enc_jpn = str_jpn.encode() if str_jpn else b""
+                enc_default: bytes = str_default.encode() if str_default else b""
+
+                written: bool = True
+
+                term = strings.find(b"\x00", p_jpn)
+                if enc_jpn:
+                    del strings[p_jpn:term + 1]
+                    strings[p_jpn:p_jpn] = enc_jpn + b"\x00"
+                    p_default = p_jpn + len(enc_jpn) + 2
+
+                    written = True
+                else:
+                    p_default = term + 1
+
+                term = strings.find(b"\x00", p_default)
+                if enc_default:
+                    del strings[p_default:term + 1]
+                    strings[p_default:p_default] = enc_default + b"\x00"
+                    term: int = p_default + len(enc_default) + 1
+
+                    written = True
+                else:
+                    term += 1
+
+                if offset:
+                    # Go to Pointer for Japanese String
+                    mm.seek(addr - 0x20)
+                    mm.write(int.to_bytes(p_jpn, length=4, byteorder="little"))
+
+                    # Go to pointer for Non-JP String
+                    mm.seek(addr - 0x10)
+                    mm.write(int.to_bytes(p_default, length=4, byteorder="little"))
+
+                if written:
+                    if index + 1 < len(entries):
+                        next_start = entries_values[index + 1].pointer_jpn
+                    else:
+                        next_start = len(strings)
+                    offset = term - next_start
+
+            if offset < 0:
+                strings = strings[:offset]
+
+            mm.resize(header.text_start + len(strings))
+            mm.seek(header.text_start)
+            mm.write(strings)
+
+            mm.flush()
+            mm.close()
+
+
+    @classmethod
+    def get_string_pointers(cls, mm: mmap.mmap, start: int, region_len: int) -> dict[int, gtypes.TSSStringEntry]:
+        end_marker: bytes = (0xFFFFFFFF).to_bytes(4, byteorder="little")
+        entries: dict[int, gtypes.TSSStringEntry] = {}
+
+        last_entry_index: int = start
+        entry_index: int = mm.find(end_marker, last_entry_index + 4, region_len)
+
+        while entry_index >= 0:
+            length: int = entry_index - last_entry_index
+            new_entry: gtypes.TSSStringEntry = gtypes.TSSStringEntry.from_buffer(mm.read(length))
+            entries[mm.tell()] = new_entry
+
+            last_entry_index: int = entry_index
+            entry_index: int = mm.find(end_marker, last_entry_index + 4, region_len)
+
+        return entries
+
+    @classmethod
+    def get_string_targets(cls, patch_data: dict) -> dict[int, dict]:
+        strings: dict[int, dict] = {}
+
+        if "artes" in patch_data:
+            cls.generate_desc_from_artes(patch_data["artes"], strings)
+
+        return strings
+
+    @classmethod
+    def generate_desc_from_artes(
+            cls, patch_data: dict,
+            strings: dict[int, dict] = None,
+            lang: str = "ENG"
+    ) -> dict[int, dict]:
+        if type(strings) != dict:
+            strings = {}
+
+        arte_candidates: dict = {
+            aid: artes for aid, artes in data.get_artes_data().items()
+            if aid in set(sum(data.get_artes_by_char().values(), []))
+        }
+        skill_data: dict = data.get_skills_data()
+
+        teaching_artes: set[int] = set()
+        teaching_skills: set[int] = set()
+        evolving_artes: set[int] = set()
+        evolving_skills: set[int] = set()
+
+        for aid, arte in arte_candidates.items():
+            patched_data: dict = patch_data.get(aid, {})
+            desc_key: int = arte.get('desc_string_key', 0)
+            base_details: list = []
+
+            # Get target type
+            target_type: TargetType = TargetType(patched_data.get("target_type", arte.get("target_type", 0)))
+            if target_type:
+                target_desc: str = cls.generate_target_type_desc(target_type)
+                if target_desc:
+                    base_details.append(target_desc)
+
+            # Get Global Effects
+            g_effects_src: dict = patched_data if patched_data.get("status_effect1") else arte
+            for _ in range(1, 3):
+                effect: int = g_effects_src.get(f"status_effect{_}", 0)
+                if not effect: break
+
+                base_details.append(cls.generate_global_effect_desc(ArteEffects(effect)))
+
+            # Format Base Details
+            if base_details:
+                strings.setdefault(desc_key, {})
+                strings[desc_key][lang] = " ".join(base_details)
+
+            # Get Skills/Artes that can teach an Arte
+            learn_src: dict = patched_data if patched_data.get("learn_condition1") else arte
+            for _ in range(1, 4):
+                if learn_src.get(f'learn_condition{_}') == 2:
+                    teaching_artes.add(learn_src[f'learn_parameter{_}'])
+                elif learn_src.get(f'learn_condition{_}') == 3:
+                    teaching_skills.add(learn_src[f'learn_parameter{_}'])
+
+            # Get Artes that evolve into another, and the skills required for it
+            evolve_src: dict = patched_data if patched_data.get("evolve_base") else arte
+            if evolve_src['evolve_base'] and evolve_src['evolve_base'] not in evolving_artes:
+                evolving_artes.add(evolve_src['evolve_base'])
+
+                for _ in range(1, 5):
+                    if not evolve_src.get(f'evolve_condition{_}', 0):
+                        break
+
+                    if evolve_src[f'evolve_parameter{_}'] in evolving_skills: continue
+                    evolving_skills.add(evolve_src[f'evolve_parameter{_}'])
+
+        for aid in teaching_artes.union(evolving_artes):
+            hint_details: list[str] = []
+            if aid in teaching_artes: hint_details.append("Required to learn an arte.")
+            if aid in evolving_artes: hint_details.append("Can change to a new arte.")
+
+            if not hint_details: continue
+
+            desc_key: int = arte_candidates.get(aid, {}).get("desc_string_key", 0)
+            full_desc: str = strings.get(desc_key, {}).get(lang, "")
+            if not full_desc:
+                strings[desc_key] = {lang: full_desc}
+            else:
+                full_desc += "\n"
+            strings[desc_key][lang] = full_desc + " ".join(hint_details)
+
+        for sid in teaching_artes.union(evolving_artes):
+            hint_details: list[str] = []
+            if sid in teaching_skills: hint_details.append("Required to learn an arte.")
+            if sid in evolving_skills: hint_details.append("Can change to a new arte.")
+
+            if not hint_details: continue
+
+            desc_key: int = skill_data.get(sid, {}).get("desc_string_key", 0)
+            full_desc: str = strings.get(desc_key, {}).get(lang, "")
+            if not full_desc:
+                strings[desc_key] = {lang: full_desc}
+            else:
+                full_desc += "\n"
+            strings[desc_key][lang] = full_desc + " ".join(hint_details)
+
+        return strings
+
+
+    @classmethod
+    def generate_target_type_desc(cls, target_type: TargetType):
+        match target_type:
+            case TargetType.ENEMIES_MULTI:
+                return "[Enemy Target]"
+            case TargetType.ALLY:
+                return "[Single Ally]"
+            case TargetType.ALLY_MULTI:
+                return "[Area of Effect]"
+            case TargetType.ENEMIES_ONLY:
+                return "[All Enemies]"
+            case TargetType.ALL_ALLIES:
+                return "[All Allies]"
+            case TargetType.SELF:
+                return "[Self]"
+            case TargetType.ALLIES_ONLY:
+                return "[Allies Only]"
+            case _:
+                return ""
+
+    @classmethod
+    def generate_global_effect_desc(cls, effect: ArteEffects):
+        match effect:
+            case ArteEffects.HP_RECOVERY:
+                return "\u2665\x06(FS1)"
+            case ArteEffects.KO_RECOVERY:
+                return "\x06(SC6)\x06(FS1)"
+            case ArteEffects.CURE_PHYSICAL_AILMENTS:
+                return "\x06(ST4)\x06(FS3)"
+            case ArteEffects.P_ATK_UP:
+                return "\x06(SC1)\x06(FS1)"
+            case ArteEffects.M_ATK_UP:
+                return "\x06(SC3)\x06(FS1)"
+            case ArteEffects.P_DEF_UP:
+                return "\x06(SC2)\x06(FS1)"
+            case ArteEffects.M_DEF_UP:
+                return "\x06(SC4)\x06(FS1)"
+            case ArteEffects.AUTO_RECOVER:
+                return "\x06(SC6)\x06(FS2)"
+            case ArteEffects.IRON_STANCE:
+                return "\x06(SC2)\x06(FS2)"
+            case ArteEffects.INVULNERABILITY:
+                return "\x06(SC4)\x06(FS2)"
+            case ArteEffects.CURE_MAGICAL_AILMENTS:
+                return "\x06(SC7)\x06(FS3)"
+            case ArteEffects.IMBUE_ELEMENT:
+                return "\x06(EL5)\x06(FS2)"
+            case ArteEffects.TP_RECOVERY:
+                return "\x06(EL7)\x06(FS1)"
+            case ArteEffects.REDUCE_DAMAGE:
+                return "\x06(EL7)\x06(FS2)"
+            case ArteEffects.LUCK_UP:
+                return "\x06(SC3)\x06(FS2)"
+            case _:
+                return ""
 
 
 class PatchError(Exception):

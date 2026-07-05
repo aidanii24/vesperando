@@ -66,6 +66,8 @@ class GamePatchProcedure:
         if 'chests' in self.patch_data or 'search' in self.patch_data:
             self.patch_npc()
 
+        self.patch_strings()
+
         if self.apply_immediately:
             self.packer.apply()
 
@@ -132,7 +134,7 @@ class GamePatchProcedure:
 
             self.patcher.patch_items(self.patch_data['items'], lambda: progress.update(patch_progress, advance=1))
 
-            self.packer.copy_to_output('item')
+            self.packer.copy_dir_to_output('item')
             progress.update(patch_progress, advance=1)
 
     def patch_scenario(self):
@@ -270,10 +272,19 @@ class GamePatchProcedure:
 
                 progress.update(patch_progress, advance=1)
 
-        self.packer.copy_to_output('npc')
+        self.packer.copy_dir_to_output('npc')
+
+    def patch_strings(self, lang: str = "ENG"):
+        self.packer.source_string_dict()
+
+        strings: dict[int, dict] = self.patcher.get_string_targets(self.patch_data)
+        self.patcher.patch_strings(strings)
+
+        self.packer.copy_file_to_output(os.path.join("language", Paths.B_STRING_DICT % lang))
 
     def restore(self):
         packer.restore_backup(self.packer.game_dir)
+
 
 
 if __name__ == '__main__':

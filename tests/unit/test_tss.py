@@ -9,8 +9,8 @@ from vesperando_core.game_types import TSSHeader, TSSStringEntry, VesperiaStruct
 
 def parse_tss():
     bdr: str = os.path.dirname(os.path.abspath(__file__))
-    test_file: str = f"{bdr}/control/string_dic_ENG.so"
-    dump_file: str = f"{bdr}/artifacts/output.txt"
+    test_file: str = f"{bdr}/control/string_dic_TST.so"
+    dump_file: str = f"{bdr}/artifacts/string_dump.txt"
     extract_file: str = f"{bdr}/artifacts/strings.json"
     data_file: str = f"{bdr}/artifacts/strings.json"
     stop: bytes = (0xFFFFFFFF).to_bytes(4, byteorder="little")
@@ -39,8 +39,9 @@ def parse_tss():
             last_max: int = stop_index
             stop_index = mm.find(stop, last_max + 4, header.code_length)
 
-        for string in string_entries:
+        for index, string in enumerate(string_entries):
             start: int = string.pointer_eng + header.text_start
+            print(index + 1, hex(start), hex(string.pointer_eng))
 
             mm.seek(start)
             end: int = mm.find("\x00".encode(), start)
@@ -53,12 +54,21 @@ def parse_tss():
 
                 try:
                     decoded = "\t" + (result.decode("utf-8"))
-                    string_id_table[string.string_id] = decoded
+                    string_id_table[string.pointer_eng] = decoded
                 except UnicodeDecodeError:
                     continue
 
         mm.close()
         f.close()
+
+    with open(dump_file, "w+") as f:
+        for k, v in string_id_table.items():
+            print(f"{k}: {v}", file=f)
+
+        f.flush()
+        f.close()
+
+    return
 
     with open(data_file, "w+") as f:
         as_dict: dict[int, dict] = {string.string_id : string.to_json() for string in string_entries}
@@ -81,7 +91,7 @@ def add_entry():
 
     header_size: int = ctypes.sizeof(TSSHeader)
 
-    test_entry: TSSStringEntry = TSSStringEntry(7, 966590, 0x2FDC02, 0x2FDC0B)
+    test_entry:  TSSStringEntry = TSSStringEntry(7, 966590, 0x2FDC02, 0x2FDC0B)
     test_string: str = "\x00テスト\x00This is a sample string! Please be careful!\x00"
     bytecode: bytes = test_entry.encode_tss()
 

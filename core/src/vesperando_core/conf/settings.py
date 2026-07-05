@@ -30,7 +30,9 @@ class Paths:
     ITEM = os.path.join("Data64", "item.svo")
     NPC = os.path.join("Data64", "npc.svo")
     UI = os.path.join("Data64", "UI.svo")
+    LANGUAGE = os.path.join("Data64", "language")
     SCENARIO = os.path.join("Data64", "language", "scenario_ENG.dat")
+    B_STRING_DICT = os.path.join("string_dic_%s.so")
 
 
 @dataclass(frozen=True)
