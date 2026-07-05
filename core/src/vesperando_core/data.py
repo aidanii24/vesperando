@@ -18,6 +18,8 @@ _common_items = tuple()
 
 _events_data: dict = {}
 
+_metadata: dict = {}
+
 def get_artes_data() -> dict:
     if not _artes_data: _load_artes_data()
     return _artes_data
@@ -41,6 +43,11 @@ def get_artes_by_char() -> dict:
 
     return _artes_by_char
 
+def get_artes_names() -> dict:
+    if not _metadata.get('artes'):
+        _load_metadata()
+    return _metadata.get('artes')
+
 def get_skills_data() -> dict:
     if not _skills_data: _load_skills_data()
     return _skills_data
@@ -56,6 +63,11 @@ def get_skills_by_char() -> dict:
                     _skills_by_char.setdefault(character.value, []).append(sid)
 
     return _skills_by_char
+
+def get_skills_names() -> dict:
+    if not _metadata.get('skills'):
+        _load_metadata()
+    return _metadata.get('skills')
 
 def get_items_data() -> dict:
     if not _items_data: _load_items_data()
@@ -111,3 +123,8 @@ def _load_events_data():
     global _events_data
     with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
         _events_data = json.load(f, object_hook=utils.keys_to_int)
+
+def _load_metadata():
+    global _metadata
+    with open(Paths.STATIC_PATH.joinpath("metadata.json")) as f:
+        _metadata = json.load(f, object_hook=utils.keys_to_int)

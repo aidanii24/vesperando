@@ -539,7 +539,7 @@ class GamePatcher:
 
     def patch_strings(self, string_dict: dict[int, dict], lang: str = "ENG", track_callback: Callable = None) -> None:
         if not track_callback:
-            track_callback = lambda x: None
+            track_callback = lambda : None
 
         str_file = Paths.B_STRING_DICT % lang
         str_path: str = os.path.join(self.build_dir, "language", str_file)
@@ -664,11 +664,12 @@ class GamePatcher:
             if aid in set(sum(data.get_artes_by_char().values(), []))
         }
         skill_data: dict = data.get_skills_data()
+        arte_names: dict = data.get_artes_names()
 
-        teaching_artes: set[int] = set()
-        teaching_skills: set[int] = set()
-        evolving_artes: set[int] = set()
-        evolving_skills: set[int] = set()
+        teaching_artes: dict[int, set] = {}
+        teaching_skills: dict[int, set] = {}
+        evolving_artes: dict[int, set] = {}
+        evolving_skills: dict[int, set] = {}
 
         for aid, arte in arte_candidates.items():
             patched_data: dict = patch_data.get(aid, {})
@@ -698,27 +699,42 @@ class GamePatcher:
             # Get Skills/Artes that can teach an Arte
             learn_src: dict = patched_data if patched_data.get("learn_condition1") else arte
             for _ in range(1, 4):
+                target: int = learn_src[f'learn_parameter{_}']
+                if not target: break
+
                 if learn_src.get(f'learn_condition{_}') == 2:
-                    teaching_artes.add(learn_src[f'learn_parameter{_}'])
+                    teaching_artes.setdefault(target, set()).add(aid)
                 elif learn_src.get(f'learn_condition{_}') == 3:
-                    teaching_skills.add(learn_src[f'learn_parameter{_}'])
+                    teaching_skills.setdefault(target, set()).add(aid)
+                else:
+                    break
 
             # Get Artes that evolve into another, and the skills required for it
             evolve_src: dict = patched_data if patched_data.get("evolve_base") else arte
             if evolve_src['evolve_base'] and evolve_src['evolve_base'] not in evolving_artes:
-                evolving_artes.add(evolve_src['evolve_base'])
+                evolving_artes.setdefault(evolve_src['evolve_base'], set()).add(aid)
 
                 for _ in range(1, 5):
                     if not evolve_src.get(f'evolve_condition{_}', 0):
                         break
 
                     if evolve_src[f'evolve_parameter{_}'] in evolving_skills: continue
-                    evolving_skills.add(evolve_src[f'evolve_parameter{_}'])
+                    evolving_skills.setdefault(evolve_src[f'evolve_parameter{_}'], set()).add(aid)
 
-        for aid in teaching_artes.union(evolving_artes):
+        for aid in set().union(teaching_artes.keys(), evolving_artes.keys()):
             hint_details: list[str] = []
-            if aid in teaching_artes: hint_details.append("Required to learn an arte.")
-            if aid in evolving_artes: hint_details.append("Can change to a new arte.")
+            has_teaching_artes: bool = False
+            if aid in teaching_artes:
+                artes = [
+                    arte_names[a] for a in teaching_artes[aid]
+                    if a and a not in evolving_artes.get(aid, []) and a != aid
+                ]
+                has_teaching_artes = len(artes) > 0
+                if has_teaching_artes:
+                    hint_details.append("\u2605 " + ", ".join(artes))
+            if aid in evolving_artes:
+                artes = [arte_names[a] for a in evolving_artes[aid]]
+                hint_details.append("\n\u2192 " + ", ".join(artes))
 
             if not hint_details: continue
 
@@ -726,14 +742,19 @@ class GamePatcher:
             full_desc: str = strings.get(desc_key, {}).get(lang, "")
             if not full_desc:
                 strings[desc_key] = {lang: full_desc}
-            else:
-                full_desc += "\n"
-            strings[desc_key][lang] = full_desc + " ".join(hint_details)
 
-        for sid in teaching_artes.union(evolving_artes):
+            if has_teaching_artes:
+                full_desc += " | "
+            strings[desc_key][lang] = full_desc + "".join(hint_details)
+
+        for sid in set().union(teaching_skills.keys(), evolving_skills.keys()):
             hint_details: list[str] = []
-            if sid in teaching_skills: hint_details.append("Required to learn an arte.")
-            if sid in evolving_skills: hint_details.append("Can change to a new arte.")
+            if sid in teaching_skills:
+                skills = [arte_names[a] for a in teaching_skills[sid]]
+                hint_details.append("\u2605 " + ", ".join(skills))
+            if sid in evolving_skills:
+                skills = [arte_names[a] for a in evolving_skills[sid]]
+                hint_details.append("\n\u2192 " + ", ".join(skills))
 
             if not hint_details: continue
 
@@ -741,9 +762,7 @@ class GamePatcher:
             full_desc: str = strings.get(desc_key, {}).get(lang, "")
             if not full_desc:
                 strings[desc_key] = {lang: full_desc}
-            else:
-                full_desc += "\n"
-            strings[desc_key][lang] = full_desc + " ".join(hint_details)
+            strings[desc_key][lang] = full_desc + "".join(hint_details)
 
         return strings
 
