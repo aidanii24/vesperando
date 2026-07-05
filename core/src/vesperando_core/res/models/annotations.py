@@ -72,16 +72,22 @@ def check_lp_ratio(value: int) -> int:
     check_max(value, 100)
     return value
 
+def create_annotation(t, ann, doc_from_ann: bool = True) -> Callable:
+    a = Annotated[t, ann]
+    if doc_from_ann:
+        a.__doc__ = ann.__doc__
 
-IntPositiveStrict = Annotated[int, AfterValidator(check_positive_strict)]
-MaxTenThousand = Annotated[int, AfterValidator(check_max_ten_thousand)]
-MaxThousand = Annotated[int, AfterValidator(check_max_thousand)]
-MaxHundred = Annotated[int, AfterValidator(check_max_hundred)]
-MaxTen = Annotated[int, AfterValidator(check_max_ten)]
-Mod = Annotated[float, AfterValidator(check_mod)]
-TP = Annotated[int, AfterValidator(check_tp)]
-LPRatio = Annotated[int, AfterValidator(check_lp_ratio)]
-WeaponSkillCount = Annotated[int, AfterValidator(check_weapon_skill_count)]
+    return a
+
+IntPositiveStrict = create_annotation(int, AfterValidator(check_positive_strict))
+MaxTenThousand = create_annotation(int, AfterValidator(check_max_ten_thousand))
+MaxThousand = create_annotation(int, AfterValidator(check_max_thousand))
+MaxHundred = create_annotation(int, AfterValidator(check_max_hundred))
+MaxTen = create_annotation(int, AfterValidator(check_max_ten))
+Mod = create_annotation(float, AfterValidator(check_mod))
+TP = create_annotation(int, AfterValidator(check_tp))
+LPRatio = create_annotation(int, AfterValidator(check_lp_ratio))
+WeaponSkillCount = create_annotation(int, AfterValidator(check_weapon_skill_count))
 PydBool = bool
 
 IntPositiveStrict.__doc__ = check_positive_strict.__doc__

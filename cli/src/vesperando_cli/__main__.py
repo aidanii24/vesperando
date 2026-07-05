@@ -67,7 +67,6 @@ def generate(options, name, seed, spoiler, targets):
 
             sys.exit(1)
         except Exception as e:
-            print(type(e))
             logger.info("")
             if e == IsADirectoryError:
                 logger.error(f"\"{options}\" is a directory.")
