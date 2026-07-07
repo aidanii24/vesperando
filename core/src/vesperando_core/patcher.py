@@ -723,18 +723,35 @@ class GamePatcher:
 
         for aid in set().union(teaching_artes.keys(), evolving_artes.keys()):
             hint_details: list[str] = []
-            has_teaching_artes: bool = False
+            has_evolving_artes: bool = False
+            if aid in evolving_artes:
+                artes = [arte_names[a] for a in sorted(evolving_artes[aid])]
+                details: str = "\u2192 "
+                has_evolving_artes = len(artes) > 0
+                if has_evolving_artes:
+                    if len(artes) > 2:
+                        hidden: int = len(artes) - 2
+                        details += f"{", ".join(artes[:2])} "
+                        details += f"and {hidden} other{"s" if hidden > 1 else ""}"
+                    else:
+                        details += ", ".join(artes)
+
+                    hint_details.append(details)
             if aid in teaching_artes:
                 artes = [
-                    arte_names[a] for a in teaching_artes[aid]
+                    arte_names[a] for a in sorted(teaching_artes[aid])
                     if a and a not in evolving_artes.get(aid, []) and a != aid
                 ]
-                has_teaching_artes = len(artes) > 0
-                if has_teaching_artes:
-                    hint_details.append("\u2605 " + ", ".join(artes))
-            if aid in evolving_artes:
-                artes = [arte_names[a] for a in evolving_artes[aid]]
-                hint_details.append("\n\u2192 " + ", ".join(artes))
+                if artes:
+                    details: str = "\n\u2605 "
+                    if len(artes) > 3:
+                        hidden: int = len(artes) - 3
+                        details += f"{", ".join(artes[:3])} "
+                        details += f"and {hidden} other{"s" if hidden > 1 else ""}"
+                    else:
+                        details += ", ".join(artes)
+
+                    hint_details.append(details)
 
             if not hint_details: continue
 
@@ -743,18 +760,36 @@ class GamePatcher:
             if not full_desc:
                 strings[desc_key] = {lang: full_desc}
 
-            if has_teaching_artes:
+            if has_evolving_artes:
                 full_desc += " | "
             strings[desc_key][lang] = full_desc + "".join(hint_details)
 
         for sid in set().union(teaching_skills.keys(), evolving_skills.keys()):
             hint_details: list[str] = []
-            if sid in teaching_skills:
-                skills = [arte_names[a] for a in teaching_skills[sid]]
-                hint_details.append("\u2605 " + ", ".join(skills))
             if sid in evolving_skills:
-                skills = [arte_names[a] for a in evolving_skills[sid]]
-                hint_details.append("\n\u2192 " + ", ".join(skills))
+                skills = [arte_names[a] for a in sorted(evolving_skills[sid])]
+                if skills:
+                    details: str = "\u2192 "
+                    if len(skills) > 3:
+                        hidden: int = len(skills) - 3
+                        details += f"{", ".join(skills[:3])} "
+                        details += f"and {hidden} other{"s" if hidden > 1 else ""}"
+                    else:
+                        details += ", ".join(skills)
+
+                    hint_details.append(details)
+            if sid in teaching_skills:
+                skills = [arte_names[a] for a in sorted(teaching_skills[sid])]
+                if skills:
+                    details: str = "\u2605 "
+                    if len(skills) > 3:
+                        hidden: int = len(skills) - 3
+                        details += f"{", ".join(skills[:3])} "
+                        details += f"and {hidden} other{"s" if hidden > 1 else ""}"
+                    else:
+                        details += ", ".join(skills)
+
+                    hint_details.append(details)
 
             if not hint_details: continue
 
@@ -762,7 +797,7 @@ class GamePatcher:
             full_desc: str = strings.get(desc_key, {}).get(lang, "")
             if not full_desc:
                 strings[desc_key] = {lang: full_desc}
-            strings[desc_key][lang] = full_desc + "".join(hint_details)
+            strings[desc_key][lang] = full_desc + "\n".join(hint_details)
 
         return strings
 
