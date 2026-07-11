@@ -4,6 +4,13 @@ Utilities for randomizing and patching aspects of Tales of Vesperia: Definitive 
 These tools were created in part for an eventual integration of the game into the 
 [Archipelago](https://github.com/ArchipelagoMW/Archipelago) Randomizer framework, but can work
 standalone with the bundled Basic Randomizer.
+
+> **NOTICE**
+> 
+> Though most of the randomization will apply regardless of regional settings,
+> event and string data are localized by the game, and vesperando currently 
+> does not support modifying the corresponding data for non-English settings.
+
 # Features
 - Artes Randomization
 - Skills Randomization
