@@ -7,22 +7,27 @@ def export_battle_book_extras():
     content: dict[int, str] = {
         860150: "vesperando: Target Types 1",
         860151: "[Enemy Target]\n"
-                "Arte is focused for one enemy, but can still catch strays\n"
+                "Arte is focused for one enemy,\n"
+                "but can still catch strays,\n"
                 "[All Enemies]\n"
-                "All enemies will be affected by arte regardless of range\n"
+                "All enemies will be affected by arte,\n"
+                "regardless of range.\n"
                 "[Area of Effect]\n"
-                "Freely damages enemies and buffs allies within range",
+                "Freely damages enemies\n"
+                "and buffs allies within range.",
         860152: "vesperando: Target Types 2",
         860153: "[Single Ally]\n"
-                "Arte is focused for one ally, but may still affect \n"
-                "other allies or damage enemies if close enough\n"
+                "Arte is focused for one ally,\n"
+                "but may still affect other allies\n"
+                "or damage enemies if close enough.\n"
                 "[All Allies]\n"
-                "All allies will be affected by arte regardless of range\n"
+                "All allies will be affected by arte\n"
+                "regardless of range.\n"
                 "[Allies Only]\n"
                 "Arte will target allies, \n"
-                "ignoring any enemy along the way\n"
+                "ignoring any enemy along the way.\n"
                 "[Self]\n"
-                "Arte will only affect the user",
+                "Arte will only affect the user.",
         860154: "vesperando: Global Effects 1",
         860155: "\u2665\x06(FS1) HP Recovery\n"
                 "\x06(SC6)\x06(FS1) KO Recovery\n"

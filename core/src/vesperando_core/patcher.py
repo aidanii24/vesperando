@@ -587,8 +587,11 @@ class GamePatcher:
                 term = strings.find(b"\x00", p_default)
                 if enc_default:
                     del strings[p_default:term + 1]
-                    strings[p_default:p_default] = enc_default + b"\x00"
-                    term: int = p_default + len(enc_default) + 1
+
+                    str_data: bytes = enc_default
+                    if p_default != term: str_data += b"\x00"
+                    strings[p_default:p_default] = str_data
+                    term: int = p_default + len(str_data)
 
                     written = True
                 else:
