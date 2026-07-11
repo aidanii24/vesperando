@@ -68,8 +68,6 @@ def parse_tss():
         f.flush()
         f.close()
 
-    return
-
     with open(data_file, "w+") as f:
         as_dict: dict[int, dict] = {string.string_id : string.to_json() for string in string_entries}
         json.dump(as_dict, f, cls=VesperiaStructureEncoder, indent=4)

@@ -541,6 +541,14 @@ class GamePatcher:
         if not track_callback:
             track_callback = lambda : None
 
+        extra_strings: dict = {}
+        for sid, s in data.get_strings_data().items():
+            extra_strings[sid] = {
+                'ENG': s
+            }
+
+        string_dict.update(extra_strings)
+
         str_file = Paths.B_STRING_DICT % lang
         str_path: str = os.path.join(self.build_dir, "language", str_file)
 

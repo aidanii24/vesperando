@@ -18,6 +18,8 @@ _common_items = tuple()
 
 _events_data: dict = {}
 
+_strings_data: dict = {}
+
 _metadata: dict = {}
 
 def get_artes_data() -> dict:
@@ -100,6 +102,10 @@ def get_events_data() -> dict:
     if not _events_data: _load_events_data()
     return _events_data
 
+def get_strings_data() -> dict:
+    if not _strings_data: _load_strings_data()
+    return _strings_data
+
 def _load_artes_data():
     with open(Paths.STATIC_PATH.joinpath("artes.json")) as f:
         artes_data_table = json.load(f, object_hook=utils.keys_to_int)
@@ -123,6 +129,13 @@ def _load_events_data():
     global _events_data
     with open(Paths.STATIC_PATH.joinpath("events.json")) as f:
         _events_data = json.load(f, object_hook=utils.keys_to_int)
+
+def _load_strings_data():
+    with open(Paths.STATIC_PATH.joinpath("strings.json")) as f:
+        strings_data = json.load(f, object_hook=utils.keys_to_int)
+
+    global _strings_data
+    _strings_data = strings_data
 
 def _load_metadata():
     global _metadata
