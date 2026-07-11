@@ -378,7 +378,7 @@ def prepare_game(patched_dir: str, game_dir: str):
         os.remove(npc)
 
     menu: str = os.path.join(game_dir, Paths.MENU)
-    if "menu" in patch_contents and os.path.isfile(npc):
+    if "menu" in patch_contents and os.path.isfile(menu):
         os.remove(menu)
 
 def clean_game(game_dir: str):
