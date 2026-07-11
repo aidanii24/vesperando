@@ -24,7 +24,9 @@ class Paths:
     MANIFESTS_DIR = os.path.join(BUILD_DIR, ".manifests")
     OUTPUT_dir = os.path.join(EXEC_DIR, "output")
 
-    GAME_DIR = os.path.join("steam", "steamapps", "common", "Tales of Vesperia Definitive Edition")
+    STEAM_LIBFOL = os.path.join("steamapps", "libraryfolders.vdf")
+
+    GAME_DIR = os.path.join("steamapps", "common", "Tales of Vesperia Definitive Edition")
     BACKUP_DIR = os.path.join("Data64", ".backup")
     BTL =os.path.join("Data64", "btl.svo")
     ITEM = os.path.join("Data64", "item.svo")
