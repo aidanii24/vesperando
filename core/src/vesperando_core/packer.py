@@ -201,6 +201,11 @@ class GamePatchPacker:
         output: str = file if not out else out + ".dec"
         tlzc.decompress(file, output)
 
+    def unpack_menu(self):
+        path: str = self.check_vesperia_file(os.path.join(self.game_dir, Paths.MENU))
+        work_dir: str = os.path.join(self.build_dir, "menu")
+        fps4.extract(path, work_dir, os.path.join(self.manifest_dir, "menu.json"))
+
     def unpack_ui(self):
         path: str = os.path.join(self.game_dir, Paths.UI)
         assert os.path.isfile(path), f"Expected file {path}, but it does not exist."
@@ -358,7 +363,6 @@ def apply_patch(patched_path, game_dir):
     shutil.copytree(patched_path, game_dir, dirs_exist_ok=True)
 
 def prepare_game(patched_dir: str, game_dir: str):
-    data_dir: str = os.path.join(game_dir, "Data64")
     patch_contents: list[str] = os.listdir(os.path.join(patched_dir, "Data64"))
 
     btl: str = os.path.join(game_dir, Paths.BTL)
@@ -372,6 +376,10 @@ def prepare_game(patched_dir: str, game_dir: str):
     npc: str = os.path.join(game_dir, Paths.NPC)
     if "npc" in patch_contents and os.path.isfile(npc):
         os.remove(npc)
+
+    menu: str = os.path.join(game_dir, Paths.MENU)
+    if "menu" in patch_contents and os.path.isfile(npc):
+        os.remove(menu)
 
 def clean_game(game_dir: str):
     detected_patches: list[str] = []
@@ -387,6 +395,10 @@ def clean_game(game_dir: str):
     npc: str = os.path.join(game_dir, "Data64", "npc")
     if os.path.isdir(npc):
         detected_patches.append(npc)
+
+    menu: str = os.path.join(game_dir, "Data64", "menu")
+    if os.path.isdir(menu):
+        detected_patches.append(menu)
 
     if detected_patches:
         for patches in detected_patches:

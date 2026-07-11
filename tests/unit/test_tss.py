@@ -41,7 +41,6 @@ def parse_tss():
 
         for index, string in enumerate(string_entries):
             start: int = string.pointer_eng + header.text_start
-            print(index + 1, hex(start), hex(string.pointer_eng))
 
             mm.seek(start)
             end: int = mm.find("\x00".encode(), start)
@@ -54,7 +53,7 @@ def parse_tss():
 
                 try:
                     decoded = "\t" + (result.decode("utf-8"))
-                    string_id_table[string.pointer_eng] = decoded
+                    string_id_table[string.string_id] = decoded
                 except UnicodeDecodeError:
                     continue
 

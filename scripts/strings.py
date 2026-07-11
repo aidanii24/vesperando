@@ -14,12 +14,13 @@ def export_battle_book_extras():
                 "Freely damages enemies and buffs allies within range",
         860152: "vesperando: Target Types 2",
         860153: "[Single Ally]\n"
-                "Arte is focused for one ally, but may still affect "
+                "Arte is focused for one ally, but may still affect \n"
                 "other allies or damage enemies if close enough\n"
                 "[All Allies]\n"
                 "All allies will be affected by arte regardless of range\n"
                 "[Allies Only]\n"
-                "Arte will target allies, ignoring any enemy along the way\n"
+                "Arte will target allies, \n"
+                "ignoring any enemy along the way\n"
                 "[Self]\n"
                 "Arte will only affect the user",
         860154: "vesperando: Global Effects 1",
@@ -41,10 +42,24 @@ def export_battle_book_extras():
                 "\x06(SC3)\x06(FS2) Luck Up",
     }
 
+    btlb: dict[int, int] = {
+        860150: 860151,
+        860152: 860153,
+        860154: 860155,
+        860156: 860157,
+    }
+
+    data: dict = {
+        'strings': content,
+        'pairs': {
+            'btlb': btlb
+        }
+    }
+
     filepath: str = "scripts/artifacts/strings.json"
     os.makedirs("./artifacts", exist_ok=True)
     with open(filepath, "w+") as f:
-        json.dump(content, f)
+        json.dump(data, f)
         f.flush()
         f.close()
 

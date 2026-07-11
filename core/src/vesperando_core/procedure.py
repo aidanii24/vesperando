@@ -10,7 +10,7 @@ import os
 
 from vesperando_core.conf.settings import Paths, Extensions
 from vesperando_core.patcher import GamePatcher
-from vesperando_core import packer, configs, utils
+from vesperando_core import packer, data, configs, utils
 
 
 logger = logging.getLogger(os.environ.get('LOGGER_NAME', "vesperando"))
@@ -276,14 +276,16 @@ class GamePatchProcedure:
 
     def patch_strings(self, lang: str = "ENG"):
         self.packer.source_string_dict()
+        self.packer.unpack_menu()
 
         strings: dict[int, dict] = {}
+        btlb_pairs: dict[int, int] = data.get_strings_data().get('pairs', {}).get('btlb', {})
         with Progress(transient=True) as progress:
             progress.add_task(f"{"o Preparing Strings":<32}", total=None)
             strings = self.patcher.get_string_targets(self.patch_data)
 
         with Progress() as progress:
-            total_progress: int = len(strings)
+            total_progress: int = len(strings) + len(btlb_pairs.keys())
 
             patch_progress = progress.add_task(
                 f"{"> Strings":<32}",
@@ -292,8 +294,10 @@ class GamePatchProcedure:
 
             track_callback = lambda: progress.update(patch_progress, advance=1)
             self.patcher.patch_strings(strings, track_callback=track_callback)
+            self.patcher.patch_btlb_entries(btlb_pairs)
 
         self.packer.copy_file_to_output(os.path.join("language", Paths.B_STRING_DICT % lang))
+        self.packer.copy_dir_to_output(os.path.join("menu"))
 
     def restore(self):
         packer.restore_backup(self.packer.game_dir)

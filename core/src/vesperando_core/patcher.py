@@ -541,14 +541,6 @@ class GamePatcher:
         if not track_callback:
             track_callback = lambda : None
 
-        extra_strings: dict = {}
-        for sid, s in data.get_strings_data().items():
-            extra_strings[sid] = {
-                'ENG': s
-            }
-
-        string_dict.update(extra_strings)
-
         str_file = Paths.B_STRING_DICT % lang
         str_path: str = os.path.join(self.build_dir, "language", str_file)
 
@@ -630,6 +622,44 @@ class GamePatcher:
             mm.flush()
             mm.close()
 
+    def patch_btlb_entries(self, string_keys: dict[int, int], track_callback: Callable = None) -> None:
+        if not track_callback:
+            track_callback = lambda : None
+
+        btlb_file = "BATTLEBOOKDATA.BIN"
+        btlb_path: str = os.path.join(self.build_dir, "menu", btlb_file)
+
+        extra_entries: int = len(string_keys)
+        with open(btlb_path, "r+b") as f:
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
+
+            # Update Entry Count
+            mm.seek(0x0C)
+            mm.write((70 + extra_entries).to_bytes(4, byteorder="little"))
+
+            # Increase file size
+            initial_size: int = mm.size()
+            mm.resize(mm.size() + extra_entries * 0x10)
+
+            # Move entries to end to place new entries at the start
+            # (after the dummy entry at least)
+            mm.move(0x30 + extra_entries * 0x10, 0x30, initial_size - 0x30 - 1)
+
+            # Register new Battle Book entries
+            mm.seek(0x30)
+            for title, content in string_keys.items():
+                entry: bytearray = bytearray(b'\x01') + bytes(3)
+                entry += title.to_bytes(4, byteorder="little")
+                entry += content.to_bytes(4, byteorder="little")
+                entry += bytes(4)
+
+                mm.write(entry)
+
+                track_callback()
+
+            mm.flush()
+            mm.close()
+
 
     @classmethod
     def get_string_pointers(cls, mm: mmap.mmap, start: int, region_len: int) -> dict[int, gtypes.TSSStringEntry]:
@@ -652,6 +682,11 @@ class GamePatcher:
     @classmethod
     def get_string_targets(cls, patch_data: dict) -> dict[int, dict]:
         strings: dict[int, dict] = {}
+
+        for sid, s in data.get_strings_data().get('strings', {}).items():
+            strings[sid] = {
+                'ENG': s
+            }
 
         if "artes" in patch_data:
             cls.generate_desc_from_artes(patch_data["artes"], strings)

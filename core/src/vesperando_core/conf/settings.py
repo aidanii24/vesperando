@@ -32,6 +32,7 @@ class Paths:
     UI = os.path.join("Data64", "UI.svo")
     LANGUAGE = os.path.join("Data64", "language")
     SCENARIO = os.path.join("Data64", "language", "scenario_ENG.dat")
+    MENU = os.path.join("Data64", "menu.svo")
     B_STRING_DICT = os.path.join("string_dic_%s.so")
 
 
