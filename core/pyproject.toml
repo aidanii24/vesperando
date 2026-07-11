@@ -20,6 +20,7 @@ dependencies = [
     "libvespy~=0.1.2",
     "vesperando_core==0.3.0.dev3",
     "PyYAML~=6.0.3",
+    "vdf~=3.4",
     "yaml-comments @ git+https://github.com/silentz/yaml_comments@ac2e1535becaa420a0d4086434723658a8e8b3e8"
 ]
 
