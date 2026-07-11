@@ -698,12 +698,21 @@ class GamePatcher:
 
     @classmethod
     def generate_desc_from_artes(
-            cls, patch_data: dict,
+            cls,
+            patch_data: dict,
             strings: dict[int, dict] = None,
             lang: str = "ENG"
     ) -> dict[int, dict]:
         if type(strings) != dict:
             strings = {}
+
+        with open(Paths.STATIC_PATH.joinpath("artes.json")) as f:
+            original_data = json.load(f, object_hook=keys_to_int)['entries']
+
+        arte_data: dict[int, dict] = {}
+        for arte in original_data:
+            if arte['id'] in patch_data:
+                arte_data[arte['id']] = {**arte, **patch_data[arte['id']]}
 
         arte_candidates: dict = {
             aid: artes for aid, artes in data.get_artes_data().items()
@@ -718,7 +727,7 @@ class GamePatcher:
         evolving_skills: dict[int, set] = {}
 
         for aid, arte in arte_candidates.items():
-            patched_data: dict = patch_data.get(aid, {})
+            patched_data: dict = arte_data.get(aid, {})
             desc_key: int = arte.get('desc_string_key', 0)
             base_details: list = []
 
@@ -757,7 +766,7 @@ class GamePatcher:
 
             # Get Artes that evolve into another, and the skills required for it
             evolve_src: dict = patched_data if patched_data.get("evolve_base") else arte
-            if evolve_src['evolve_base'] and evolve_src['evolve_base'] not in evolving_artes:
+            if evolve_src.get('evolve_base', 0):
                 evolving_artes.setdefault(evolve_src['evolve_base'], set()).add(aid)
 
                 for _ in range(1, 5):
@@ -773,6 +782,7 @@ class GamePatcher:
             if aid in evolving_artes:
                 artes = [arte_names[a] for a in sorted(evolving_artes[aid])]
                 details: str = "\u2192 "
+
                 has_evolving_artes = len(artes) > 0
                 if has_evolving_artes:
                     if len(artes) > 2:
