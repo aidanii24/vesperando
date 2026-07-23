@@ -632,6 +632,8 @@ class GamePatcher:
         btlb_file = "BATTLEBOOKDATA.BIN"
         btlb_path: str = os.path.join(self.build_dir, "menu", btlb_file)
 
+        entries_start: int = 0x30
+
         extra_entries: int = len(string_keys)
         with open(btlb_path, "r+b") as f:
             mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_WRITE)
@@ -643,13 +645,8 @@ class GamePatcher:
             # Increase file size
             initial_size: int = mm.size()
             mm.resize(mm.size() + extra_entries * 0x10)
+            mm.seek(initial_size)
 
-            # Move entries to end to place new entries at the start
-            # (after the dummy entry at least)
-            mm.move(0x30 + extra_entries * 0x10, 0x30, initial_size - 0x30 - 1)
-
-            # Register new Battle Book entries
-            mm.seek(0x30)
             for title, content in string_keys.items():
                 entry: bytearray = bytearray(b'\x01') + bytes(3)
                 entry += title.to_bytes(4, byteorder="little")
