@@ -111,6 +111,7 @@ def generate(options, name, seed, spoiler, targets):
 @click.argument('patch_file', required=False, type=click.Path())
 def patch(threads, clean, apply_immediately, patch_file=None):
     from vesperando_core import procedure
+    from vesperando_core.res.statuses import STATUS
 
     log_file: str = os.path.join(Paths.LOG_DIR, f"vesperando-patch_{datetime_id}.log")
     cli_logging.set_file_handler(log_file, logger)
@@ -164,7 +165,20 @@ def patch(threads, clean, apply_immediately, patch_file=None):
         file_path = os.path.join(Paths.PATCHES_DIR, (patches[res - 1]))
 
     app = procedure.GamePatchProcedure(file_path, threads, apply_immediately, clean)
-    app.patch()
+    result: STATUS = app.patch()
+
+    match result:
+        case STATUS.PATCH_ALREADY_GENERATED:
+            logger.warning("The patched game files for this patch file have already been generated.")
+            if apply_immediately:
+                logger.info("Applying patch now.")
+                app.packer.apply()
+                logger.info("Patch successfully applied.")
+            else:
+                logger.info("Patch Aborted.")
+        case STATUS.PATCH_ALREADY_APPLIED:
+            logger.warning("The patched game files for this patch file have already been applied.")
+            logger.info("Patch aborted.")
 
     sys.exit(0)
 

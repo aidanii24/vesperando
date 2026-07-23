@@ -36,6 +36,7 @@ class Paths:
     SCENARIO = os.path.join("Data64", "language", "scenario_ENG.dat")
     MENU = os.path.join("Data64", "menu.svo")
     B_STRING_DICT = os.path.join("string_dic_%s.so")
+    PATCH_MANIFEST = ".vesperando"
 
 
 @dataclass(frozen=True)

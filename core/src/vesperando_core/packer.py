@@ -52,12 +52,6 @@ class GamePatchPacker:
 
         self.apply_immediately = apply_immediately
 
-        if os.path.isdir(self.output_dir) and apply_immediately:
-            logger.warning("The patched game files for this patch file has already been generated.")
-            apply_patch(self.output_dir, self.game_dir)
-            logger.info("Applied patch to game directory.")
-            sys.exit(0)
-
     def check_dependencies(self):
         error_occurred: bool = False
 
@@ -383,6 +377,9 @@ def prepare_game(patched_dir: str, game_dir: str):
 
 def clean_game(game_dir: str):
     detected_patches: list[str] = []
+
+    if os.path.isfile(os.path.join(game_dir, '.vesperando')):
+        os.remove(os.path.join(game_dir, '.vesperando'))
 
     btl: str = os.path.join(game_dir, "Data64", "btl")
     if os.path.isdir(btl):

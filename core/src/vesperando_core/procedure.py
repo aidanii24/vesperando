@@ -11,6 +11,7 @@ import os
 from vesperando_core.conf.settings import Paths, Extensions
 from vesperando_core.patcher import GamePatcher
 from vesperando_core import packer, data, configs, utils
+from vesperando_core.res.statuses import STATUS
 
 
 logger = logging.getLogger(os.environ.get('LOGGER_NAME', "vesperando"))
@@ -43,7 +44,7 @@ class GamePatchProcedure:
         self.apply_immediately = apply_immediately
         self.clean = clean_build
 
-    def patch(self):
+    def patch(self) -> STATUS:
         start: float = time.time()
 
         logger.info(f"Patch {self.identifier}")
@@ -56,6 +57,11 @@ class GamePatchProcedure:
             logger.info(f"\n{">":>4} Threads: {self.threads}")
         logger.info("")
 
+        if self.does_game_dir_has_same_patch():
+            return STATUS.PATCH_ALREADY_APPLIED
+        elif self.is_patch_already_generated():
+            return STATUS.PATCH_ALREADY_GENERATED
+
         self.patch_btl()
 
         if 'items' in self.patch_data:
@@ -67,6 +73,7 @@ class GamePatchProcedure:
             self.patch_npc()
 
         self.patch_strings()
+        self.create_patch_manifest()
 
         if self.apply_immediately:
             self.packer.apply()
@@ -84,6 +91,8 @@ class GamePatchProcedure:
                 logger.info("> Automatically applied patch to the game directory.")
         else:
             logger.info(f"Patch Output: {self.packer.output_dir}")
+
+        return STATUS.SUCCESS
 
     def patch_btl(self):
         with Progress(transient=True) as progress:
@@ -302,6 +311,34 @@ class GamePatchProcedure:
     def restore(self):
         packer.restore_backup(self.packer.game_dir)
 
+    def does_game_dir_has_same_patch(self):
+        current_id: str = self.get_patch_identifier(self.packer.game_dir)
+        return current_id == self.identifier
+
+    def is_patch_already_generated(self):
+        if not os.path.isdir(self.packer.output_dir): return False
+
+        current_id: str = self.get_patch_identifier(self.packer.output_dir)
+        return current_id == self.identifier
+
+
+    def create_patch_manifest(self):
+        manifest_filename: str = os.path.join(self.packer.output_dir, Paths.PATCH_MANIFEST)
+        with open(manifest_filename, "w") as f:
+            f.write(self.identifier)
+            f.flush()
+            f.close()
+
+    @staticmethod
+    def get_patch_identifier(manifest_dirname: str) -> str:
+        patch_id: str = ""
+        try:
+            with open(os.path.join(manifest_dirname, Paths.PATCH_MANIFEST), "r") as f:
+                patch_id = f.readline()
+        except FileNotFoundError:
+            pass
+
+        return patch_id
 
 
 if __name__ == '__main__':

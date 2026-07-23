@@ -20,8 +20,8 @@ if __name__ == "__main__":
     base_dir = os.getenv('EXEC_DIR', os.getcwd())
     shutil.rmtree(os.path.join(base_dir, "build"), ignore_errors=True)
 
-    print("[TEST] Cleaning 'output'")
-    shutil.rmtree(os.path.join(base_dir, os.getenv('EXEC_DIR', os.getcwd()), "output"), ignore_errors=True)
+    # print("[TEST] Cleaning 'output'")
+    # shutil.rmtree(os.path.join(base_dir, os.getenv('EXEC_DIR', os.getcwd()), "output"), ignore_errors=True)
 
     print("[TEST] Fetching patch")
     patch: str = ""
