@@ -56,19 +56,12 @@ jobs:
           name: ${{ env.CLI_PKG }}-windows
           path: dist/
 
-      - name: Archive as tarball (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          tar cvzf ${{ env.CLI_PKG }}-linux.tar.gz ${{ env.CLI_PKG }}
-        working-directory: ./dist/
-
       - name: Create Artifact (Linux)
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v6
         with:
           name: ${{ env.CLI_PKG }}-linux
-          path: dist/${{ env.CLI_PKG }}-linux.tar.gz
-          compression-level: 0
+          path: dist/
 
       - name: List bundle output
         run: ls -R ./dist/
@@ -107,5 +100,5 @@ jobs:
           prerelease: false
           overwrite_files: true
           files: |
-            ${{ env.CLI_PKG }}-linux.tar.gz
+            ${{ env.CLI_PKG }}-linux.zip
             ${{ env.CLI_PKG }}-windows.zip
