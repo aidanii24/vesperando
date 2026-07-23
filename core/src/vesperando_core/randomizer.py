@@ -10,12 +10,11 @@ import time
 import sys
 import os
 
-import numpy as np
-
 from vesperando_core import data as game_data
 from vesperando_core.res.models.options import MainOptionsDefault
 from vesperando_core.conf.settings import Paths, Extensions, Weights
 from vesperando_core.res import enums, schema
+from vesperando_core.modules import rand_ex
 from vesperando_core.utils import keys_to_int, safe_divide
 from vesperando_core.spoil import PatchSpoiler
 
@@ -231,11 +230,11 @@ class ArteRandomizer(BaseRandomizer):
             [*Weights.ARTE_EFFECT_COUNT_DISTRIBUTION],
             k=1
         )[0]
-        effects: list = np.random.choice(
+        effects: list = rand_ex.choice_weighted_no_replacement(
             list(enums.ArteEffects),
-            size=effect_count,
-            replace=False,
-            p=Weights.ARTE_EFFECT_DISTRIBUTION
+            Weights.ARTE_EFFECT_DISTRIBUTION,
+            k=effect_count,
+            rand=self.random
         )
 
         is_usable_outside_battle: bool = False
@@ -336,11 +335,11 @@ class ArteRandomizer(BaseRandomizer):
             Weights.ARTE_ELEMENT_COUNT_DISTRIBUTION,
             k=1
         )[0]
-        elements: list[str] = np.random.choice(
+        elements: list[str] = rand_ex.choice_weighted_no_replacement(
             self.ELEMENTAL_PROPERTIES,
-            size=element_count,
-            replace=False,
-            p=[*Weights.ARTE_ELEMENT_DISTRIBUTION],
+            Weights.ARTE_ELEMENT_DISTRIBUTION,
+            k=element_count,
+            rand=self.random
         )
 
         for element in self.ELEMENTAL_PROPERTIES:
@@ -887,11 +886,11 @@ class ItemRandomizer(BaseRandomizer):
             count_weights,
             k=1
         )[0]
-        elements: list[str] = np.random.choice(
+        elements: list[str] = rand_ex.choice_weighted_no_replacement(
             self.ELEMENTAL_PROPERTIES,
-            size=element_count,
-            replace=False,
-            p=element_weights,
+            element_weights,
+            k=element_count,
+            rand=self.random
         )
 
         for element in self.ELEMENTAL_PROPERTIES:
@@ -921,11 +920,11 @@ class ItemRandomizer(BaseRandomizer):
         )[0]
         if not stat_counts: return
 
-        stats: list[int] = np.random.choice(
+        stats: list[int] = rand_ex.choice_weighted_no_replacement(
             [0, 1],
-            size=stat_counts,
-            p=[*Weights.ITEM_STATS_AUX_DISTRIBUTION],
-            replace=False
+            Weights.ITEM_STATS_AUX_DISTRIBUTION,
+            k=stat_counts,
+            rand=self.random
         ) if stat_counts == 1 else [0, 1]
         if 0 in stats:
             ranges: list[int] = sorted([
